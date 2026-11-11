@@ -1,0 +1,6 @@
+:root { font-family: system-ui, sans-serif; color: #17202a; background: #f7f8fa; line-height: 1.6; }
+body { margin: 0; }
+main { padding: max(1.25rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left)); max-width: 40rem; margin: auto; }
+code { overflow-wrap: anywhere; }
+button { min-height: 48px; padding: .6rem 1rem; font: inherit; border: 1px solid #34495e; border-radius: 4px; background: white; color: #17202a; }
+:focus-visible { outline: 3px solid #952b00; outline-offset: 4px; }
