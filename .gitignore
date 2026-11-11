@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+build/
+coverage/
+*.log
+.DS_Store
+/work/
+/pgdata/
+/outputs/
+/postgres16/
+start-postgres16.py
