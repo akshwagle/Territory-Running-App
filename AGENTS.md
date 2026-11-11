@@ -8,23 +8,26 @@ anti-cheat flags, notifications, privacy controls and administration.
 
 ## Stack
 - Website: React.
-- Backend: Node.js 20+ and Express.
+- Backend: Node.js 22.12+ and Express 5 (plain JavaScript).
 - Database: PostgreSQL 16, Prisma 6 (exact version in server/package.json).
 - Mobile: Capacitor wraps the React app into an Android APK downloaded from the website.
-- Monorepo; Phase 1 contains database work only. No API, web or mobile implementation.
+- Phase 1 is accepted and merged. Phase 2 is in progress: API shell, download page and debug APK only.
+- No login, runner features, UI redesign, hosting or deployment in Phase 2.
 
 ## Project layout
 - The single project root is /Users/akshwagle/Desktop/Territory-Running-App (~/Desktop/Territory-Running-App).
 - Build every phase in this one folder; do not use the old Documents/Codex checkout.
-- /server: completed Phase 1 database schema, migration, seed and tests.
-- /web and /mobile: reserved for Phase 2; do not create them during close-out.
+- /server: completed database layer plus /src Express API, /api-tests and /scripts release registration.
+- /web: Vite + React download page and Vitest/Testing Library tests.
+- /mobile: Vite + React + Capacitor Android shell; appId com.territoryrunning.app.
+- Each folder has its own package.json; no root workspace or TypeScript.
 - /.local/: gitignored PostgreSQL 16 installation, source build, data, logs and local state.
 - /scripts/local-postgres.sh: repository-relative start, stop and status for local PostgreSQL.
 - server/.env stays gitignored; committed examples contain placeholders only.
 
 ## Phase roadmap
-1. Database: schema, migration, seed, tests (THIS PHASE)
-2. Website with APK download: minimal Express API, React site with a download page, a first Capacitor APK
+1. Database: schema, migration, seed, tests (COMPLETE)
+2. Website with APK download: minimal Express API, React site with a download page, a first Capacitor APK (IN PROGRESS)
 3. Improve the website UI
 4. App features: auth, run recording, hex claiming, map, leaderboard, profile
 5. Feature parity with popular running apps (history, stats, shoes, goals, sharing, challenges and so on)
@@ -37,6 +40,7 @@ Only work on the phase you are asked to. Never start a later phase on your own.
 - Do not add or drop tables or columns. Do not rename anything. Do not add a 5NF table.
 
 Ask before changing the schema; the ER diagram is the source of truth.
+Phase 2 must not change server/prisma/schema.prisma or migrations.
 The Phase 1 owner resolved minor diagram labels in favour of the written spec:
 run_flags.zone_id and restricted_zone_hexes.zone_id reference restricted_zones.id;
 runs.ended_at > started_at is a database CHECK, not a service-only rule.
@@ -67,7 +71,13 @@ them. Pause only if following the text changes the table count or drops a table/
 5. Migrate: npm run db:migrate (DIRECT_URL targets the development database).
 6. Seed: npm run db:seed (ADMIN_EMAIL and ADMIN_PASSWORD must be configured).
 7. Validate schema: npm run db:validate
-8. Test: npm test (separate empty DATABASE_URL_TEST; runner applies migrations itself).
+8. DB test: npm test (separate empty DATABASE_URL_TEST; runner applies migrations itself).
+9. API test: npm run test:api (another empty database, DATABASE_URL_API_TEST; same guards).
+10. API: cd server && npm start (HOST=127.0.0.1, PORT=4000 by default).
+11. Web: cd web && npm ci && npm run dev; npm test; npm run lint; npm run build.
+12. Mobile: cd mobile && npm ci && npm run apk:debug (JDK 21, Android platform 36).
+13. Register: cd server && npm run release:register -- --file <apk> --version-name 0.1.0 --version-code 1.
+14. Bump mobile/app-version.json for app versionName/versionCode; rebuild and register with matching values.
 
 ## Security, testing and delivery
 - .env.example contains placeholders only, using port 5432. Never commit .env, credentials or tokens.
@@ -77,5 +87,12 @@ them. Pause only if following the text changes the table count or drops a table/
 - Seed is transactional and idempotent; no fake runs. Keep tunables documented in README.md.
 - Complete required tests before committing. Never work directly on main.
 - Phase 1's six ordered commits are merged via PR #1; do not rewrite them.
-- Close-out branch: chore/project-location; no Phase 2 work.
-- Close-out PR title: "Phase 1 close-out: project location and local Postgres script"; do not merge.
+- Phase 2 branch: feat/api-web-mobile-shell; PR title: "Phase 2: API shell, download website, first APK"; do not merge.
+- Keep the seven requested commits in order: layout, API, registration, API tests, web, mobile, final docs.
+- Config comes from environment variables; committed examples contain safe placeholders only.
+- Never commit APKs/AABs, keystores, local.properties, storage APKs, node_modules or build outputs.
+- Keep only .gitkeep in server/storage/apk tracked; SHA-256 is computed from the copied APK.
+- CORS uses explicit origins; logs and errors never expose credentials, tokens, bodies or stack traces.
+- HTTP is permitted only in debug Android builds; INTERNET is the only permission in this phase.
+- apk:debug defaults JAVA_HOME/ANDROID_HOME when unset; never accept SDK licences or create keystores.
+- If sandboxing blocks runtime commands, add a small scripts/ helper and ask one question at a time.

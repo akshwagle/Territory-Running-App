@@ -13,3 +13,13 @@ coverage/
 /postgres16/
 start-postgres16.py
 /.local/
+*.apk
+*.aab
+*.keystore
+*.jks
+local.properties
+.gradle/
+.idea/
+/.android/
+/server/storage/apk/*
+!/server/storage/apk/.gitkeep
