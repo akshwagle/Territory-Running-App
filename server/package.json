@@ -1,0 +1,27 @@
+{
+  "name": "territory-running-database",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Phase 1 PostgreSQL schema, migration, seed and database tests",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "test": "node --test --test-concurrency=1 db-tests/*.test.js"
+  },
+  "prisma": { "seed": "node prisma/seed.js" },
+  "overrides": {
+    "@prisma/config": { "deepmerge-ts": "8.0.2" }
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "bcrypt": "6.0.0",
+    "dotenv": "16.6.1"
+  },
+  "devDependencies": {
+    "pg": "8.23.1",
+    "prisma": "6.19.3"
+  }
+}
