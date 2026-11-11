@@ -4,21 +4,22 @@ Database layer only: PostgreSQL 16, Prisma **6.19.3**, Node.js **20+**. There is
 
 ## Verification status
 
-**Verified:** local PostgreSQL **16.15**, initialized with `initdb` and started with `pg_ctl` on `127.0.0.1:55432`; fresh-database migration, two seed runs, schema-contract checks, constraints and concurrent claims. Real local connection strings are in ignored `server/.env`.
+**Verified:** local PostgreSQL **16.15** on `127.0.0.1:55432`, with the build and data relocated into this repository’s ignored `.local/`. `scripts/local-postgres.sh` starts, stops and reports status using repository-relative paths. Migration, seed and all database tests were run from `/Users/akshwagle/Desktop/Territory-Running-App`. Real local connection strings remain in ignored `server/.env`.
 
-**Not verified:** the Docker route below, because Docker is unavailable in this environment. The Linux apt and macOS Homebrew installer commands are alternatives for obtaining PostgreSQL 16; they were not run here. The local verification used a PostgreSQL 16.15 source build outside the repository.
+**Not verified:** the Docker route below, because Docker is unavailable in this environment. The verified local route uses a PostgreSQL 16.15 source build. No database schema or Phase 2 features were changed during close-out.
 
 ## 1. Clone, install and configure
 
 ```sh
-git clone https://github.com/akshwagle/Territory-Running-App.git
-cd Territory-Running-App
-git switch feat/database
+git clone --branch main https://github.com/akshwagle/Territory-Running-App.git "$HOME/Desktop/Territory-Running-App"
+cd "$HOME/Desktop/Territory-Running-App"
 cp server/.env.example server/.env
 cd server
 npm ci
 cd ..
 ```
+
+The permanent project root is **`~/Desktop/Territory-Running-App`** (`/Users/akshwagle/Desktop/Territory-Running-App` on this machine). Every phase is developed in this one folder. Do not use the previous Documents/Codex checkout. `/server` contains the completed database layer; `/web` and `/mobile` are reserved for Phase 2 and are not created during close-out.
 
 Edit `server/.env` before proceeding. Its committed example contains placeholders only and defaults to port **5432**, matching Compose. Replace every `YOUR_...` value. Keep the database credentials consistent across `POSTGRES_USER`, `POSTGRES_PASSWORD` and the URL credentials. Percent-encode reserved characters in URL usernames/passwords. Use a private admin password of at most 72 UTF-8 bytes, bcrypt's input limit.
 
@@ -31,7 +32,7 @@ Edit `server/.env` before proceeding. Its committed example contains placeholder
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Compose initialization values (`POSTGRES_DB=territory`) |
 | `POSTGRES_PORT` | Host port for Compose, default `5432` |
 
-For the verified local server, set the three URL ports and `POSTGRES_PORT` to **55432** instead. Never commit `.env`, credentials, tokens, database data or local build/startup helpers.
+For the verified local server, set the three URL ports and `POSTGRES_PORT` to **55432** instead. Never commit `.env`, credentials, tokens or anything under `.local/`. The reusable `scripts/local-postgres.sh` is committed; it replaces the old one-off `start-postgres16.py`.
 
 ## 2. Start PostgreSQL 16 — choose one route
 
@@ -46,39 +47,52 @@ docker compose --env-file server/.env exec postgres sh -c 'createdb -U "$POSTGRE
 
 Compose creates `territory` on first initialization; the second command creates the separate test database. The server binds only to `127.0.0.1`. Data persists in the named volume. Initialization variables affect a new volume, not an existing cluster.
 
-### B. Local PostgreSQL 16 (verified database route)
+### B. Local PostgreSQL 16 (verified non-Docker route)
 
-On Ubuntu/Debian with PostgreSQL 16 packages available:
+The relocated installation and existing data are already initialized on this machine:
 
-```sh
-sudo apt update
-sudo apt install postgresql-16
-sudo systemctl start postgresql
-sudo -u postgres createuser --pwprompt --createdb territory
-createdb -h 127.0.0.1 -p 5432 -U territory -W territory
-createdb -h 127.0.0.1 -p 5432 -U territory -W territory_test
+```text
+.local/
+  postgres16/           # installed PostgreSQL 16 binaries, libraries and share files
+  postgresql-16.15/     # source build
+  pgdata/               # preserved development and disposable test databases
+  run/                  # private Unix socket directory
+  postgres.log          # server log
 ```
 
-If your distribution does not provide version 16, use the [official PostgreSQL package repository instructions](https://www.postgresql.org/download/linux/ubuntu/). Set the role password to your private `POSTGRES_PASSWORD`, and set the URLs to use that role. Do not use another installed PostgreSQL major version for the tests.
-
-On macOS, PostgreSQL 16 binaries can be installed with:
+Use these commands from the project root; the script also works from another working directory because it resolves paths from its own location:
 
 ```sh
-brew install postgresql@16
-export PATH="$(brew --prefix postgresql@16)/bin:$PATH"
+./scripts/local-postgres.sh start
+./scripts/local-postgres.sh status
+./scripts/local-postgres.sh stop
+./scripts/local-postgres.sh start
 ```
 
-For an isolated local cluster (the method verified here), initialize a directory **outside this repository**. Run as your normal OS user, with PostgreSQL 16 binaries on `PATH`:
+`start` waits for readiness, binds only to `127.0.0.1`, and defaults to port **55432**. `stop` uses a clean fast shutdown and waits for completion. `status` prints the running process and readiness; a stopped cluster returns exit code 3. Running `start` on an already running cluster succeeds without starting a second server. Set `LOCAL_POSTGRES_PORT` consistently on these commands if using a different port, and update all three connection URLs to match. The script sets the bundled-library search path for the relocated macOS client tools. It never initializes or deletes data, creates databases or resets tests.
+
+For a **fresh local installation only**, obtain PostgreSQL 16 inside `.local/`. This requires a C compiler and `make` (Xcode Command Line Tools on macOS, or the usual build tools on Linux). From the repository root:
 
 ```sh
-postgres --version
-initdb -D /absolute/path/to/local-pg16 -U territory -A scram-sha-256 --pwprompt
-pg_ctl -D /absolute/path/to/local-pg16 -l /absolute/path/to/local-pg16.log -o '-h 127.0.0.1 -p 55432' start
+mkdir -p .local
+curl -fL https://ftp.postgresql.org/pub/source/v16.15/postgresql-16.15.tar.bz2 -o .local/postgresql-16.15.tar.bz2
+tar -xjf .local/postgresql-16.15.tar.bz2 -C .local
+PG_INSTALL_PREFIX="$PWD/.local/postgres16"
+(
+  cd .local/postgresql-16.15
+  ./configure --prefix="$PG_INSTALL_PREFIX" --without-icu --without-readline --without-zlib
+  make -j4
+  make install
+)
+export PATH="$PWD/.local/postgres16/bin:$PATH"
+export DYLD_LIBRARY_PATH="$PWD/.local/postgres16/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+initdb -D "$PWD/.local/pgdata" -U territory -A scram-sha-256 --pwprompt
+./scripts/local-postgres.sh start
 createdb -h 127.0.0.1 -p 55432 -U territory -W territory
 createdb -h 127.0.0.1 -p 55432 -U territory -W territory_test
 ```
 
-Enter the same private database password used in `server/.env`. Update its URL ports to `55432`. To stop this isolated cluster, use `pg_ctl -D /absolute/path/to/local-pg16 stop`. On Linux, PostgreSQL 16's `bin` directory is commonly `/usr/lib/postgresql/16/bin`.
+Enter the same private password used in `server/.env`; set its URL ports and `POSTGRES_PORT` to `55432`. Do not repeat initialization for the existing moved cluster. Local builds, archives, data, logs, sockets and verification transcripts all stay in ignored `.local/` and are never committed. If an agent sandbox blocks PostgreSQL shared memory or process signals, run the lifecycle script in a normal Terminal; migration and tests still run from this repository.
 
 ## 3. Generate, migrate and seed
 
@@ -118,9 +132,11 @@ npm test
 
 The Node test runner and `pg` prove the complete 26-table contract (every column, type, nullability, default, enum, key, index and foreign-key delete action), all CHECK constraints, idempotent uploads, team/season uniqueness, deletion behavior, append-only audit history, Prisma timestamps and seed idempotency. They exercise **10 simultaneous physical PostgreSQL connections** against unowned, expired and cooldown-protected hexes, and **two simultaneous transactions claiming a sorted batch of 40 hexes**. Lock/statement timeouts and rejected-promise checks fail the suite on errors or deadlocks.
 
-Before rerunning, recreate **only the disposable test database**. For local PostgreSQL, substitute your actual role/port:
+Before rerunning, recreate **only the disposable test database**. For local PostgreSQL, run from the repository root and substitute your actual role/port:
 
 ```sh
+export PATH="$PWD/.local/postgres16/bin:$PATH"
+export DYLD_LIBRARY_PATH="$PWD/.local/postgres16/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
 dropdb -h 127.0.0.1 -p 55432 -U territory -W --if-exists territory_test
 createdb -h 127.0.0.1 -p 55432 -U territory -W territory_test
 ```
