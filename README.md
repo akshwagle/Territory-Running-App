@@ -99,7 +99,7 @@ cd ~/Desktop/Territory-Running-App/mobile
 npm run apk:debug
 ```
 
-This builds the web assets, runs the pinned `cap sync android`, writes ignored `android/local.properties` from `ANDROID_HOME`, then runs `./gradlew assembleDebug`. Gradle's default cache is inside ignored `.local/gradle`; Android tool preferences default to `.local/android-user`, with an ignored symlink to the existing debug key so no keystore is generated. The APK is:
+This builds the web assets, runs the pinned `cap sync android`, writes ignored `android/local.properties` from `ANDROID_HOME`, then runs `./gradlew assembleDebug`. Gradle's default cache is inside ignored `.local/gradle`; the script sets `ANDROID_USER_HOME` to `.local/android-user` with an ignored symlink to the existing debug key. Some Android Gradle components still use the default home profile; run the Terminal helper when sandboxing blocks its key lock file. The APK is:
 
 ```text
 mobile/android/app/build/outputs/apk/debug/app-debug.apk
@@ -315,3 +315,90 @@ WHERE hex_ownership.cooldown_until <= now();
 Always sort batch cells numerically by `h3_index` before taking locks, and use one transaction for the batch. Store H3 values as `BigInt` or decimal strings in Node; do not round BIGINT values through JavaScript `Number`. Auth tokens must be SHA-256 digests before insertion; the database never needs raw tokens.
 
 Prisma and its client are pinned together at 6.19.3. A scoped `deepmerge-ts` override to 8.0.2 removes the transitive recursive-merge advisory while preserving Prisma 6; client generation, validation and migrations are verified with it. Prisma 6 still accepts the seed command in `package.json` and emits a Prisma 7 deprecation notice; this phase intentionally stays on version 6.
+
+## Test on my phone (run by the project owner)
+
+Use the Mac and Android phone on the same Wi-Fi. A phone's `localhost` refers to the phone, so both frontend builds must use the Mac's LAN address. These instructions are for a local debug build.
+
+1. Find the Mac's Wi-Fi LAN IP in Terminal:
+
+   ```sh
+   cd ~/Desktop/Territory-Running-App
+   MAC_LAN_IP="$(ipconfig getifaddr en0)"
+   printf '%s\n' "$MAC_LAN_IP"
+   ```
+
+   If the result is empty, use System Settings → Wi-Fi → Details → TCP/IP to find the address. Substitute it below. Use a LAN address such as `192.168.x.x`, not a public address.
+
+2. In Terminal 1, start PostgreSQL and the API on the LAN interface:
+
+   ```sh
+   cd ~/Desktop/Territory-Running-App
+   ./scripts/local-postgres.sh start
+   MAC_LAN_IP="$(ipconfig getifaddr en0)"
+   HOST=0.0.0.0 CORS_ORIGINS="http://localhost:5173,http://$MAC_LAN_IP:5173,https://localhost,http://localhost,capacitor://localhost" npm start --prefix server
+   ```
+
+   Allow Node's incoming connection if macOS asks. Leave this Terminal running. `HOST=0.0.0.0` is only needed for phone access; the normal API default stays loopback.
+
+3. In Terminal 2, configure the web and mobile builds and start the download page:
+
+   ```sh
+   cd ~/Desktop/Territory-Running-App
+   MAC_LAN_IP="$(ipconfig getifaddr en0)"
+   printf 'VITE_API_URL=http://%s:4000\n' "$MAC_LAN_IP" > web/.env.local
+   printf 'VITE_API_URL=http://%s:4000\n' "$MAC_LAN_IP" > mobile/.env.local
+   npm run dev --prefix web -- --host 0.0.0.0
+   ```
+
+   Open `http://<MAC_LAN_IP>:5173` on the phone. If using `npm run build` plus a static server instead, rebuild the web page after editing its env file and include that server's exact origin in `CORS_ORIGINS`.
+
+4. In Terminal 3, rebuild and register the debug APK with the LAN API URL:
+
+   ```sh
+   cd ~/Desktop/Territory-Running-App/mobile
+   npm run apk:debug
+   cd ../server
+   npm run release:register -- --file ../mobile/android/app/build/outputs/apk/debug/app-debug.apk --version-name 0.1.0 --version-code 1 --changelog "First Android shell with API connectivity status."
+   ```
+
+   After changing `mobile/app-version.json`, use its matching version name/code in the registration command. Editing an env file does not change an already-built APK; rebuilding is required.
+
+5. Refresh the phone's download page, tap **Download APK**, then open the downloaded file. Allow installs from that browser/file manager if Android asks. Play Protect may warn about an app installed outside the Play Store; review that warning. Open Territory Run and check that the configured API URL is the Mac's LAN address and the status becomes **Connected**. If it says **Can't reach server**, first open `http://<MAC_LAN_IP>:4000/api/health` in the phone's browser and check the API listener, Wi-Fi and firewall.
+
+   Optional USB installation after enabling USB debugging:
+
+   ```sh
+   /Users/akshwagle/Library/Android/sdk/platform-tools/adb devices
+   /Users/akshwagle/Library/Android/sdk/platform-tools/adb install -r ~/Desktop/Territory-Running-App/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+Stop the API and Vite with Ctrl+C when done. Keep private env files, APKs, local.properties and all `.local/` state uncommitted.
+
+## Phase 2 verification and decisions
+
+Implementation is verified and awaiting PR review; Phase 2 remains in progress until accepted. No Phase 3 work has started.
+
+| Check | Actual result |
+| --- | --- |
+| Existing database suite | 23 passed; schema/migrations unchanged |
+| Supertest API suite | 11 passed against its own guarded PostgreSQL database |
+| Web Vitest/Testing Library | 5 passed, including all four page states |
+| Web lint and production build | Passed |
+| Android debug build | BUILD SUCCESSFUL; APK signature verified; 0.1.0 / code 1 |
+| Release manifest processing | Passed; cleartext false in release, true in debug |
+| Live API proof | Health 200/db up, latest 200/code 1, APK HEAD 200 with Android MIME/attachment |
+| Live browser | Rendered the registered release, download link, changelog and matching SHA-256 |
+| Graceful shutdown | SIGTERM and SIGINT each logged shutdown and exited with code 0; preview servers stopped |
+
+The debug APK is 4,199,499 bytes. Its SHA-256 matches the copied storage file and latest-release response:
+
+```text
+d5b8ff3a394911b37036c71f7535222b60dbd46ff6b6f0703c98bc1e6927e7ed
+```
+
+The build uses the existing debug key. PostgreSQL startup/migration/seed and the final Android signing step were run in Terminal using the committed helpers because this agent sandbox blocks process inspection and the default debug-key lock file. `scripts/phase2-db-setup.sh` and `scripts/phase2-apk-build.sh` capture those results under ignored `.local/phase2/`. No APK was downloaded or fabricated. No SDK licence was accepted by the agent. The installed Build Tools 35.0.0 is the pinned Android Gradle plugin's default; compileSdk stays 36.
+
+API tests use an additional `DATABASE_URL_API_TEST` so they do not reuse the DB suite's populated database or touch development. Both `localhost:5173` and `127.0.0.1:5173` are allowed for the local website, alongside the required Capacitor origins. The health 503 envelope follows the explicit endpoint contract. The AndroidX app-private signature permission is retained for receiver protection, beyond the sole platform permission INTERNET.
+
+For tooling compatibility with Node 22.19, the web tests use jsdom 27.4.0. ESLint's minimatch is overridden to 11.0.1 to remove its transitive glob advisory; web tests, lint and build pass with the override. The existing Prisma override is retained. npm installation/audit reported zero vulnerabilities for all three folders.
