@@ -1,0 +1,17 @@
+:root { font-family: system-ui, sans-serif; color: #17202a; background: #f7f8fa; line-height: 1.6; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 44rem; margin: 0 auto; padding: 1.25rem; }
+header { margin-bottom: 2rem; }
+h1, h2, h3 { line-height: 1.25; }
+section { padding: 1.25rem 0; border-top: 1px solid #c6cdd5; }
+button, .download { font: inherit; min-height: 48px; border-radius: 4px; cursor: pointer; padding: .65rem 1rem; }
+button { border: 1px solid #34495e; background: white; color: #17202a; }
+.download { display: block; text-align: center; background: #1747a6; color: white; font-weight: 700; text-decoration: none; margin: 1.5rem 0; }
+button:hover { background: #edf0f5; }
+.download:hover { background: #10347c; }
+:focus-visible { outline: 3px solid #952b00; outline-offset: 4px; }
+.checksum { display: block; overflow-wrap: anywhere; padding: .75rem; background: #e8edf3; margin: 1rem 0; user-select: all; }
+.changelog { white-space: pre-wrap; }
+li + li { margin-top: .5rem; }
+@media (min-width: 42rem) { main { padding: 2.5rem; } }
