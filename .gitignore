@@ -12,3 +12,4 @@ coverage/
 /outputs/
 /postgres16/
 start-postgres16.py
+/.local/

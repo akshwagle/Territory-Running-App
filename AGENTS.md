@@ -13,6 +13,15 @@ anti-cheat flags, notifications, privacy controls and administration.
 - Mobile: Capacitor wraps the React app into an Android APK downloaded from the website.
 - Monorepo; Phase 1 contains database work only. No API, web or mobile implementation.
 
+## Project layout
+- The single project root is /Users/akshwagle/Desktop/Territory-Running-App (~/Desktop/Territory-Running-App).
+- Build every phase in this one folder; do not use the old Documents/Codex checkout.
+- /server: completed Phase 1 database schema, migration, seed and tests.
+- /web and /mobile: reserved for Phase 2; do not create them during close-out.
+- /.local/: gitignored PostgreSQL 16 installation, source build, data, logs and local state.
+- /scripts/local-postgres.sh: repository-relative start, stop and status for local PostgreSQL.
+- server/.env stays gitignored; committed examples contain placeholders only.
+
 ## Phase roadmap
 1. Database: schema, migration, seed, tests (THIS PHASE)
 2. Website with APK download: minimal Express API, React site with a download page, a first Capacitor APK
@@ -50,8 +59,9 @@ them. Pause only if following the text changes the table count or drops a table/
 
 ## Commands (from repository root)
 1. Copy server/.env.example to server/.env and set every required variable locally.
-2. Start PostgreSQL: docker compose --env-file server/.env up -d --wait
-   Or use the local PostgreSQL 16 instructions in README.md.
+2. Start local PostgreSQL: ./scripts/local-postgres.sh start
+   Status/stop: ./scripts/local-postgres.sh status or ./scripts/local-postgres.sh stop
+   Docker alternative (unverified): docker compose --env-file server/.env up -d --wait
 3. Install: cd server && npm ci
 4. Generate client: npm run db:generate
 5. Migrate: npm run db:migrate (DIRECT_URL targets the development database).
@@ -65,6 +75,7 @@ them. Pause only if following the text changes the table count or drops a table/
 - Tests refuse an already populated test database. Recreate the disposable test DB to rerun.
 - Prove table/column fidelity, constraints, cascading deletion and concurrent claims in SQL.
 - Seed is transactional and idempotent; no fake runs. Keep tunables documented in README.md.
-- Complete required tests before committing. Work on feat/database; never main.
-- Keep the six requested commits in order: skeleton, schema, migration, seed, tests, README.
-- Push a PR titled "Phase 1: database schema, migration, seed, tests" into main; do not merge.
+- Complete required tests before committing. Never work directly on main.
+- Phase 1's six ordered commits are merged via PR #1; do not rewrite them.
+- Close-out branch: chore/project-location; no Phase 2 work.
+- Close-out PR title: "Phase 1 close-out: project location and local Postgres script"; do not merge.
