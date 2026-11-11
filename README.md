@@ -1,40 +1,166 @@
-# Territory Running App — Phase 1
+# Territory Run — Phase 2
 
-Database layer only: PostgreSQL 16, Prisma **6.19.3**, Node.js **20+**. There is no API, website or mobile app in this phase. The project context, six-phase roadmap and future-agent rules are in [AGENTS.md](AGENTS.md).
+Phase 1's PostgreSQL schema is accepted and unchanged. Phase 2 adds a minimal Express API, a functional React download page and a Capacitor Android shell. Phase 2 is in progress; UI redesign, login, running features, maps, hosting and deployment are outside this phase.
 
-## Verification status
+Everything lives in **`/Users/akshwagle/Desktop/Territory-Running-App`** (`~/Desktop/Territory-Running-App`). Every phase uses this one folder. There is no root npm workspace. Application code is plain JavaScript; native Android source is generated Java/Gradle/XML.
 
-**Verified:** local PostgreSQL **16.15** on `127.0.0.1:55432`, with the build and data relocated into this repository’s ignored `.local/`. `scripts/local-postgres.sh` starts, stops and reports status using repository-relative paths. Migration, seed and all database tests were run from `/Users/akshwagle/Desktop/Territory-Running-App`. Real local connection strings remain in ignored `server/.env`.
+| Folder | Contents |
+| --- | --- |
+| `server/` | Prisma database, Express `src/`, API tests, release registrar, ignored `storage/apk/` |
+| `web/` | Vite/React download page, CSS, Vitest + Testing Library tests |
+| `mobile/` | Vite/React shell, Capacitor config, committed `android/` project source |
+| `scripts/` | Local PostgreSQL lifecycle, database setup helper, debug APK build |
+| `.local/` | Ignored PostgreSQL build/data, Gradle/npm caches and verification logs |
 
-**Not verified:** the Docker route below, because Docker is unavailable in this environment. The verified local route uses a PostgreSQL 16.15 source build. No database schema or Phase 2 features were changed during close-out.
+## Prerequisites and pinned versions
 
-## 1. Clone, install and configure
+Use Node **22.12+** (verified **22.19.0**) and npm (verified **10.9.3**). Dependencies are exact-pinned in each folder's package.json and lockfile. PostgreSQL **16.15** and Prisma **6.19.3** remain unchanged.
+
+| Component | Version |
+| --- | --- |
+| Express | 5.3.0 |
+| React / React DOM | 19.3.1 |
+| Vite | 8.3.8 |
+| Capacitor core / CLI / Android | 8.6.0 |
+| Temurin JDK | 21.0.13 |
+| Android compileSdk / targetSdk | 36 / 36 (minimum API 24) |
+| Android Gradle plugin / wrapper | 8.13.0 / 8.14.3 |
+
+The verified JDK is `/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home`; the SDK is `/Users/akshwagle/Library/Android/sdk`; adb is **37.0.1**. Install `platforms;android-36` and `build-tools;35.0.0` through Android Studio SDK Manager. The APK script disables SDK auto-downloads and never accepts licences. It defaults `JAVA_HOME` and `ANDROID_HOME` to those locations when they are unset, so it works from any Terminal.
+
+## Install and environment
+
+For a fresh clone, use the permanent project path. If it already exists, use that checkout instead of cloning over it:
 
 ```sh
 git clone --branch main https://github.com/akshwagle/Territory-Running-App.git "$HOME/Desktop/Territory-Running-App"
 cd "$HOME/Desktop/Territory-Running-App"
 cp server/.env.example server/.env
-cd server
-npm ci
-cd ..
+cp web/.env.example web/.env.local
+cp mobile/.env.example mobile/.env.local
+npm ci --prefix server
+npm ci --prefix web
+npm ci --prefix mobile
 ```
 
-The permanent project root is **`~/Desktop/Territory-Running-App`** (`/Users/akshwagle/Desktop/Territory-Running-App` on this machine). Every phase is developed in this one folder. Do not use the previous Documents/Codex checkout. `/server` contains the completed database layer; `/web` and `/mobile` are reserved for Phase 2 and are not created during close-out.
+Edit the ignored env files. The committed examples use safe placeholders and PostgreSQL port 5432 for Docker; this machine's verified local PostgreSQL uses **55432**. Keep application/migration URLs on `territory`, DB tests on `territory_test`, and API tests on a different disposable database, `territory_api_test`. Percent-encode reserved characters in URL credentials. Private admin passwords must fit bcrypt's 72-byte input limit. Never overwrite a working private env file when updating the checkout.
 
-Edit `server/.env` before proceeding. Its committed example contains placeholders only and defaults to port **5432**, matching Compose. Replace every `YOUR_...` value. Keep the database credentials consistent across `POSTGRES_USER`, `POSTGRES_PASSWORD` and the URL credentials. Percent-encode reserved characters in URL usernames/passwords. Use a private admin password of at most 72 UTF-8 bytes, bcrypt's input limit.
+The environment variable names are:
 
-| Variable | Purpose |
+| Location | Names |
 | --- | --- |
-| `DATABASE_URL` | Application/seed connection to development database `territory` |
-| `DIRECT_URL` | Direct migration connection to that same development database |
-| `DATABASE_URL_TEST` | Direct connection to a different, disposable database: `territory_test` |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Initial ADMIN identity; password hashed with bcrypt cost 12 |
-| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Compose initialization values (`POSTGRES_DB=territory`) |
-| `POSTGRES_PORT` | Host port for Compose, default `5432` |
+| `server/.env` — database | `DATABASE_URL`, `DIRECT_URL`, `DATABASE_URL_TEST`, `DATABASE_URL_API_TEST` |
+| `server/.env` — seed | `ADMIN_EMAIL`, `ADMIN_PASSWORD` |
+| `server/.env` — Docker | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` |
+| `server/.env` — API | `HOST`, `PORT`, `CORS_ORIGINS`, `API_RATE_LIMIT_MAX`, `API_RATE_LIMIT_WINDOW_MS` |
+| `web/.env.local`, `mobile/.env.local` | `VITE_API_URL` |
+| Build/lifecycle process overrides | `JAVA_HOME`, `ANDROID_HOME`, `ANDROID_USER_HOME`, `GRADLE_USER_HOME`, `LOCAL_POSTGRES_PORT` |
 
-For the verified local server, set the three URL ports and `POSTGRES_PORT` to **55432** instead. Never commit `.env`, credentials, tokens or anything under `.local/`. The reusable `scripts/local-postgres.sh` is committed; it replaces the old one-off `start-postgres16.py`.
+`VITE_API_URL` is an HTTP(S) origin, defaults to `http://localhost:4000`, and is embedded at build time. Rebuild after changing it. Do not put secrets in any `VITE_` variable. `CORS_ORIGINS` is a comma-separated exact allowlist; the example includes `http://localhost:5173`, `http://127.0.0.1:5173`, `https://localhost`, `http://localhost`, and `capacitor://localhost`. Requests from other origins receive 403. Non-browser requests without an Origin header are allowed.
 
-## 2. Start PostgreSQL 16 — choose one route
+## API
+
+Start PostgreSQL using the verified non-Docker instructions below, then from `server/`:
+
+```sh
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm start
+# Or: npm run dev
+```
+
+Default listener: `127.0.0.1:4000`. Startup validates configuration without echoing values. SIGINT/SIGTERM close the HTTP server and Prisma connection gracefully. Helmet adds security headers, `/api` is rate limited, and request logs include only method, fixed route label, status and duration. Logs omit URLs, query strings, headers, bodies and credentials.
+
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /api/health` | Real trivial DB query; 200 `{status:"ok",db:"up",time}` or 503 `{status:"degraded",db:"down",time}` |
+| `GET /api/releases/latest` | Highest active version code; six camelCase release fields; 404 `NO_RELEASE` if none |
+| `GET` / `HEAD /downloads/:file` | APK attachment from `server/storage/apk`; strict filename validation, no listing, traversal or escaping symlinks |
+
+All API errors use `{ "error": { "code": "...", "message": "..." } }`; `/api/health` deliberately uses the exact health envelope specified above on 503. No stack traces or database messages are returned. The API has no authentication/user endpoints in this phase.
+
+## Web download page
+
+```sh
+cd ~/Desktop/Territory-Running-App/web
+npm run dev
+npm test
+npm run lint
+npm run build
+```
+
+Open `http://localhost:5173`. The page handles loading, retryable errors, no release yet, and a real release with its version/date/changelog, download link, SHA-256 copy control and honest Android installation instructions. CSS is functional and responsive; the redesign belongs to Phase 3.
+
+## Android shell and APK
+
+```sh
+cd ~/Desktop/Territory-Running-App/mobile
+npm run apk:debug
+```
+
+This builds the web assets, runs the pinned `cap sync android`, writes ignored `android/local.properties` from `ANDROID_HOME`, then runs `./gradlew assembleDebug`. Gradle's default cache is inside ignored `.local/gradle`; the script sets `ANDROID_USER_HOME` to `.local/android-user` with an ignored symlink to the existing debug key. Some Android Gradle components still use the default home profile; run the Terminal helper when sandboxing blocks its key lock file. The APK is:
+
+```text
+mobile/android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+The permanent appId is **`com.territoryrunning.app`** and appName is **Territory Run**. `mobile/app-version.json` is the one source for native `versionName`/`versionCode` and the displayed app version. Bump both there before a new release, rebuild, then register with matching values. Package.json versions are npm package metadata, not Android version inputs.
+
+The shell displays its title, app version, configured API origin and live health status. The only Android platform permission is `INTERNET`. AndroidX also merges the app-private signature permission `com.territoryrunning.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` to protect its receivers; it grants no location, camera or other device access. This standard framework entry is retained rather than removing its receiver protection. HTTP and WebView mixed content are enabled only by the debug manifest/code; the main/release configuration denies cleartext. The script reuses the existing Android debug keystore and refuses to create one. Release signing is not done yet.
+
+## Register and verify a local release
+
+After the real debug APK has built:
+
+```sh
+cd ~/Desktop/Territory-Running-App/server
+npm run release:register -- --file ../mobile/android/app/build/outputs/apk/debug/app-debug.apk --version-name 0.1.0 --version-code 1 --changelog "First Android shell with API connectivity status."
+npm start
+```
+
+The registrar validates the file and version arguments, copies to `server/storage/apk/territory-run-0.1.0.apk`, computes SHA-256 from the copied bytes and upserts by version code. Earlier releases remain active; latest selects the highest code. Registrations are serialized and version-name collisions across codes are rejected so an existing release's download is not overwritten. A version name must be a safe semantic version of at most 20 characters; the Android version code is a positive integer up to 2100000000. Only `.gitkeep` is tracked in storage; no APK is committed.
+
+In a second Terminal:
+
+```sh
+curl -i http://127.0.0.1:4000/api/health
+curl -i http://127.0.0.1:4000/api/releases/latest
+curl -I http://127.0.0.1:4000/downloads/territory-run-0.1.0.apk
+ls -lh ../mobile/android/app/build/outputs/apk/debug/app-debug.apk
+shasum -a 256 ../mobile/android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+## Tests
+
+The unchanged 23 DB tests use `DATABASE_URL_TEST`. API tests use `DATABASE_URL_API_TEST` with the same URL/identity/empty-database/PostgreSQL-16 guards before migrations. Neither suite writes to development. Create both disposable databases once; recreate each before rerunning its suite. Do not use an application database for resets.
+
+```sh
+# From repo root; local PostgreSQL binaries and relocated libpq:
+export PATH="$PWD/.local/postgres16/bin:$PATH"
+export DYLD_LIBRARY_PATH="$PWD/.local/postgres16/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+# Create the API test database once:
+createdb -h 127.0.0.1 -p 55432 -U territory -W territory_api_test
+# Before rerunning each suite, recreate only its corresponding disposable DB:
+dropdb -h 127.0.0.1 -p 55432 -U territory -W --if-exists territory_test
+createdb -h 127.0.0.1 -p 55432 -U territory -W territory_test
+dropdb -h 127.0.0.1 -p 55432 -U territory -W --if-exists territory_api_test
+createdb -h 127.0.0.1 -p 55432 -U territory -W territory_api_test
+npm test --prefix server
+npm run test:api --prefix server
+npm test --prefix web
+npm run lint --prefix web
+npm run build --prefix web
+npm run apk:debug --prefix mobile
+```
+
+For Docker, create/reset the two test databases with `docker compose --env-file server/.env exec postgres sh -c 'createdb -U "$POSTGRES_USER" territory_api_test'` and analogous `dropdb`/`createdb` commands. Docker remains unverified here. Test APK fixtures are generated only in ignored temporary storage and never registered as development app releases.
+
+## What is not done
+
+No login, run recording, maps, hex claiming, user features, polished UI, hosting, deployment or physical-phone validation in this phase. The phone guide below is for the project owner to run. There are no production credentials in the repository, and APKs, keystores, env files, local.properties, caches and build outputs remain ignored.
+
+## PostgreSQL setup reference
 
 ### A. Docker Compose (provided, unverified here)
 
@@ -94,7 +220,8 @@ createdb -h 127.0.0.1 -p 55432 -U territory -W territory_test
 
 Enter the same private password used in `server/.env`; set its URL ports and `POSTGRES_PORT` to `55432`. Do not repeat initialization for the existing moved cluster. Local builds, archives, data, logs, sockets and verification transcripts all stay in ignored `.local/` and are never committed. If an agent sandbox blocks PostgreSQL shared memory or process signals, run the lifecycle script in a normal Terminal; migration and tests still run from this repository.
 
-## 3. Generate, migrate and seed
+
+## Database migration and seed reference
 
 From `server/`:
 
@@ -121,7 +248,7 @@ The seed transaction upserts six tunable settings, four badges, one ADMIN, one U
 
 Badges: `TOTAL_DISTANCE_10KM` (`TOTAL_DISTANCE`, 10000 metres), `HEX_COUNT_100` (`HEX_COUNT`, 100), `STREAK_DAYS_7` (`STREAK_DAYS`, 7), `RUN_COUNT_10` (`RUN_COUNT`, 10). Settings store text; validation/interpretation, territory decay, consent, account erasure and run-point purging are later-phase service work.
 
-## 4. Run database tests
+## Database test reference
 
 `DATABASE_URL_TEST` must point to an **empty PostgreSQL 16 database** with schema `public`, distinct from both application and migration databases. The runner checks this before applying the committed migration. It refuses identical URLs, aliases with the same database name, connection-parameter overrides and populated databases. It never resets databases automatically.
 
@@ -188,3 +315,90 @@ WHERE hex_ownership.cooldown_until <= now();
 Always sort batch cells numerically by `h3_index` before taking locks, and use one transaction for the batch. Store H3 values as `BigInt` or decimal strings in Node; do not round BIGINT values through JavaScript `Number`. Auth tokens must be SHA-256 digests before insertion; the database never needs raw tokens.
 
 Prisma and its client are pinned together at 6.19.3. A scoped `deepmerge-ts` override to 8.0.2 removes the transitive recursive-merge advisory while preserving Prisma 6; client generation, validation and migrations are verified with it. Prisma 6 still accepts the seed command in `package.json` and emits a Prisma 7 deprecation notice; this phase intentionally stays on version 6.
+
+## Test on my phone (run by the project owner)
+
+Use the Mac and Android phone on the same Wi-Fi. A phone's `localhost` refers to the phone, so both frontend builds must use the Mac's LAN address. These instructions are for a local debug build.
+
+1. Find the Mac's Wi-Fi LAN IP in Terminal:
+
+   ```sh
+   cd ~/Desktop/Territory-Running-App
+   MAC_LAN_IP="$(ipconfig getifaddr en0)"
+   printf '%s\n' "$MAC_LAN_IP"
+   ```
+
+   If the result is empty, use System Settings → Wi-Fi → Details → TCP/IP to find the address. Substitute it below. Use a LAN address such as `192.168.x.x`, not a public address.
+
+2. In Terminal 1, start PostgreSQL and the API on the LAN interface:
+
+   ```sh
+   cd ~/Desktop/Territory-Running-App
+   ./scripts/local-postgres.sh start
+   MAC_LAN_IP="$(ipconfig getifaddr en0)"
+   HOST=0.0.0.0 CORS_ORIGINS="http://localhost:5173,http://$MAC_LAN_IP:5173,https://localhost,http://localhost,capacitor://localhost" npm start --prefix server
+   ```
+
+   Allow Node's incoming connection if macOS asks. Leave this Terminal running. `HOST=0.0.0.0` is only needed for phone access; the normal API default stays loopback.
+
+3. In Terminal 2, configure the web and mobile builds and start the download page:
+
+   ```sh
+   cd ~/Desktop/Territory-Running-App
+   MAC_LAN_IP="$(ipconfig getifaddr en0)"
+   printf 'VITE_API_URL=http://%s:4000\n' "$MAC_LAN_IP" > web/.env.local
+   printf 'VITE_API_URL=http://%s:4000\n' "$MAC_LAN_IP" > mobile/.env.local
+   npm run dev --prefix web -- --host 0.0.0.0
+   ```
+
+   Open `http://<MAC_LAN_IP>:5173` on the phone. If using `npm run build` plus a static server instead, rebuild the web page after editing its env file and include that server's exact origin in `CORS_ORIGINS`.
+
+4. In Terminal 3, rebuild and register the debug APK with the LAN API URL:
+
+   ```sh
+   cd ~/Desktop/Territory-Running-App/mobile
+   npm run apk:debug
+   cd ../server
+   npm run release:register -- --file ../mobile/android/app/build/outputs/apk/debug/app-debug.apk --version-name 0.1.0 --version-code 1 --changelog "First Android shell with API connectivity status."
+   ```
+
+   After changing `mobile/app-version.json`, use its matching version name/code in the registration command. Editing an env file does not change an already-built APK; rebuilding is required.
+
+5. Refresh the phone's download page, tap **Download APK**, then open the downloaded file. Allow installs from that browser/file manager if Android asks. Play Protect may warn about an app installed outside the Play Store; review that warning. Open Territory Run and check that the configured API URL is the Mac's LAN address and the status becomes **Connected**. If it says **Can't reach server**, first open `http://<MAC_LAN_IP>:4000/api/health` in the phone's browser and check the API listener, Wi-Fi and firewall.
+
+   Optional USB installation after enabling USB debugging:
+
+   ```sh
+   /Users/akshwagle/Library/Android/sdk/platform-tools/adb devices
+   /Users/akshwagle/Library/Android/sdk/platform-tools/adb install -r ~/Desktop/Territory-Running-App/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+Stop the API and Vite with Ctrl+C when done. Keep private env files, APKs, local.properties and all `.local/` state uncommitted.
+
+## Phase 2 verification and decisions
+
+Implementation is verified and awaiting PR review; Phase 2 remains in progress until accepted. No Phase 3 work has started.
+
+| Check | Actual result |
+| --- | --- |
+| Existing database suite | 23 passed; schema/migrations unchanged |
+| Supertest API suite | 11 passed against its own guarded PostgreSQL database |
+| Web Vitest/Testing Library | 5 passed, including all four page states |
+| Web lint and production build | Passed |
+| Android debug build | BUILD SUCCESSFUL; APK signature verified; 0.1.0 / code 1 |
+| Release manifest processing | Passed; cleartext false in release, true in debug |
+| Live API proof | Health 200/db up, latest 200/code 1, APK HEAD 200 with Android MIME/attachment |
+| Live browser | Rendered the registered release, download link, changelog and matching SHA-256 |
+| Graceful shutdown | SIGTERM and SIGINT each logged shutdown and exited with code 0; preview servers stopped |
+
+The debug APK is 4,199,499 bytes. Its SHA-256 matches the copied storage file and latest-release response:
+
+```text
+d5b8ff3a394911b37036c71f7535222b60dbd46ff6b6f0703c98bc1e6927e7ed
+```
+
+The build uses the existing debug key. PostgreSQL startup/migration/seed and the final Android signing step were run in Terminal using the committed helpers because this agent sandbox blocks process inspection and the default debug-key lock file. `scripts/phase2-db-setup.sh` and `scripts/phase2-apk-build.sh` capture those results under ignored `.local/phase2/`. No APK was downloaded or fabricated. No SDK licence was accepted by the agent. The installed Build Tools 35.0.0 is the pinned Android Gradle plugin's default; compileSdk stays 36.
+
+API tests use an additional `DATABASE_URL_API_TEST` so they do not reuse the DB suite's populated database or touch development. Both `localhost:5173` and `127.0.0.1:5173` are allowed for the local website, alongside the required Capacitor origins. The health 503 envelope follows the explicit endpoint contract. The AndroidX app-private signature permission is retained for receiver protection, beyond the sole platform permission INTERNET.
+
+For tooling compatibility with Node 22.19, the web tests use jsdom 27.4.0. ESLint's minimatch is overridden to 11.0.1 to remove its transitive glob advisory; web tests, lint and build pass with the override. The existing Prisma override is retained. npm installation/audit reported zero vulnerabilities for all three folders.
