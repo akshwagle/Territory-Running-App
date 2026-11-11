@@ -115,18 +115,18 @@ After the real debug APK has built:
 
 ```sh
 cd ~/Desktop/Territory-Running-App/server
-npm run release:register -- --file ../mobile/android/app/build/outputs/apk/debug/app-debug.apk --version-name 0.1.0 --version-code 1 --changelog "First Android shell with API connectivity status."
+npm run release:register -- --file ../mobile/android/app/build/outputs/apk/debug/app-debug.apk --version-name 0.1.1 --version-code 2 --changelog "First Android shell with API connectivity status."
 npm start
 ```
 
-The registrar validates the file and version arguments, copies to `server/storage/apk/territory-run-0.1.0.apk`, computes SHA-256 from the copied bytes and upserts by version code. Earlier releases remain active; latest selects the highest code. Registrations are serialized and version-name collisions across codes are rejected so an existing release's download is not overwritten. A version name must be a safe semantic version of at most 20 characters; the Android version code is a positive integer up to 2100000000. Only `.gitkeep` is tracked in storage; no APK is committed.
+The registrar validates the file and version arguments, copies to `server/storage/apk/territory-run-0.1.1.apk`, computes SHA-256 from the copied bytes and upserts by version code. Earlier releases remain active; latest selects the highest code. Registrations are serialized and version-name collisions across codes are rejected so an existing release's download is not overwritten. A version name must be a safe semantic version of at most 20 characters; the Android version code is a positive integer up to 2100000000. Only `.gitkeep` is tracked in storage; no APK is committed.
 
 In a second Terminal:
 
 ```sh
 curl -i http://127.0.0.1:4000/api/health
 curl -i http://127.0.0.1:4000/api/releases/latest
-curl -I http://127.0.0.1:4000/downloads/territory-run-0.1.0.apk
+curl -I http://127.0.0.1:4000/downloads/territory-run-0.1.1.apk
 ls -lh ../mobile/android/app/build/outputs/apk/debug/app-debug.apk
 shasum -a 256 ../mobile/android/app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -316,68 +316,76 @@ Always sort batch cells numerically by `h3_index` before taking locks, and use o
 
 Prisma and its client are pinned together at 6.19.3. A scoped `deepmerge-ts` override to 8.0.2 removes the transitive recursive-merge advisory while preserving Prisma 6; client generation, validation and migrations are verified with it. Prisma 6 still accepts the seed command in `package.json` and emits a Prisma 7 deprecation notice; this phase intentionally stays on version 6.
 
-## Test on my phone (run by the project owner)
+## One-command phone test
 
-Use the Mac and Android phone on the same Wi-Fi. A phone's `localhost` refers to the phone, so both frontend builds must use the Mac's LAN address. These instructions are for a local debug build.
+Run this in a normal macOS Terminal, from the permanent project folder:
 
-1. Find the Mac's Wi-Fi LAN IP in Terminal:
+```sh
+cd ~/Desktop/Territory-Running-App
+./scripts/phone-test.sh
+```
 
-   ```sh
-   cd ~/Desktop/Territory-Running-App
-   MAC_LAN_IP="$(ipconfig getifaddr en0)"
-   printf '%s\n' "$MAC_LAN_IP"
-   ```
+The script stays in that Terminal while both servers run. Once they are healthy, it prints:
 
-   If the result is empty, use System Settings → Wi-Fi → Details → TCP/IP to find the address. Substitute it below. Use a LAN address such as `192.168.x.x`, not a public address.
+```text
+Open on your phone (same Wi-Fi): http://<LAN-IP>:5173
+```
 
-2. In Terminal 1, start PostgreSQL and the API on the LAN interface:
+**The phone must be on the same Wi-Fi as the Mac, not mobile data.** If macOS asks whether Node may accept incoming connections, click **Allow**. Keep the Terminal open; **Ctrl+C stops both the API and web server cleanly**, including their child processes. PostgreSQL stays running. The helper refuses occupied ports 4000/5173 and never stops an unrelated listener.
 
-   ```sh
-   cd ~/Desktop/Territory-Running-App
-   ./scripts/local-postgres.sh start
-   MAC_LAN_IP="$(ipconfig getifaddr en0)"
-   HOST=0.0.0.0 CORS_ORIGINS="http://localhost:5173,http://$MAC_LAN_IP:5173,https://localhost,http://localhost,capacitor://localhost" npm start --prefix server
-   ```
+The six behaviours are:
 
-   Allow Node's incoming connection if macOS asks. Leave this Terminal running. `HOST=0.0.0.0` is only needed for phone access; the normal API default stays loopback.
+1. Read the Mac's IPv4 address on Wi-Fi interface `en0`; stop with a clear message if none exists. `--dry-run` reads configuration and prints every planned action without changing files, starting processes, touching databases or building an APK.
+2. Set `VITE_API_URL=http://<LAN-IP>:4000` in the ignored `web/.env.local` and `mobile/.env.local`, preserving other variables in those files.
+3. Add `http://<LAN-IP>:5173` to `CORS_ORIGINS` through an environment override for this run, preserving configured origins and the required local/Capacitor origins. It does not edit `server/.env` or any committed configuration.
+4. Rebuild the debug APK and register the committed **0.1.1 / version code 2** through `release:register`. The one-time version bump is already in `mobile/app-version.json`; the helper only reads it and never increments or edits it on later runs. It uses the existing APK build helper and debug key.
+5. Ensure local PostgreSQL is running before registration, then supervise the API with `HOST=0.0.0.0`, `PORT=4000`, and Vite with `--host 0.0.0.0 --port 5173 --strictPort`. Both services' output remains attached to this foreground script until Ctrl+C or a service failure.
+6. Print the exact phone URL after the API and website are ready.
 
-3. In Terminal 2, configure the web and mobile builds and start the download page:
+Prerequisites remain the installed dependencies, configured `server/.env`, initialized/migrated local PostgreSQL, JDK 21, Android platform 36, Build Tools 35.0.0 and the existing debug keystore. It does not migrate/reset databases, install SDK packages, accept licences or create signing keys. The only persistent configuration edits on a normal run are the two ignored frontend env files; build/cache outputs and registered APKs remain ignored too. Pinned Capacitor sync metadata is regenerated consistently; no tracked app version/configuration is edited by this helper.
 
-   ```sh
-   cd ~/Desktop/Territory-Running-App
-   MAC_LAN_IP="$(ipconfig getifaddr en0)"
-   printf 'VITE_API_URL=http://%s:4000\n' "$MAC_LAN_IP" > web/.env.local
-   printf 'VITE_API_URL=http://%s:4000\n' "$MAC_LAN_IP" > mobile/.env.local
-   npm run dev --prefix web -- --host 0.0.0.0
-   ```
+Check the plan without starting the phone test:
 
-   Open `http://<MAC_LAN_IP>:5173` on the phone. If using `npm run build` plus a static server instead, rebuild the web page after editing its env file and include that server's exact origin in `CORS_ORIGINS`.
+```sh
+bash -n scripts/phone-test.sh
+./scripts/phone-test.sh --dry-run
+```
 
-4. In Terminal 3, rebuild and register the debug APK with the LAN API URL:
+On the phone, open the printed URL, download/open the APK and follow Android's install prompts. Allow installs from that browser/file manager if Android asks. Play Protect may warn because the app is outside the Play Store; review the warning. The installed app should show **0.1.1**, the Mac's LAN API URL and **Connected**. Repeating the helper updates release code 2; it leaves the earlier 0.1.0/code 1 release active.
 
-   ```sh
-   cd ~/Desktop/Territory-Running-App/mobile
-   npm run apk:debug
-   cd ../server
-   npm run release:register -- --file ../mobile/android/app/build/outputs/apk/debug/app-debug.apk --version-name 0.1.0 --version-code 1 --changelog "First Android shell with API connectivity status."
-   ```
+### If Wi-Fi isolates devices
 
-   After changing `mobile/app-version.json`, use its matching version name/code in the registration command. Editing an env file does not change an already-built APK; rebuilding is required.
+Some college, guest or enterprise Wi-Fi networks prevent devices from reaching one another even on the same network. Use either fallback:
 
-5. Refresh the phone's download page, tap **Download APK**, then open the downloaded file. Allow installs from that browser/file manager if Android asks. Play Protect may warn about an app installed outside the Play Store; review that warning. Open Territory Run and check that the configured API URL is the Mac's LAN address and the status becomes **Connected**. If it says **Can't reach server**, first open `http://<MAC_LAN_IP>:4000/api/health` in the phone's browser and check the API listener, Wi-Fi and firewall.
+- **Phone hotspot:** enable the phone's hotspot and connect the Mac (and any other test device) to that network. Rerun `./scripts/phone-test.sh` so it detects the new `en0` address, rebuilds the APK and registers the matching download. Reach the Mac over the hotspot's local network, rather than attempting the private URL through mobile data.
+- **USB debugging:** enable USB debugging and authorize this Mac on the phone. `adb reverse tcp:4000 tcp:4000` forwards the phone's localhost API port to the Mac. A previously built LAN-address APK will still target the LAN, so the USB variant must be rebuilt with `VITE_API_URL=http://localhost:4000`.
 
-   Optional USB installation after enabling USB debugging:
+For a full website-and-app check over USB, stop the phone-test helper with Ctrl+C. In Terminal 1, keep the API running:
 
-   ```sh
-   /Users/akshwagle/Library/Android/sdk/platform-tools/adb devices
-   /Users/akshwagle/Library/Android/sdk/platform-tools/adb install -r ~/Desktop/Territory-Running-App/mobile/android/app/build/outputs/apk/debug/app-debug.apk
-   ```
+```sh
+cd ~/Desktop/Territory-Running-App
+HOST=127.0.0.1 PORT=4000 npm start --prefix server
+```
 
-Stop the API and Vite with Ctrl+C when done. Keep private env files, APKs, local.properties and all `.local/` state uncommitted.
+In Terminal 2, forward both ports, build/register the localhost variant, optionally install it directly, and start the web page with the same API override:
+
+```sh
+cd ~/Desktop/Territory-Running-App
+export ANDROID_HOME="${ANDROID_HOME:-/Users/akshwagle/Library/Android/sdk}"
+"$ANDROID_HOME/platform-tools/adb" devices
+"$ANDROID_HOME/platform-tools/adb" reverse tcp:4000 tcp:4000
+"$ANDROID_HOME/platform-tools/adb" reverse tcp:5173 tcp:5173
+VITE_API_URL=http://localhost:4000 npm run apk:debug --prefix mobile
+npm run release:register --prefix server -- --file ../mobile/android/app/build/outputs/apk/debug/app-debug.apk --version-name 0.1.1 --version-code 2 --changelog "USB phone-test build."
+"$ANDROID_HOME/platform-tools/adb" install -r mobile/android/app/build/outputs/apk/debug/app-debug.apk
+VITE_API_URL=http://localhost:4000 npm run dev --prefix web -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+Open `http://localhost:5173` on the phone, or launch the USB-installed app. Leave the USB cable and forwarding active; that variant uses the forwarded localhost API. Rerun the normal one-command helper to return to a LAN-address APK and download. If you later change `mobile/app-version.json`, use its matching version values for manual registration. No tracked file needs editing for either networking fallback.
 
 ## Phase 2 verification and decisions
 
-Implementation is verified and awaiting PR review; Phase 2 remains in progress until accepted. No Phase 3 work has started.
+PR #3 is merged. The following results record the original Phase 2 shell build (0.1.0/code 1), not a rebuilt 0.1.1 APK. The phone-test helper commits version 0.1.1/code 2 and has syntax/dry-run checks; its real LAN build and physical-phone test are run by the owner in Terminal. No Phase 3 work has started.
 
 | Check | Actual result |
 | --- | --- |
