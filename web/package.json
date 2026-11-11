@@ -14,22 +14,32 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource/barlow": "5.3.0",
+    "@fontsource/barlow-condensed": "5.3.0",
+    "motion": "12.23.24",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
   "devDependencies": {
-    "vite": "8.3.8",
-    "@vitejs/plugin-react": "6.3.0",
-    "vitest": "5.1.0",
-    "jsdom": "27.4.0",
-    "@testing-library/react": "16.3.3",
-    "@testing-library/jest-dom": "7.0.1",
-    "@testing-library/user-event": "14.6.9",
-    "eslint": "10.14.0",
     "@eslint/js": "10.0.1",
-    "globals": "17.14.0"
+    "@tailwindcss/vite": "4.3.5",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.9",
+    "@vitejs/plugin-react": "6.3.0",
+    "eslint": "10.14.0",
+    "globals": "17.14.0",
+    "jsdom": "27.4.0",
+    "tailwindcss": "4.3.5",
+    "vite": "8.3.8",
+    "vitest": "5.1.0"
   },
   "overrides": {
-    "minimatch": "11.0.1"
+    "minimatch": "11.0.1",
+    "motion": {
+      "framer-motion": "12.23.24",
+      "motion-dom": "12.23.23",
+      "motion-utils": "12.23.6"
+    }
   }
 }
