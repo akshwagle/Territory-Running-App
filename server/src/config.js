@@ -26,12 +26,24 @@ function readConfig(env = process.env) {
       throw new Error('CORS_ORIGINS must contain exact origins without paths, wildcards or credentials.');
     }
   }
+  for (const name of ['JWT_ACCESS_SECRET', 'REFRESH_TOKEN_DERIVATION_SECRET']) {
+    if (typeof env[name] !== 'string' || Buffer.byteLength(env[name], 'utf8') < 32 ||
+        /^REPLACE_|^YOUR_/.test(env[name])) throw new Error(`${name} must be an independent random secret of at least 32 bytes.`);
+  }
+  if (env.JWT_ACCESS_SECRET === env.REFRESH_TOKEN_DERIVATION_SECRET) {
+    throw new Error('JWT_ACCESS_SECRET and REFRESH_TOKEN_DERIVATION_SECRET must be different.');
+  }
   return {
     host,
     port: integer(env.PORT, 4000, 'PORT', 1, 65535),
     origins,
     rateLimitMax: integer(env.API_RATE_LIMIT_MAX, 100, 'API_RATE_LIMIT_MAX', 1, 100000),
     rateLimitWindowMs: integer(env.API_RATE_LIMIT_WINDOW_MS, 60000, 'API_RATE_LIMIT_WINDOW_MS', 1000, 3600000),
+    jwtAccessSecret: env.JWT_ACCESS_SECRET,
+    refreshDerivationSecret: env.REFRESH_TOKEN_DERIVATION_SECRET,
+    authRateLimitMax: 10,
+    authIpRateLimitMax: 50,
+    authRateLimitWindowMs: 15 * 60 * 1000,
   };
 }
 

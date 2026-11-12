@@ -9,7 +9,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { Pool } = require('pg');
 const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcrypt');
+const { verifyPassword } = require('../src/auth/passwords');
 const contract = require('./schema-contract');
 const { serverRoot, testDatabaseConfig, verifyEmptyDatabase, runPrisma, user, run, rejectsSql } = require('./helpers');
 
@@ -459,7 +459,7 @@ test('Prisma maintains updated_at on users, user_stats and game_settings', async
   } finally { await prisma.$disconnect(); }
 });
 
-test('seed runs twice idempotently: bcrypt admin, correct defaults/badges, stable dates, preserved tuning and no fake runs', { timeout: 30000 }, async () => {
+test('seed runs twice idempotently: scrypt admin/identity, correct defaults/badges, stable dates, preserved tuning and no fake runs', { timeout: 30000 }, async () => {
   const email = 'seed-admin@tests.example';
   const password = randomBytes(32).toString('base64url');
   const seed = () => {
@@ -481,8 +481,9 @@ test('seed runs twice idempotently: bcrypt admin, correct defaults/badges, stabl
   assert.deepEqual(badges.map((row) => [row.criteria, row.threshold]).sort(), [['TOTAL_DISTANCE', 10000], ['HEX_COUNT', 100], ['STREAK_DAYS', 7], ['RUN_COUNT', 10]].sort());
   const { rows: [admin] } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
   assert.equal(admin.role, 'ADMIN');
-  assert.match(admin.password_hash, /^\$2[aby]\$12\$/);
-  assert.ok(await bcrypt.compare(password, admin.password_hash));
+  assert.match(admin.password_hash, /^scrypt\$32768\$8\$3\$/);
+  assert.ok(await verifyPassword(password, admin.password_hash));
+  assert.equal((await pool.query("SELECT * FROM auth_identities WHERE user_id=$1 AND provider='PASSWORD' AND provider_subject=$2", [admin.id, email])).rowCount, 1);
   const { rows: [season] } = await pool.query("SELECT * FROM seasons WHERE name = 'Season 1'");
   assert.equal(season.status, 'UPCOMING');
   assert.ok(season.starts_at > new Date());
