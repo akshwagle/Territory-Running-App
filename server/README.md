@@ -290,7 +290,8 @@ Barlow and Clay & Pine styling without changing web/mobile source. Override
 GOOGLE_TEST_PORT and GOOGLE_TEST_API_URL only for another localhost port/API.
 Press Ctrl+C in your Terminals when done; the agent does not stop your services.
 
-No real Google sign-in or actual SMTP delivery has been verified yet. Unit tests
-cover the adapters with fakes; the helper makes the interactive real attempt
-available without asking you to paste an ID token. No Android permission, APK,
-native UI, Google services key file or phone flow changed in this server step.
+The owner verified a real Google sign-in at http://localhost:5174: the API issued
+a session and /api/me accepted it. Actual SMTP delivery remains unverified.
+Automated tests still use fakes; the helper needs no pasted ID token. No Android
+permission, APK, native UI, Google services key file or phone flow changed in
+this server step.

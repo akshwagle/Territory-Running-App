@@ -750,19 +750,26 @@ Google account. The helper checks /api/auth/google and /api/me and can end
 the family. It never displays/logs the client ID or tokens and never persists
 tokens in browser storage. It has fake-only proxy/CSRF/host tests.
 
-**A real Google sign-in and actual SMTP delivery remain untested end to end.**
+**The owner confirmed a real Google sign-in passed at http://localhost:5174:**
+the API issued a session and /api/me accepted it. The owner then closed the page;
+the close-out check found no helper process or listener on port 5174.
+Actual SMTP delivery remains unverified; automated Google/mail tests use fakes.
 See server/README.md for the exact commands and setup. No long-running service
-has been started or stopped by the agent; the owner controls those commands.
+has been started or stopped by the agent; the owner controlled those commands.
 
-## Five logical commits after removing the obsolete schema commit
+## Six logical commits after removing the obsolete schema commit
 
 1. test(db): cover verification and reset tokens in auth_tokens
 2. feat(api): mailer with SMTP and outbox
 3. feat(api): email verification and password reset
 4. feat(api): Google sign-in and account linking
 5. feat(api): session list and revoke, tests and docs
+6. docs(auth): record real Google sign-in verification
 
 Shared config/validation/session foundations precede their endpoints; route,
 app and package script portions were staged with index-only patches. The owner-run
-curl proof passed before the final tests/docs/session commit. No .env, .local,
-build output, key material or APK is included in these commits.
+curl proof passed before the tests/docs/session commit. The final documentation
+commit records the later owner-confirmed real Google sign-in. No application
+code changed after the passing automated runs above, so those runs remain the
+final results. No .env, .local, build output, key material or APK is included
+in these commits.
