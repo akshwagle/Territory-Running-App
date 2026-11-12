@@ -19,6 +19,11 @@ enum TokenKind {
   EMAIL_VERIFY
 }
 
+enum AuthProvider {
+  PASSWORD
+  GOOGLE
+}
+
 enum TeamRole {
   CAPTAIN
   MEMBER
@@ -80,43 +85,69 @@ model User {
   id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username     String     @unique @db.VarChar(30)
   email        String     @unique @db.VarChar(255)
-  passwordHash String     @map("password_hash") @db.Text
+  passwordHash String?    @map("password_hash") @db.Text
   displayName  String     @map("display_name") @db.VarChar(60)
   role         SystemRole @default(RUNNER)
   verifiedAt   DateTime?  @map("verified_at") @db.Timestamptz(6)
   deletionAt   DateTime?  @map("deletion_at") @db.Timestamptz(6)
+  suspendedAt  DateTime?  @map("suspended_at") @db.Timestamptz(6)
   createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  authTokens    AuthToken[]
-  privacy       UserPrivacySetting?
-  membership    TeamMember?
-  following     Follow[]            @relation("Follower")
-  followers     Follow[]            @relation("Followee")
-  badges        UserBadge[]
-  seasonScores  SeasonScore[]
-  stats         UserStat?
-  runs          Run[]
-  reportedFlags RunFlag[]           @relation("Reporter")
-  resolvedFlags RunFlag[]           @relation("Resolver")
-  ownedHexes    HexOwnership[]
-  devices       Device[]
-  notifications Notification[]
+  authTokens     AuthToken[]
+  authIdentities AuthIdentity[]
+  privacy        UserPrivacySetting?
+  membership     TeamMember?
+  following      Follow[]            @relation("Follower")
+  followers      Follow[]            @relation("Followee")
+  badges         UserBadge[]
+  seasonScores   SeasonScore[]
+  stats          UserStat?
+  runs           Run[]
+  reportedFlags  RunFlag[]           @relation("Reporter")
+  resolvedFlags  RunFlag[]           @relation("Resolver")
+  ownedHexes     HexOwnership[]
+  devices        Device[]
+  notifications  Notification[]
 
   @@map("users")
 }
 
+model AuthIdentity {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String       @map("user_id") @db.Uuid
+  provider        AuthProvider
+  providerSubject String       @map("provider_subject") @db.VarChar(255)
+  emailAtSignup   String       @map("email_at_signup") @db.VarChar(255)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt      DateTime?    @map("last_used_at") @db.Timestamptz(6)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([provider, providerSubject])
+  @@index([userId])
+  @@map("auth_identities")
+}
+
 model AuthToken {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
-  kind      TokenKind
-  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
-  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
-  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String      @map("user_id") @db.Uuid
+  kind            TokenKind
+  tokenHash       String      @unique @map("token_hash") @db.VarChar(64)
+  expiresAt       DateTime    @map("expires_at") @db.Timestamptz(6)
+  usedAt          DateTime?   @map("used_at") @db.Timestamptz(6)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  familyId        String?     @map("family_id") @db.Uuid
+  revokedAt       DateTime?   @map("revoked_at") @db.Timestamptz(6)
+  replacedById    String?     @map("replaced_by_id") @db.Uuid
+  userAgent       String?     @map("user_agent") @db.Text
+  ipHash          String?     @map("ip_hash") @db.VarChar(64)
+  graceReplayedAt DateTime?   @map("grace_replayed_at") @db.Timestamptz(6)
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  replacedBy      AuthToken?  @relation("RefreshRotation", fields: [replacedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replaces        AuthToken[] @relation("RefreshRotation")
 
   @@index([userId, kind])
+  @@index([familyId])
   @@map("auth_tokens")
 }
 

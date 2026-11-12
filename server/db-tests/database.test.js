@@ -6,38 +6,109 @@ const assert = require('node:assert/strict');
 const { randomUUID, randomBytes } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const path = require('node:path');
+const fs = require('node:fs');
 const { Pool } = require('pg');
 const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcrypt');
+const { verifyPassword } = require('../src/auth/passwords');
 const contract = require('./schema-contract');
 const { serverRoot, testDatabaseConfig, verifyEmptyDatabase, runPrisma, user, run, rejectsSql } = require('./helpers');
 
 // Guard runs before constructing a pool, executing a migration or issuing SQL.
 const config = testDatabaseConfig(process.env);
 const pool = new Pool({ connectionString: config.connectionString, max: 12, connectionTimeoutMillis: 5000 });
+let phase1Count;
+let legacyUser;
+let legacyRefresh;
+let legacyReset;
 
 before(async () => {
   await verifyEmptyDatabase(pool, config.database);
+  // Prove the original 26-table migration independently, then upgrade data
+  // through the real auth migration. Never alter the historical migration file.
+  await pool.query(fs.readFileSync(path.join(serverRoot, 'prisma/migrations/20261111000000_init/migration.sql'), 'utf8'));
+  phase1Count = (await pool.query("SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema='public'")).rows[0].n;
+  runPrisma(['migrate', 'resolve', '--applied', '20261111000000_init'], config.connectionString);
+  legacyUser = await user(pool);
+  legacyRefresh = (await pool.query(`INSERT INTO auth_tokens (user_id, kind, token_hash, expires_at)
+    VALUES ($1, 'REFRESH', $2, now() + interval '1 day') RETURNING *`, [legacyUser.id, randomBytes(32).toString('hex')])).rows[0];
+  legacyReset = (await pool.query(`INSERT INTO auth_tokens (user_id, kind, token_hash, expires_at)
+    VALUES ($1, 'PASSWORD_RESET', $2, now() + interval '1 day') RETURNING *`, [legacyUser.id, randomBytes(32).toString('hex')])).rows[0];
   runPrisma(['migrate', 'deploy'], config.connectionString);
 });
 after(async () => { await pool.end(); });
 
-test('empty-database migration creates exactly the specified 26 application tables', async () => {
+test('Phase 1 creates exactly 26 tables; auth upgrade creates exactly 27 application tables', async (t) => {
+  assert.equal(phase1Count, 26);
   const { rows } = await pool.query(`
     SELECT table_name FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name <> '_prisma_migrations' ORDER BY table_name
   `);
-  assert.equal(rows.length, 26);
+  assert.equal(rows.length, 27);
+  t.diagnostic(`Verified application table count: Phase 1 = ${phase1Count}; Phase 4 auth = ${rows.length}`);
   assert.deepEqual(rows.map((row) => row.table_name), Object.keys(contract.columns).sort());
   const { rows: migrations } = await pool.query('SELECT migration_name, finished_at, rolled_back_at FROM _prisma_migrations');
-  assert.equal(migrations.length, 1);
-  assert.ok(migrations[0].finished_at);
-  assert.equal(migrations[0].rolled_back_at, null);
+  assert.equal(migrations.length, 2);
+  assert.ok(migrations.every((row) => row.finished_at && row.rolled_back_at === null));
   // A second deploy must be a no-op.
   runPrisma(['migrate', 'deploy'], config.connectionString);
 });
 
-test('all 26 tables match the independent column, type and nullability contract', async () => {
+test('auth migration backfills identities and revokes legacy refresh rows without changing password-reset rows', async () => {
+  const { rows: [identity] } = await pool.query('SELECT * FROM auth_identities WHERE user_id=$1', [legacyUser.id]);
+  assert.equal(identity.provider, 'PASSWORD');
+  assert.equal(identity.provider_subject, legacyUser.email);
+  assert.equal(identity.email_at_signup, legacyUser.email);
+  assert.equal((await pool.query('SELECT password_hash FROM users WHERE id=$1', [legacyUser.id])).rows[0].password_hash, legacyUser.password_hash);
+  const refresh = (await pool.query('SELECT * FROM auth_tokens WHERE id=$1', [legacyRefresh.id])).rows[0];
+  assert.equal(refresh.family_id, refresh.id);
+  assert.ok(refresh.used_at && refresh.revoked_at);
+  assert.equal(refresh.token_hash, legacyRefresh.token_hash);
+  assert.deepEqual((await pool.query('SELECT id,user_id,kind,token_hash,expires_at,used_at,created_at FROM auth_tokens WHERE id=$1', [legacyReset.id])).rows[0], legacyReset);
+});
+
+test('auth identities enforce provider/subject uniqueness and user FK; nullable password has no SQL identity CHECK', async () => {
+  const runner = await user(pool);
+  await pool.query('UPDATE users SET password_hash=NULL WHERE id=$1', [runner.id]);
+  const insert = (userId, subject) => pool.query(`INSERT INTO auth_identities (user_id,provider,provider_subject,email_at_signup)
+    VALUES ($1,'PASSWORD',$2,$2)`, [userId, subject]);
+  await insert(runner.id, runner.email);
+  await rejectsSql(() => insert(runner.id, runner.email), '23505', 'auth_identities_provider_provider_subject_key');
+  await rejectsSql(() => insert(randomUUID(), `${randomUUID()}@example.test`), '23503', 'auth_identities_user_id_fkey');
+  await pool.query('DELETE FROM users WHERE id=$1', [runner.id]);
+  assert.equal((await pool.query('SELECT * FROM auth_identities WHERE user_id=$1', [runner.id])).rowCount, 0);
+});
+
+test('auth refresh family, rotation and grace CHECKs reject invalid states; hashes are unique and successor FK is enforced', async () => {
+  const runner = await user(pool);
+  const digest = randomBytes(32).toString('hex');
+  const insert = (kind, familyId, hash = randomBytes(32).toString('hex')) => pool.query(`
+    INSERT INTO auth_tokens (user_id,kind,token_hash,expires_at,family_id)
+    VALUES ($1,$2,$3,now()+interval '30 days',$4) RETURNING *`, [runner.id, kind, hash, familyId]);
+  await rejectsSql(() => insert('REFRESH', null), '23514', 'auth_tokens_refresh_family_check');
+  await rejectsSql(() => insert('EMAIL_VERIFY', randomUUID()), '23514', 'auth_tokens_refresh_family_check');
+  const family = randomUUID();
+  const parent = (await insert('REFRESH', family, digest)).rows[0];
+  const child = (await insert('REFRESH', family)).rows[0];
+  await rejectsSql(() => insert('REFRESH', family, digest), '23505', 'auth_tokens_token_hash_key');
+  await rejectsSql(() => pool.query('UPDATE auth_tokens SET replaced_by_id=$2 WHERE id=$1', [parent.id, child.id]), '23514', 'auth_tokens_rotation_state_check');
+  await rejectsSql(() => pool.query('UPDATE auth_tokens SET used_at=now(),replaced_by_id=id WHERE id=$1', [parent.id]), '23514', 'auth_tokens_rotation_state_check');
+  await rejectsSql(() => pool.query('UPDATE auth_tokens SET grace_replayed_at=now() WHERE id=$1', [parent.id]), '23514', 'auth_tokens_grace_state_check');
+  await rejectsSql(() => pool.query('UPDATE auth_tokens SET used_at=now(),replaced_by_id=$2 WHERE id=$1', [parent.id, randomUUID()]), '23503', 'auth_tokens_replaced_by_id_fkey');
+  await pool.query('UPDATE auth_tokens SET used_at=now(),replaced_by_id=$2,grace_replayed_at=now() WHERE id=$1', [parent.id, child.id]);
+  await pool.query('DELETE FROM users WHERE id=$1', [runner.id]);
+  assert.equal((await pool.query('SELECT * FROM auth_tokens WHERE user_id=$1', [runner.id])).rowCount, 0);
+});
+
+test('AUTH-01 unique lower(email) expression index is valid and active alongside the original lowercase CHECK', async () => {
+  const { rows: [index] } = await pool.query(`SELECT i.indisunique, i.indisvalid, pg_get_expr(i.indexprs,i.indrelid) AS expression
+    FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE c.relname='users_email_lower_key'`);
+  assert.deepEqual(index, { indisunique: true, indisvalid: true, expression: 'lower((email)::text)' });
+  const runner = await user(pool);
+  await rejectsSql(() => user(pool, { email: runner.email }), '23505');
+  await rejectsSql(() => user(pool, { email: runner.email.toUpperCase() }), '23514', 'users_email_lowercase_check');
+});
+
+test('all 27 tables match the independent column, type and nullability contract', async () => {
   const { rows } = await pool.query(`
     SELECT c.relname AS table, a.attname AS column, format_type(a.atttypid, a.atttypmod) AS type,
            NOT a.attnotnull AS nullable
@@ -50,7 +121,7 @@ test('all 26 tables match the independent column, type and nullability contract'
   assert.deepEqual(rows, contract.expectedColumns());
 });
 
-test('all ten enums match the specified values and order', async () => {
+test('all eleven enums match the specified values and order', async () => {
   const { rows } = await pool.query(`
     SELECT t.typname AS name, array_agg(e.enumlabel::text ORDER BY e.enumsortorder) AS labels
     FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid
@@ -122,6 +193,7 @@ test('all primary/unique keys, ordinary indexes and both partial unique indexes 
     'users_email_lowercase_check', 'follows_no_self_follow_check', 'badges_threshold_positive_check',
     'seasons_time_order_check', 'runs_time_order_check', 'runs_distance_nonnegative_check',
     'runs_duration_positive_check', 'run_flags_reporter_reason_check',
+    'auth_tokens_refresh_family_check', 'auth_tokens_rotation_state_check', 'auth_tokens_grace_state_check',
   ].sort());
   assert.ok(checks.every((row) => row.convalidated));
 });
@@ -141,7 +213,7 @@ test('all foreign keys and delete actions match, with no foreign keys on deliber
 
 test('populated test database guard refuses reuse without changing any data', async () => {
   await assert.rejects(() => verifyEmptyDatabase(pool, config.database), /test database must be empty/);
-  assert.equal((await pool.query('SELECT migration_name FROM _prisma_migrations')).rowCount, 1);
+  assert.equal((await pool.query('SELECT migration_name FROM _prisma_migrations')).rowCount, 2);
 });
 
 test('duplicate run upload and duplicate point chunk are rejected; other users may reuse a client ID', async () => {
@@ -249,8 +321,8 @@ test('user deletion cascades dependent data but preserves audit and another runn
   const survivorRun = await run(pool, survivor.id);
   await pool.query(`INSERT INTO run_points (run_id, seq, lat, lng, recorded_at, accuracy_m)
     VALUES ($1, 0, 19, 72, now(), 4)`, [deletedRun.id]);
-  await pool.query(`INSERT INTO auth_tokens (user_id, kind, token_hash, expires_at)
-    VALUES ($1, 'REFRESH', $2, now() + interval '1 day')`, [deleted.id, randomBytes(32).toString('hex')]);
+  await pool.query(`INSERT INTO auth_tokens (user_id, kind, token_hash, expires_at, family_id)
+    VALUES ($1, 'REFRESH', $2, now() + interval '1 day', $3)`, [deleted.id, randomBytes(32).toString('hex'), randomUUID()]);
   await pool.query(`INSERT INTO devices (user_id, fcm_token, app_version, last_seen_at)
     VALUES ($1, $2, 'test', now())`, [deleted.id, randomUUID()]);
   await pool.query("INSERT INTO notifications (user_id, type, title) VALUES ($1, 'SYSTEM', 'Test')", [deleted.id]);
@@ -387,7 +459,7 @@ test('Prisma maintains updated_at on users, user_stats and game_settings', async
   } finally { await prisma.$disconnect(); }
 });
 
-test('seed runs twice idempotently: bcrypt admin, correct defaults/badges, stable dates, preserved tuning and no fake runs', { timeout: 30000 }, async () => {
+test('seed runs twice idempotently: scrypt admin/identity, correct defaults/badges, stable dates, preserved tuning and no fake runs', { timeout: 30000 }, async () => {
   const email = 'seed-admin@tests.example';
   const password = randomBytes(32).toString('base64url');
   const seed = () => {
@@ -409,8 +481,9 @@ test('seed runs twice idempotently: bcrypt admin, correct defaults/badges, stabl
   assert.deepEqual(badges.map((row) => [row.criteria, row.threshold]).sort(), [['TOTAL_DISTANCE', 10000], ['HEX_COUNT', 100], ['STREAK_DAYS', 7], ['RUN_COUNT', 10]].sort());
   const { rows: [admin] } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
   assert.equal(admin.role, 'ADMIN');
-  assert.match(admin.password_hash, /^\$2[aby]\$12\$/);
-  assert.ok(await bcrypt.compare(password, admin.password_hash));
+  assert.match(admin.password_hash, /^scrypt\$32768\$8\$3\$/);
+  assert.ok(await verifyPassword(password, admin.password_hash));
+  assert.equal((await pool.query("SELECT * FROM auth_identities WHERE user_id=$1 AND provider='PASSWORD' AND provider_subject=$2", [admin.id, email])).rowCount, 1);
   const { rows: [season] } = await pool.query("SELECT * FROM seasons WHERE name = 'Season 1'");
   assert.equal(season.status, 'UPCOMING');
   assert.ok(season.starts_at > new Date());

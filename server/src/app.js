@@ -6,14 +6,17 @@ const cors = require('cors');
 const { rateLimit } = require('express-rate-limit');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { createAuthRouter } = require('./auth/routes');
+const { requireAuth } = require('./auth/middleware');
 
 function errorBody(code, message) { return { error: { code, message } }; }
 function notFound(res) { return res.status(404).json(errorBody('NOT_FOUND', 'The requested resource was not found.')); }
 
-function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../storage/apk'), logger = console.info }) {
+function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../storage/apk'), logger = console.info, clock = () => new Date() }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use((_req, res, next) => { res.set('Date', clock().toUTCString()); next(); });
   app.use((req, res, next) => {
     const start = performance.now();
     res.once('finish', () => {
@@ -29,13 +32,17 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
       if (!origin || config.origins.includes(origin)) return callback(null, true);
       return callback(Object.assign(new Error('Origin blocked'), { publicCode: 'CORS_ORIGIN_DENIED', statusCode: 403 }));
     },
-    methods: ['GET', 'HEAD', 'OPTIONS'],
+    methods: ['GET', 'HEAD', 'OPTIONS', 'POST'],
+    exposedHeaders: ['Date'],
   }));
+
   app.use('/api', rateLimit({
     windowMs: config.rateLimitWindowMs, limit: config.rateLimitMax,
     standardHeaders: 'draft-8', legacyHeaders: false,
     handler(_req, res) { res.status(429).json(errorBody('RATE_LIMITED', 'Too many requests. Please try again later.')); },
   }));
+  app.use('/api/auth', createAuthRouter({ prisma, config, logger }));
+  app.get('/api/me', requireAuth({ prisma, config, clock }), (req, res) => res.json(req.authUser));
 
   app.get('/api/health', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
@@ -80,6 +87,13 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
     if (res.headersSent) return next(error);
     if (error.publicCode === 'CORS_ORIGIN_DENIED') {
       return res.status(403).json(errorBody('CORS_ORIGIN_DENIED', 'This origin is not allowed.'));
+    }
+    if (error.type === 'entity.too.large') return res.status(413).json(errorBody('BODY_TOO_LARGE', 'The request body is too large.'));
+    if (error.type === 'entity.parse.failed' || error.type === 'request.aborted') {
+      return res.status(400).json(errorBody('INVALID_INPUT', 'Check the supplied account details.'));
+    }
+    if (error.type === 'encoding.unsupported' || error.type === 'charset.unsupported') {
+      return res.status(415).json(errorBody('UNSUPPORTED_ENCODING', 'Use an uncompressed UTF-8 JSON body.'));
     }
     if (req.originalUrl.startsWith('/downloads') && (error instanceof URIError || [400, 403, 404].includes(error.status))) return notFound(res);
     return res.status(500).json(errorBody('INTERNAL_ERROR', 'The request could not be completed.'));
