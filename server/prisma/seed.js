@@ -2,7 +2,8 @@
 
 require('dotenv').config({ path: require('node:path').join(__dirname, '../.env') });
 const { createHash } = require('node:crypto');
-const bcrypt = require('bcrypt');
+const { hashPassword, acceptablePassword } = require('../src/auth/passwords');
+const { normalizeEmail } = require('../src/auth/validation');
 const { PrismaClient } = require('@prisma/client');
 
 const settings = [
@@ -22,21 +23,16 @@ const badges = [
 ];
 
 async function main() {
-  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const email = normalizeEmail(process.env.ADMIN_EMAIL);
   const password = process.env.ADMIN_PASSWORD;
   if (!process.env.DATABASE_URL || !email || !password) {
     throw new Error('Set DATABASE_URL, ADMIN_EMAIL and ADMIN_PASSWORD before seeding.');
   }
-  if (email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error('ADMIN_EMAIL must be a valid email address of at most 255 characters.');
-  }
-  if (Buffer.byteLength(password, 'utf8') > 72) {
-    throw new Error('ADMIN_PASSWORD must be at most 72 UTF-8 bytes (bcrypt limit).');
-  }
+  if (!acceptablePassword(password)) throw new Error('ADMIN_PASSWORD must meet the 10–128 character password policy.');
 
   const prisma = new PrismaClient({ log: [] });
   try {
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await hashPassword(password);
     const username = `admin_${createHash('sha256').update(email).digest('hex').slice(0, 20)}`;
     await prisma.$transaction(async (tx) => {
       for (const [key, value, description] of settings) {
@@ -55,6 +51,13 @@ async function main() {
       if (admin.role !== 'ADMIN') {
         throw new Error('ADMIN_EMAIL belongs to a non-admin user; choose a different ADMIN_EMAIL.');
       }
+      if (!admin.passwordHash) throw new Error('The existing admin has no password credential; seed cannot add one implicitly.');
+      const identity = await tx.authIdentity.upsert({
+        where: { provider_providerSubject: { provider: 'PASSWORD', providerSubject: email } },
+        create: { userId: admin.id, provider: 'PASSWORD', providerSubject: email, emailAtSignup: email },
+        update: {},
+      });
+      if (identity.userId !== admin.id) throw new Error('The admin identity belongs to a different account.');
       // Dates are calculated only for the first insert; reruns preserve dates/status.
       const startsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       const endsAt = new Date(startsAt.getTime() + 30 * 24 * 60 * 60 * 1000);
