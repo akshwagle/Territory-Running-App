@@ -18,7 +18,9 @@ const { releaseInput, registerRelease, sha256 } = require('../scripts/register-r
 const isolated = testDatabaseConfig({ ...process.env, DATABASE_URL_TEST: process.env.DATABASE_URL_API_TEST });
 const pool = new Pool({ connectionString: isolated.connectionString });
 const prisma = new PrismaClient({ datasources: { db: { url: isolated.connectionString } }, log: [] });
-const config = readConfig({ ...process.env, CORS_ORIGINS: 'http://localhost:5173,https://localhost,http://localhost,capacitor://localhost' });
+const testEnv = { ...process.env, JWT_ACCESS_SECRET: 'test-access-secret-only-01234567890123456789',
+  REFRESH_TOKEN_DERIVATION_SECRET: 'test-derivation-secret-only-98765432109876543210' };
+const config = readConfig({ ...testEnv, CORS_ORIGINS: 'http://localhost:5173,https://localhost,http://localhost,capacitor://localhost' });
 let directory;
 let app;
 const logs = [];
@@ -138,11 +140,13 @@ test('request logs exclude query strings, credentials, headers and filenames', a
 
 test('invalid startup environment and registration arguments fail clearly without echoing credentials', () => {
   assert.throws(() => readConfig({}), /DATABASE_URL/);
-  assert.throws(() => readConfig({ ...process.env, PORT: 'invalid' }), /PORT/);
-  assert.throws(() => readConfig({ ...process.env, CORS_ORIGINS: '*' }), /CORS_ORIGINS/);
+  assert.throws(() => readConfig({ ...testEnv, PORT: 'invalid' }), /PORT/);
+  assert.throws(() => readConfig({ ...testEnv, CORS_ORIGINS: '*' }), /CORS_ORIGINS/);
   for (const args of [[], ['--file', 'a.apk', '--version-name', '../escape', '--version-code', '1'],
     ['--file', 'a.apk', '--version-name', '0.1.0', '--version-code', '0']]) assert.throws(() => releaseInput(args));
 });
+
+require('./auth-cases')({ prisma, pool, config, isolated });
 
 test('release registration copies exact bytes, hashes them and idempotently upserts without deactivating older releases', async () => {
   const source = path.join(directory, 'test-source.apk');
