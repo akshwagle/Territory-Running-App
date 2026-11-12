@@ -33,6 +33,28 @@ function readConfig(env = process.env) {
   if (env.JWT_ACCESS_SECRET === env.REFRESH_TOKEN_DERIVATION_SECRET) {
     throw new Error('JWT_ACCESS_SECRET and REFRESH_TOKEN_DERIVATION_SECRET must be different.');
   }
+  const production = env.NODE_ENV === 'production';
+  const mailTransport = env.MAIL_TRANSPORT || (production ? 'smtp' : 'outbox');
+  if (!['smtp', 'outbox'].includes(mailTransport) || (production && mailTransport === 'outbox')) throw new Error('MAIL_TRANSPORT must select SMTP in production.');
+  const webBaseUrl = env.WEB_BASE_URL || (production ? '' : 'http://localhost:5173');
+  let web;
+  try { web = new URL(webBaseUrl); } catch { throw new Error('WEB_BASE_URL must be an explicit HTTP(S) origin.'); }
+  if (!['http:', 'https:'].includes(web.protocol) || web.username || web.password || web.search || web.hash ||
+      web.pathname !== '/' || (production && web.protocol !== 'https:')) throw new Error('WEB_BASE_URL must be an origin; production requires HTTPS.');
+  const googleWebClientId = env.GOOGLE_WEB_CLIENT_ID || null;
+  if (googleWebClientId && !/^[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(googleWebClientId)) throw new Error('GOOGLE_WEB_CLIENT_ID must be a Web OAuth client identifier.');
+  let smtp = null;
+  if (mailTransport === 'smtp') {
+    for (const name of ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM']) {
+      if (!env[name] || /^YOUR_/.test(env[name]) || /[\r\n]/.test(env[name])) throw new Error(`${name} is required for SMTP.`);
+    }
+    if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(env.SMTP_FROM)) throw new Error('SMTP_FROM must be a single email address.');
+    const port = integer(env.SMTP_PORT, 587, 'SMTP_PORT', 1, 65535);
+    smtp = { host: env.SMTP_HOST, port, secure: port === 465, requireTLS: true,
+      auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD }, from: env.SMTP_FROM };
+  }
+  const verifiedFlag = env.REQUIRE_VERIFIED_EMAIL_FOR_RUNS ?? String(production);
+  if (!['true', 'false'].includes(verifiedFlag)) throw new Error('REQUIRE_VERIFIED_EMAIL_FOR_RUNS must be true or false.');
   return {
     host,
     port: integer(env.PORT, 4000, 'PORT', 1, 65535),
@@ -44,6 +66,11 @@ function readConfig(env = process.env) {
     authRateLimitMax: 10,
     authIpRateLimitMax: 50,
     authRateLimitWindowMs: 15 * 60 * 1000,
+    authActionRateLimitMax: 5,
+    googleWebClientId,
+    mailTransport, smtp, webBaseUrl: web.origin,
+    requireVerifiedEmailForRuns: verifiedFlag === 'true',
+    forgotResponseMs: 250,
   };
 }
 

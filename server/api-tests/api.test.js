@@ -18,7 +18,7 @@ const { releaseInput, registerRelease, sha256 } = require('../scripts/register-r
 const isolated = testDatabaseConfig({ ...process.env, DATABASE_URL_TEST: process.env.DATABASE_URL_API_TEST });
 const pool = new Pool({ connectionString: isolated.connectionString });
 const prisma = new PrismaClient({ datasources: { db: { url: isolated.connectionString } }, log: [] });
-const testEnv = { ...process.env, JWT_ACCESS_SECRET: 'test-access-secret-only-01234567890123456789',
+const testEnv = { ...process.env, NODE_ENV: 'test', GOOGLE_WEB_CLIENT_ID: 'test-client.apps.googleusercontent.com', MAIL_TRANSPORT: 'outbox', WEB_BASE_URL: 'http://localhost:5173', JWT_ACCESS_SECRET: 'test-access-secret-only-01234567890123456789',
   REFRESH_TOKEN_DERIVATION_SECRET: 'test-derivation-secret-only-98765432109876543210' };
 const config = readConfig({ ...testEnv, CORS_ORIGINS: 'http://localhost:5173,https://localhost,http://localhost,capacitor://localhost' });
 let directory;
@@ -30,7 +30,7 @@ before(async () => {
   runPrisma(['migrate', 'deploy'], isolated.connectionString);
   directory = await fs.mkdtemp(path.resolve(__dirname, '../../.local/api-fixture-'));
   await fs.writeFile(path.join(directory, 'fixture.apk'), 'download fixture only');
-  app = createApp({ prisma, config, downloadDir: directory, logger: (line) => logs.push(line) });
+  app = createApp({ prisma, config, verifyGoogle: async () => { throw new Error('Mock rejects unused Google verification.'); }, downloadDir: directory, logger: (line) => logs.push(line) });
 });
 beforeEach(async () => { await prisma.appRelease.deleteMany(); });
 after(async () => {
@@ -147,6 +147,7 @@ test('invalid startup environment and registration arguments fail clearly withou
 });
 
 require('./auth-cases')({ prisma, pool, config, isolated });
+require('./auth-complete-cases')({ prisma, pool, config });
 
 test('release registration copies exact bytes, hashes them and idempotently upserts without deactivating older releases', async () => {
   const source = path.join(directory, 'test-source.apk');

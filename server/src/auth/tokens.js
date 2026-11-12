@@ -27,10 +27,11 @@ function successorToken(parentToken, successorId, secret) {
 function hashIp(ip, secret) {
   return createHmac('sha256', secret).update(JSON.stringify(['ip-hash-v1', ip])).digest('hex');
 }
-async function issueAccessToken(userId, secret, now) {
+async function issueAccessToken(userId, familyId, secret, now) {
   const { SignJWT } = await jose;
   const issued = Math.floor(now.getTime() / 1000);
-  return new SignJWT({}).setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+  if (!UUID.test(userId) || !UUID.test(familyId)) throw new Error('Invalid session identifiers.');
+  return new SignJWT({ sid: familyId }).setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setSubject(userId).setIssuedAt(issued).setExpirationTime(issued + ACCESS_SECONDS)
     .sign(new TextEncoder().encode(secret));
 }
@@ -38,14 +39,14 @@ async function verifyAccessToken(token, secret, now) {
   if (typeof token !== 'string' || token.length > 2048) throw new Error('Invalid access token.');
   const { jwtVerify } = await jose;
   const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
-    algorithms: ['HS256'], typ: 'JWT', requiredClaims: ['sub', 'iat', 'exp'],
+    algorithms: ['HS256'], typ: 'JWT', requiredClaims: ['sub', 'sid', 'iat', 'exp'],
     currentDate: now, maxTokenAge: ACCESS_SECONDS,
   });
-  if (Object.keys(payload).sort().join(',') !== 'exp,iat,sub' || !UUID.test(payload.sub) ||
+  if (Object.keys(payload).sort().join(',') !== 'exp,iat,sid,sub' || !UUID.test(payload.sub) || !UUID.test(payload.sid) ||
       !Number.isInteger(payload.iat) || !Number.isInteger(payload.exp) || payload.exp - payload.iat !== ACCESS_SECONDS) {
     throw new Error('Invalid access claims.');
   }
-  return payload.sub;
+  return { userId: payload.sub, familyId: payload.sid };
 }
 
 module.exports = { ACCESS_SECONDS, REFRESH_MS, GRACE_MS, tokenHash, equalHashes,
