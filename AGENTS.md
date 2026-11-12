@@ -11,7 +11,7 @@ anti-cheat flags, notifications, privacy controls and administration.
 - Backend: Node.js 22.12+ and Express 5 (plain JavaScript).
 - Database: PostgreSQL 16, Prisma 6 (exact version in server/package.json).
 - Mobile: Capacitor wraps the React app into an Android APK downloaded from the website.
-- Phase 1 is accepted and merged. Phase 2 is in progress: API shell, download page and debug APK only.
+- Phase 3 landing page complete and verified; awaiting PR review.
 - Implementation verified: 23 DB, 11 API and 5 web tests pass; real debug APK built; awaiting review.
 - No login, runner features, UI redesign, hosting or deployment in Phase 2.
 
