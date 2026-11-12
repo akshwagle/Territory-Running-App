@@ -51,8 +51,22 @@ module.exports = function authCases({ prisma, pool, config, isolated }) {
     assert.notEqual(loggedIn.body.refreshToken, account.refreshToken);
     const me = await request(app).get('/api/me').set('Authorization', `Bearer ${loggedIn.body.accessToken}`);
     assert.equal(me.status, 200);
-    assert.deepEqual(me.body, account.user);
+    assert.deepEqual(me.body, { ...account.user, emailVerified: false });
     assert.equal(me.headers['cache-control'], 'no-store');
+  });
+
+  test('/api/me exposes only the signed-in account emailVerified boolean, without changing session envelopes', async () => {
+    const app = makeApp();
+    const first = await register(app);
+    const second = await register(app);
+    await prisma.user.update({ where: { id: second.user.id }, data: { verifiedAt: new Date() } });
+    const read = () => request(app).get('/api/me').set('Authorization', `Bearer ${first.accessToken}`);
+    assert.deepEqual((await read()).body, { ...first.user, emailVerified: false });
+    await prisma.user.update({ where: { id: first.user.id }, data: { verifiedAt: new Date() } });
+    const verified = await read();
+    assert.equal(verified.status, 200);
+    assert.deepEqual(verified.body, { ...first.user, emailVerified: true });
+    assert.deepEqual(Object.keys(first.user).sort(), ['createdAt', 'displayName', 'email', 'id']);
   });
 
   test('AUTH-01 simultaneous case/space variants create exactly one account and return generic duplicate failures', async () => {
