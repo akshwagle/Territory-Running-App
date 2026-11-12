@@ -8,5 +8,5 @@ export default defineConfig(({ mode }) => {
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/') {
     throw new Error('VITE_API_URL must be an HTTP(S) origin without credentials or a path.');
   }
-  return { plugins: [react(), tailwindcss()], server: { host: '127.0.0.1', port: 5173, strictPort: true }, test: { environment: 'jsdom', setupFiles: ['./src/test-setup.js'] } };
+  return { build: { manifest: true }, plugins: [react(), tailwindcss()], server: { host: '127.0.0.1', port: 5173, strictPort: true }, test: { environment: 'jsdom', setupFiles: ['./src/test-setup.js'] } };
 });
