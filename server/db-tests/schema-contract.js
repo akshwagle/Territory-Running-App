@@ -1,11 +1,12 @@
 'use strict';
 
-// Independent transcription of the Phase 1 written spec. This is deliberately
+// Independent transcription of Phase 1 plus the approved Phase 4 auth changes. This is deliberately
 // not generated from Prisma: it catches missing/extra columns and wrong types.
 // ?: nullable; t: timestamptz(6); vN: varchar(N); other type codes are below.
 const columns = {
-  users: 'id:u username:v30 email:v255 password_hash:x display_name:v60 role:SystemRole verified_at:t? deletion_at:t? created_at:t updated_at:t',
-  auth_tokens: 'id:u user_id:u kind:TokenKind token_hash:v64 expires_at:t used_at:t? created_at:t',
+  users: 'id:u username:v30 email:v255 password_hash:x? display_name:v60 role:SystemRole verified_at:t? deletion_at:t? suspended_at:t? created_at:t updated_at:t',
+  auth_tokens: 'id:u user_id:u kind:TokenKind token_hash:v64 expires_at:t used_at:t? created_at:t family_id:u? revoked_at:t? replaced_by_id:u? user_agent:x? ip_hash:v64? grace_replayed_at:t?',
+  auth_identities: 'id:u user_id:u provider:AuthProvider provider_subject:v255 email_at_signup:v255 created_at:t last_used_at:t?',
   user_privacy_settings: 'user_id:u hide_route:o home_hex:b? hide_radius_m:i consent_at:t? terms_version:v10?',
   teams: 'id:u name:v50 color_hex:v7 invite_code:v12 created_at:t',
   team_members: 'user_id:u team_id:u role:TeamRole joined_at:t',
@@ -46,6 +47,7 @@ function expectedColumns() {
 const enums = {
   SystemRole: ['RUNNER', 'ADMIN'],
   TokenKind: ['REFRESH', 'PASSWORD_RESET', 'EMAIL_VERIFY'],
+  AuthProvider: ['PASSWORD', 'GOOGLE'],
   TeamRole: ['CAPTAIN', 'MEMBER'],
   SeasonStatus: ['UPCOMING', 'ACTIVE', 'ENDED'],
   BadgeCriteria: ['TOTAL_DISTANCE', 'HEX_COUNT', 'STREAK_DAYS', 'RUN_COUNT'],
@@ -59,6 +61,8 @@ const enums = {
 // Child.column, parent.column, PostgreSQL ON DELETE action (c=CASCADE, n=SET NULL).
 const foreignKeys = [
   ['auth_tokens.user_id', 'users.id', 'c'],
+  ['auth_tokens.replaced_by_id', 'auth_tokens.id', 'a'],
+  ['auth_identities.user_id', 'users.id', 'c'],
   ['user_privacy_settings.user_id', 'users.id', 'c'],
   ['team_members.user_id', 'users.id', 'c'], ['team_members.team_id', 'teams.id', 'c'],
   ['follows.follower_id', 'users.id', 'c'], ['follows.followee_id', 'users.id', 'c'],
@@ -74,6 +78,7 @@ const foreignKeys = [
 
 const keys = {
   users: ['p:id', 'u:username', 'u:email'], auth_tokens: ['p:id', 'u:token_hash'],
+  auth_identities: ['p:id', 'u:provider,provider_subject'],
   user_privacy_settings: ['p:user_id'], teams: ['p:id', 'u:name', 'u:invite_code'],
   team_members: ['p:user_id'], follows: ['p:follower_id,followee_id'],
   badges: ['p:id', 'u:code'], user_badges: ['p:user_id,badge_id'],
@@ -86,7 +91,7 @@ const keys = {
 };
 
 const indexes = [
-  'auth_tokens:user_id,kind', 'runs:user_id,started_at', 'run_flags:status,created_at',
+  'auth_tokens:user_id,kind', 'auth_tokens:family_id', 'auth_identities:user_id', 'runs:user_id,started_at', 'run_flags:status,created_at',
   'hex_ownership:owner_id,claimed_at', 'run_hexes:h3_index', 'devices:user_id',
   'notifications:user_id,read_at', 'login_attempts:email,created_at',
 ];
