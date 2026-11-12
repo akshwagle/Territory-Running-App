@@ -7,6 +7,7 @@ const { rateLimit } = require('express-rate-limit');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createAuthRouter } = require('./auth/routes');
+const { requireAuth } = require('./auth/middleware');
 
 function errorBody(code, message) { return { error: { code, message } }; }
 function notFound(res) { return res.status(404).json(errorBody('NOT_FOUND', 'The requested resource was not found.')); }
@@ -41,6 +42,7 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
     handler(_req, res) { res.status(429).json(errorBody('RATE_LIMITED', 'Too many requests. Please try again later.')); },
   }));
   app.use('/api/auth', createAuthRouter({ prisma, config, logger }));
+  app.get('/api/me', requireAuth({ prisma, config, clock }), (req, res) => res.json(req.authUser));
 
   app.get('/api/health', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
