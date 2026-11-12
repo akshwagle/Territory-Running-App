@@ -1,0 +1,102 @@
+import { useEffect, useRef, useState } from 'react';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { useAuth } from './auth/context.jsx';
+import { parseAuthLink, watchNativeAuth } from './auth/deep-links.js';
+import { Notice } from './components/forms.jsx';
+import { friendlyMessage } from './auth/errors.js';
+import { WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage } from './pages/auth-pages.jsx';
+import { HomePage, SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
+
+export function UpdateBanner({ api, versionCode, downloadUrl }) {
+  const [attempt, setAttempt] = useState(0), [state, setState] = useState({ phase: 'loading' });
+  useEffect(() => {
+    let active = true; setState({ phase: 'loading' });
+    api.request('/api/releases/latest', { auth: false }).then(release => {
+      if (active) setState({ phase: release.versionCode > versionCode ? 'newer' : 'current' });
+    }).catch(error => { if (active) setState({ phase: error.code === 'NO_RELEASE' ? 'empty' : 'error' }); });
+    return () => { active = false; };
+  }, [api, versionCode, attempt]);
+  if (state.phase === 'newer') return <aside className="update notice" aria-label="App update"><strong>Update available</strong><p>A newer Android build is ready.</p><a className="button secondary" href={downloadUrl} target="_blank" rel="noreferrer">Open download page</a></aside>;
+  if (state.phase === 'error') return <aside className="small update-check"><span>Couldn’t check for updates.</span><button className="text-link" onClick={() => setAttempt(attempt + 1)}>Retry update check</button></aside>;
+  return <p className="small update-check" role="status">{state.phase === 'loading' ? 'Checking for updates…' : state.phase === 'empty' ? 'No published update yet.' : 'You have the latest published build.'}</p>;
+}
+
+function Protected({ children }) {
+  const { state } = useAuth();
+  return state.user ? children : <Navigate to="/login" replace />;
+}
+
+function VerificationBanner() {
+  const { auth } = useAuth();
+  const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [error, setError] = useState('');
+  async function resend() {
+    setBusy(true); setError(''); setMessage('');
+    try { const result = await auth.api.request('/api/auth/verify-email/request', { method: 'POST', body: {} }); setMessage(result.message); }
+    catch (failure) { setError(friendlyMessage(failure)); }
+    finally { setBusy(false); }
+  }
+  return <aside className="notice verification"><strong>Verify your email</strong><p>Confirm your email before recording runs in a future production build.</p>
+    <button className="secondary" disabled={busy} onClick={resend}>{busy ? 'Requesting email…' : 'Resend email'}</button>
+    <Link className="text-link" to="/verify">Check verification</Link><Notice>{message}</Notice><Notice error>{error}</Notice></aside>;
+}
+
+export function App({ downloadUrl, nativeWatch = watchNativeAuth }) {
+  const { auth, state } = useAuth(), navigate = useNavigate(), location = useLocation();
+  const [{ link, generation }, setLinkState] = useState({ link: null, generation: 0 }), [linkError, setLinkError] = useState('');
+  const clearLink = expected => setLinkState(current => current.link === expected ? { ...current, link: null } : current);
+  const navigateRef = useRef(navigate);
+  useEffect(() => { navigateRef.current = navigate; }, [navigate]);
+  useEffect(() => { auth.start(); }, [auth]);
+  useEffect(() => {
+    let cancelled = false, dispose;
+    const receive = raw => {
+      if (cancelled) return;
+      const parsed = parseAuthLink(raw, new URL(downloadUrl).origin);
+      if (parsed) { setLinkState(current => ({ link: parsed, generation: current.generation + 1 })); navigateRef.current(`/${parsed.action}`, { replace: true }); }
+    };
+    nativeWatch({ onLink: receive, onResume: () => auth.loadMe().catch(() => {}) }).then(cleanup => {
+      if (cancelled) cleanup(); else dispose = cleanup;
+    }).catch(() => { if (!cancelled) setLinkError('App links are unavailable. Close and reopen the app, then open the email link again.'); });
+    const online = () => auth.loadMe().catch(() => {});
+    window.addEventListener('online', online);
+    return () => { cancelled = true; dispose?.(); window.removeEventListener('online', online); };
+  }, [auth, downloadUrl, nativeWatch]);
+  useEffect(() => {
+    // Scrub preview query tokens from browser history; native tokens also live
+    // only in component memory, never in router state or browser storage.
+    if (['/verify', '/reset'].includes(location.pathname) && location.search) {
+      const parsed = parseAuthLink(`territoryrun:/${location.pathname}${location.search}`);
+      if (parsed) setLinkState(current => ({ link: parsed, generation: current.generation + 1 }));
+      navigate(location.pathname, { replace: true });
+    }
+    const heading = document.querySelector('h1');
+    heading?.setAttribute('tabindex', '-1'); heading?.focus();
+  }, [location.pathname, location.search, navigate]);
+  return <div className="app-shell">
+    <header><Link className="wordmark" to={state.user ? '/home' : '/'} aria-label="Territory Run home">TERRITORY<span>RUN</span></Link>
+      {state.user && <Link className="header-link" to="/settings">Settings</Link>}</header>
+    <main id="main">
+      {state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome && <div className="auth-outcome"><Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice></div>}
+      {linkError && <Notice error>{linkError}</Notice>}
+      {state.status === 'restoring' ? <section><h1>Getting ready</h1><Notice>Restoring your sign-in securely…</Notice></section> :
+        state.status === 'storageError' ? <section><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
+          state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><SignOutControl /></section> :
+            state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><Notice>{state.message}</Notice><Link className="button primary" to="/login">Go to login</Link></section> : <>
+            {['offline', 'unavailable'].includes(state.status) && <aside className="notice"><p>{state.message}</p><p>Saved data stays encrypted. Uploads are paused until the connection and sign-in are confirmed.</p>
+              <button className="secondary" onClick={() => auth.loadMe().catch(() => {})}>Retry connection</button></aside>}
+            {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
+            {state.user && state.user.emailVerified !== true && location.pathname !== '/verify' && <VerificationBanner />}
+            <Routes>
+              <Route path="/" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage />} />
+              <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
+              <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
+              <Route path="/home" element={<Protected><HomePage /></Protected>} /><Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
+              <Route path="/settings/methods" element={<Protected><MethodsPage /></Protected>} /><Route path="/settings/sessions" element={<Protected><SessionsPage /></Protected>} />
+              <Route path="/settings/password" element={<Protected><ChangePasswordPage /></Protected>} />
+              <Route path="*" element={<section><h1>Page not found</h1><Link className="button secondary" to="/">Go home</Link></section>} />
+            </Routes>
+          </>}
+    </main>
+    <footer><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl} /><p className="small">Territory Run · Android {__APP_VERSION__}</p></footer>
+  </div>;
+}

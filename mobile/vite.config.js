@@ -13,5 +13,6 @@ export default defineConfig(({ mode }) => {
   if (!['http:', 'https:'].includes(api.protocol) || api.username || api.password || api.search || api.hash || api.pathname !== '/') {
     throw new Error('VITE_API_URL must be an HTTP(S) origin without credentials or a path.');
   }
-  return { plugins: [react()], define: { __APP_VERSION__: JSON.stringify(version.versionName) } };
+  return { plugins: [react()], define: { __APP_VERSION__: JSON.stringify(version.versionName), __APP_VERSION_CODE__: JSON.stringify(version.versionCode) },
+    test: { environment: 'jsdom', setupFiles: ['./src/test-setup.js'] } };
 });

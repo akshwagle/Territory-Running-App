@@ -2,5 +2,5 @@
   "appId": "com.territoryrunning.app",
   "appName": "Territory Run",
   "webDir": "dist",
-  "loggingBehavior": "debug"
+  "loggingBehavior": "none"
 }

@@ -3,8 +3,39 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.12.0" },
-  "scripts": { "dev": "vite --host 127.0.0.1", "build": "vite build", "apk:debug": "bash ../scripts/apk-debug.sh" },
-  "dependencies": { "react": "19.3.1", "react-dom": "19.3.1", "@capacitor/core": "8.6.0", "@capacitor/android": "8.6.0" },
-  "devDependencies": { "vite": "8.3.8", "@vitejs/plugin-react": "6.3.0", "@capacitor/cli": "8.6.0" }
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "apk:debug": "bash ../scripts/apk-debug.sh"
+  },
+  "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.0",
+    "@capawesome/capacitor-google-sign-in": "0.1.4",
+    "@fontsource/barlow": "5.3.0",
+    "@fontsource/barlow-condensed": "5.3.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-router": "7.18.5"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.0",
+    "@eslint/js": "10.0.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.9",
+    "@vitejs/plugin-react": "6.3.0",
+    "eslint": "10.14.0",
+    "globals": "17.14.0",
+    "jsdom": "27.4.0",
+    "vite": "8.3.8",
+    "vitest": "5.1.0"
+  }
 }

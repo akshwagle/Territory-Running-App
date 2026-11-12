@@ -1,6 +1,6 @@
-# Territory Run — Phase 2
+# Territory Run
 
-Phase 1's PostgreSQL schema is accepted and unchanged. Phase 2 adds a minimal Express API, a functional React download page and a Capacitor Android shell. Phase 2 is in progress; UI redesign, login, running features, maps, hosting and deployment are outside this phase.
+Current work is Phase 4, step 03: Android authentication. See [mobile setup and phone checks](mobile/README.md), [verification results](docs/PHASE4_APP_AUTH_REVIEW.md) and the [edge-case audit](docs/EDGE_CASES.md). Native Google and email phone checks passed. Run recording and uploads remain deferred to step 05. The sections below retain the earlier phases' setup and historical verification records.
 
 Everything lives in **`/Users/akshwagle/Desktop/Territory-Running-App`** (`~/Desktop/Territory-Running-App`). Every phase uses this one folder. There is no root npm workspace. Application code is plain JavaScript; native Android source is generated Java/Gradle/XML.
 

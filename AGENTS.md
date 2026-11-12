@@ -11,8 +11,8 @@ anti-cheat flags, notifications, privacy controls and administration.
 - Backend: Node.js 22.12+ and Express 5 (plain JavaScript).
 - Database: PostgreSQL 16, Prisma 6 (exact version in server/package.json).
 - Mobile: Capacitor wraps the React app into an Android APK downloaded from the website.
-- Phase 3 landing page complete and verified; awaiting PR review.
-- Implementation verified: 23 DB, 11 API and 5 web tests pass; real debug APK built; awaiting review.
+- Phase 3 landing page is merged; Phase 4 step 03 Android auth is implemented and verified, awaiting PR review.
+- Step 03: native Google and email phone checks passed; recording/uploads and cross-device ACTIVE-run rules are deferred to step 05.
 - No login, runner features, UI redesign, hosting or deployment in Phase 2.
 
 ## Project layout
@@ -50,7 +50,8 @@ them. Pause only if following the text changes the table count or drops a table/
 
 ## Database conventions and invariants
 - Database tables and columns: snake_case; Prisma models: PascalCase, mapped explicitly.
-- Exactly 26 application tables. UUID id defaults: gen_random_uuid(); bigint IDs: identity.
+- Exactly 27 application tables after the approved auth-foundation migration; step 03 makes no schema change.
+- UUID id defaults: gen_random_uuid(); bigint IDs: identity.
 - All timestamps use TIMESTAMPTZ; created_at defaults to now(); Prisma maintains @updatedAt.
 - Keep SQL CHECK constraints, partial unique indexes and identity definitions in migrations.
 - Do not use db push: it omits hand-written SQL rules. Review every generated migration.
