@@ -8,6 +8,7 @@ const { tokenHash } = require('./tokens');
 const { createAuthService } = require('./service');
 const { createActionService } = require('./actions');
 const { createGoogleService } = require('./google-service');
+const { createSessionService } = require('./sessions');
 const { createMailer, createMailJobs } = require('./mailer');
 const { requireAuth } = require('./middleware');
 
@@ -17,6 +18,7 @@ function createAuthRouter({ prisma, config, logger, clock, mailer = createMailer
   const service = createAuthService({ prisma, config });
   const actions = createActionService({ prisma, config, mailer });
   const google = createGoogleService({ prisma, config, verifyGoogle, clock });
+  const sessions = createSessionService(prisma);
   const auth = requireAuth({ prisma, config, clock });
   const optionalAuth = (req, res, next) => req.get('authorization') ? auth(req, res, next) : next();
   const limited = (_req, res) => res.status(429).json({ error: { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' } });
@@ -62,6 +64,8 @@ function createAuthRouter({ prisma, config, logger, clock, mailer = createMailer
   router.post('/google', validate(schemas.googleBody), limit('google', config.authRateLimitMax), handle(google.googleLogin));
   router.post('/google/link', auth, validate(schemas.googleBody), limit('google-link'), handle(google.link));
   router.get('/identities', auth, validate(schemas.emptyBody, 'query'), handle((_input, req) => google.identities(req)));
+  router.get('/sessions', auth, validate(schemas.emptyBody, 'query'), handle((_input, req) => sessions.list(req)));
+  router.delete('/sessions/:id', auth, validate(schemas.emptyBody), validate(schemas.sessionParams, 'params'), limit('session-revoke'), handle(({ id }, req) => sessions.revoke(id, req), 204));
   router.post('/verify-email/request', auth, validate(schemas.emptyBody), limit('verify-request'), (req, res) => {
     const task = { userId: req.authUser.id, kind: 'EMAIL_VERIFY', ip: req.ip };
     res.once('finish', () => jobs.enqueue(() => actions.requestAction(task)));
