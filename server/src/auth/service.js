@@ -2,8 +2,8 @@
 
 const { randomUUID, randomBytes } = require('node:crypto');
 const { hashPassword, verifyPassword } = require('./passwords');
-const { ACCESS_SECONDS, REFRESH_MS, GRACE_MS, tokenHash, equalHashes,
-  initialRefreshToken, successorToken, hashIp, issueAccessToken } = require('./tokens');
+const { REFRESH_MS, GRACE_MS, tokenHash, equalHashes,
+  successorToken } = require('./tokens');
 
 const credentialsFailure = (reason) => ({ failure: {
   status: 401, code: 'AUTH_FAILED', message: 'Cannot register or sign in with these details.', reason,
@@ -11,48 +11,10 @@ const credentialsFailure = (reason) => ({ failure: {
 const refreshFailure = (reason, code = 'INVALID_REFRESH_TOKEN') => ({ failure: {
   status: 401, code, message: 'This session cannot be renewed. Please sign in again.', reason,
 } });
-function accountFailure(user) {
-  if (!user || user.deletionAt) return { failure: {
-    status: 403, code: 'ACCOUNT_DELETED', message: 'This account has been deleted or is awaiting deletion.', reason: 'account_deleted',
-  } };
-  if (user.suspendedAt) return { failure: {
-    status: 403, code: 'ACCOUNT_SUSPENDED', message: 'This account is suspended.', reason: 'account_suspended',
-  } };
-  return null;
-}
-function publicUser(user) {
-  return { id: user.id, email: user.email, displayName: user.displayName, createdAt: user.createdAt };
-}
-async function databaseNow(tx) { return (await tx.$queryRaw`SELECT clock_timestamp() AS now`)[0].now; }
-async function lockUser(tx, userId) {
-  // Every refresh/logout/login takes this lock first, including other families
-  // for the same user. This also serializes account suspension/deletion updates.
-  await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
-  return tx.user.findUnique({ where: { id: userId } });
-}
-async function revokeFamily(tx, familyId, now) {
-  await tx.authToken.updateMany({ where: { kind: 'REFRESH', familyId }, data: { revokedAt: now } });
-  await tx.authToken.updateMany({ where: { kind: 'REFRESH', familyId, usedAt: null }, data: { usedAt: now } });
-}
+const { accountFailure, publicUser, databaseNow, lockUser, revokeFamily, createSessionTools } = require('./session-core');
 
 function createAuthService({ prisma, config }) {
-  function metadata(request) {
-    return { userAgent: (request.get('user-agent') || '').slice(0, 512) || null,
-      ipHash: hashIp(request.ip || 'unknown', config.refreshDerivationSecret) };
-  }
-  async function response(user, refreshToken, now) {
-    return { accessToken: await issueAccessToken(user.id, config.jwtAccessSecret, now),
-      refreshToken, expiresIn: ACCESS_SECONDS, user: publicUser(user) };
-  }
-  async function newFamily(tx, user, request, now) {
-    const id = randomUUID();
-    const raw = initialRefreshToken();
-    await tx.authToken.create({ data: { id, userId: user.id, kind: 'REFRESH',
-      tokenHash: tokenHash(raw), familyId: id, expiresAt: new Date(now.getTime() + REFRESH_MS),
-      createdAt: now, ...metadata(request) } });
-    return response(user, raw, now);
-  }
-
+  const { metadata, response, newFamily } = createSessionTools(config);
   async function register(input, request) {
     // No email pre-check: database uniqueness arbitrates simultaneous sign-ups.
     // Hash before the transaction for both new and existing email addresses.
@@ -133,7 +95,7 @@ function createAuthService({ prisma, config }) {
         }
         if (child.revokedAt || child.usedAt || child.expiresAt <= now) return refreshFailure('successor_unavailable');
         await tx.authToken.update({ where: { id: parent.id }, data: { graceReplayedAt: now } });
-        return response(user, recovered, now);
+        return response(user, recovered, now, parent.familyId);
       }
       if (parent.expiresAt <= now) {
         await revokeFamily(tx, parent.familyId, now);
@@ -145,7 +107,7 @@ function createAuthService({ prisma, config }) {
         tokenHash: tokenHash(rawSuccessor), familyId: parent.familyId,
         expiresAt: new Date(now.getTime() + REFRESH_MS), createdAt: now, ...metadata(request) } });
       await tx.authToken.update({ where: { id: parent.id }, data: { usedAt: now, replacedById: successorId } });
-      return response(user, rawSuccessor, now);
+      return response(user, rawSuccessor, now, parent.familyId);
     }, { timeout: 10000 });
   }
 

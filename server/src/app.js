@@ -8,11 +8,12 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createAuthRouter } = require('./auth/routes');
 const { requireAuth } = require('./auth/middleware');
+const { createMailJobs } = require('./auth/mailer');
 
 function errorBody(code, message) { return { error: { code, message } }; }
 function notFound(res) { return res.status(404).json(errorBody('NOT_FOUND', 'The requested resource was not found.')); }
 
-function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../storage/apk'), logger = console.info, clock = () => new Date() }) {
+function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../storage/apk'), logger = console.info, clock = () => new Date(), mailer }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -41,7 +42,9 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
     standardHeaders: 'draft-8', legacyHeaders: false,
     handler(_req, res) { res.status(429).json(errorBody('RATE_LIMITED', 'Too many requests. Please try again later.')); },
   }));
-  app.use('/api/auth', createAuthRouter({ prisma, config, logger }));
+  const mailJobs = createMailJobs(logger);
+  app.locals.authJobs = mailJobs;
+  app.use('/api/auth', createAuthRouter({ prisma, config, logger, clock, mailer, mailJobs }));
   app.get('/api/me', requireAuth({ prisma, config, clock }), (req, res) => res.json(req.authUser));
 
   app.get('/api/health', async (_req, res) => {
