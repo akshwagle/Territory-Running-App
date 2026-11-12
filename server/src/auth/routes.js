@@ -7,14 +7,16 @@ const schemas = require('./validation');
 const { tokenHash } = require('./tokens');
 const { createAuthService } = require('./service');
 const { createActionService } = require('./actions');
+const { createGoogleService } = require('./google-service');
 const { createMailer, createMailJobs } = require('./mailer');
 const { requireAuth } = require('./middleware');
 
-function createAuthRouter({ prisma, config, logger, clock, mailer = createMailer(config), mailJobs }) {
+function createAuthRouter({ prisma, config, logger, clock, mailer = createMailer(config), verifyGoogle, mailJobs }) {
   const router = express.Router();
   const jobs = mailJobs || createMailJobs(logger);
   const service = createAuthService({ prisma, config });
   const actions = createActionService({ prisma, config, mailer });
+  const google = createGoogleService({ prisma, config, verifyGoogle, clock });
   const auth = requireAuth({ prisma, config, clock });
   const optionalAuth = (req, res, next) => req.get('authorization') ? auth(req, res, next) : next();
   const limited = (_req, res) => res.status(429).json({ error: { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' } });
@@ -57,6 +59,9 @@ function createAuthRouter({ prisma, config, logger, clock, mailer = createMailer
   router.post('/login', validate(schemas.loginBody), limit('login', config.authRateLimitMax), handle(service.login));
   router.post('/refresh', validate(schemas.refreshBody), limit('refresh', config.authRateLimitMax), handle(({ refreshToken }, req) => service.refresh(refreshToken, req)));
   router.post('/logout', validate(schemas.refreshBody), limit('logout', config.authRateLimitMax), handle(({ refreshToken }) => service.logout(refreshToken), 204));
+  router.post('/google', validate(schemas.googleBody), limit('google', config.authRateLimitMax), handle(google.googleLogin));
+  router.post('/google/link', auth, validate(schemas.googleBody), limit('google-link'), handle(google.link));
+  router.get('/identities', auth, validate(schemas.emptyBody, 'query'), handle((_input, req) => google.identities(req)));
   router.post('/verify-email/request', auth, validate(schemas.emptyBody), limit('verify-request'), (req, res) => {
     const task = { userId: req.authUser.id, kind: 'EMAIL_VERIFY', ip: req.ip };
     res.once('finish', () => jobs.enqueue(() => actions.requestAction(task)));

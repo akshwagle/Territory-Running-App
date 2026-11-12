@@ -15,7 +15,8 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "release:register": "node scripts/register-release.js",
-    "test:api": "node --test --test-concurrency=1 api-tests/*.test.js"
+    "test:api": "node --test --test-concurrency=1 api-tests/*.test.js",
+    "auth:google:try": "node scripts/google-sign-in.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
