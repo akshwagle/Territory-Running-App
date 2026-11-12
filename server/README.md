@@ -1,222 +1,296 @@
-# Server authentication — Phase 4, step 1
+# Authentication server — steps 01 and 02
 
-Password accounts and refresh sessions are implemented in the Express API.
-The approved migration `20261112000000_auth_foundation` is applied to the local
-**development** database. Automated tests and the live curl proof use separate
-**test** databases. There is no Google implementation or mobile auth UI here.
+Email/password accounts, Google sign-in/linking, mailbox verification, password
+recovery and session management. Plain JavaScript on Node 22.12+ (verified
+22.19.0), Express 5.3.0 and PostgreSQL 16.15. Website/mobile auth screens belong
+to later steps; the only browser page here is an owner-run development tool.
 
-## Setup and start
+## Database: reuse auth_tokens, no step-02 schema change
 
-Use the single project folder `~/Desktop/Territory-Running-App` and Node 22.12+
-(verified 22.19.0). From that folder:
+The table count stays **27**. schema.prisma and both committed migrations are
+unchanged from main. The proposed action-token table/migration was deleted
+without being applied. No rollback, new table, new enum, new column, new index or
+new CHECK is needed. users.verified_at and auth_tokens.ip_hash already exist.
+
+- Refresh sessions use auth_tokens.kind=REFRESH and their existing family fields.
+- Email verification uses kind=EMAIL_VERIFY, expires after 24 hours, and leaves
+  family_id null.
+- Password reset uses kind=PASSWORD_RESET, expires after 30 minutes, and leaves
+  family_id null. Only SHA-256 digests of 32 random bytes are stored.
+- A new request marks every earlier unused token of that same kind/user used_at.
+  It does not invalidate the other action kind. Confirmation is single-use via
+  used_at. User-row locks serialize issuance, confirmation and credential changes.
+- Existing uniqueness, FK cascades and non-REFRESH/null-family CHECKs are reused.
+  Service code validates digest format and lifetimes; no hardening migration is
+  proposed or applied in this step.
+
+The earlier migration 20261112000000_auth_foundation added auth_identities,
+nullable users.password_hash, users.suspended_at and refresh-family metadata.
+Its original ER summary remains in docs/PHASE4_AUTH_VERIFICATION.md. The current
+step adds no physical database objects.
+
+## Setup and environment
+
+Use ~/Desktop/Territory-Running-App. Preserve the existing ignored server/.env;
+for a fresh clone only, copy .env.example once and replace its placeholders.
+The local PostgreSQL route uses port 55432; Docker's example uses 5432. Docker
+remains unverified. Install dependencies, generate Prisma, and deploy the existing
+migrations through the documented commands; there is no new step-02 migration.
 
 ```sh
-./scripts/local-postgres.sh start
 npm ci --prefix server
 npm run db:generate --prefix server
 npm run db:migrate --prefix server
 npm run db:seed --prefix server
+# In your own Terminal, after PostgreSQL is running:
 npm start --prefix server
 ```
 
-Use the existing ignored `server/.env`; never overwrite it with the example.
-For a fresh clone, copy `.env.example` once and replace its placeholders. The
-verified local PostgreSQL 16.15 route uses port 55432; the example uses 5432 for
-Docker. Docker remains unverified. The root README documents database setup.
-The API defaults to `127.0.0.1:4000`. Stop an older API before starting the new
-code on that port, or override `PORT` for a second local process.
+The API defaults to 127.0.0.1:4000. Agents must not start/stop long-running
+services for this step; the owner starts the exact Terminal commands supplied.
 
-Generate two independent random secrets locally (for example, 48 random bytes
-encoded as base64url for each). Each must be at least 32 UTF-8 bytes and they must
-be different. Startup rejects missing/short secrets and example placeholders.
-Neither secret is logged. These are server-only secrets, never VITE variables.
-
-## Auth overview and endpoints
-
-Every request body must be an uncompressed UTF-8 JSON object with exactly the
-listed fields. The body limit is 16 KiB. Tokens travel in JSON and the Bearer
-Authorization header; no cookies are set. Auth responses and `/api/me` use
-`Cache-Control: no-store`. Errors use `{ "error": { "code": "...", "message": "..." } }`.
-
-The examples below contain placeholders only. Replace them locally; do not put
-real passwords or tokens in shared terminal transcripts or source files.
-
-| Endpoint | Request example | Success |
-| --- | --- | --- |
-| `POST /api/auth/register` | `curl -X POST http://127.0.0.1:4000/api/auth/register -H 'Content-Type: application/json' -d '{"email":"runner@example.com","password":"REPLACE_WITH_A_STRONG_PASSWORD","displayName":"Trail Runner"}'` | 201 session envelope |
-| `POST /api/auth/login` | `curl -X POST http://127.0.0.1:4000/api/auth/login -H 'Content-Type: application/json' -d '{"email":"runner@example.com","password":"REPLACE_WITH_A_STRONG_PASSWORD"}'` | 200 session envelope |
-| `POST /api/auth/refresh` | `curl -X POST http://127.0.0.1:4000/api/auth/refresh -H 'Content-Type: application/json' -d '{"refreshToken":"REPLACE_WITH_REFRESH_TOKEN"}'` | 200 rotated session envelope |
-| `POST /api/auth/logout` | `curl -X POST http://127.0.0.1:4000/api/auth/logout -H 'Content-Type: application/json' -d '{"refreshToken":"REPLACE_WITH_REFRESH_TOKEN"}'` | 204, empty body; idempotent |
-| `GET /api/me` | `curl http://127.0.0.1:4000/api/me -H 'Authorization: Bearer REPLACE_WITH_ACCESS_TOKEN'` | 200 public user |
-
-The session envelope is `{accessToken, refreshToken, expiresIn, user}`. The user
-projection, including `/api/me`, contains only `id`, `email`, `displayName` and
-`createdAt`. The required unique username is generated internally as a random
-30-character identifier; choosing/editing a public handle is a later feature.
-
-Wrong-password login, unknown-email login and duplicate-email registration
-return identical 401 `AUTH_FAILED` bodies. Internal logs distinguish fixed
-reason tags without emails, passwords, tokens, hashes or request content.
-Invalid fields/weak passwords return 400 `INVALID_INPUT`; oversized JSON returns
-413; unsupported body encoding returns 415; limits return 429. Invalid access
-returns 401 `UNAUTHORIZED`. Authenticated suspended/deletion-requested accounts
-receive 403 `ACCOUNT_SUSPENDED` / `ACCOUNT_DELETED`.
-
-## Environment variable names
-
-Real values belong only in ignored local env files. Names only:
+Environment names only (real values stay in ignored env files):
 
 | Purpose | Names |
 | --- | --- |
-| Database and tests | `DATABASE_URL`, `DIRECT_URL`, `DATABASE_URL_TEST`, `DATABASE_URL_API_TEST` |
-| Seed | `ADMIN_EMAIL`, `ADMIN_PASSWORD` |
-| Listener/CORS/general limit | `HOST`, `PORT`, `CORS_ORIGINS`, `API_RATE_LIMIT_MAX`, `API_RATE_LIMIT_WINDOW_MS` |
-| Access signing | `JWT_ACCESS_SECRET` |
-| Refresh successor derivation | `REFRESH_TOKEN_DERIVATION_SECRET` |
+| Database/tests | DATABASE_URL, DIRECT_URL, DATABASE_URL_TEST, DATABASE_URL_API_TEST |
+| Seed | ADMIN_EMAIL, ADMIN_PASSWORD |
+| HTTP/CORS/general limit | HOST, PORT, CORS_ORIGINS, API_RATE_LIMIT_MAX, API_RATE_LIMIT_WINDOW_MS |
+| Session secrets | JWT_ACCESS_SECRET, REFRESH_TOKEN_DERIVATION_SECRET |
+| Google | GOOGLE_WEB_CLIENT_ID |
+| Mail | MAIL_TRANSPORT, WEB_BASE_URL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM |
+| Environment/run gate | NODE_ENV, REQUIRE_VERIFIED_EMAIL_FOR_RUNS |
+| Local Google helper only | GOOGLE_TEST_PORT, GOOGLE_TEST_API_URL |
 
-## Passwords and validation
+Both session secrets must be independent random values of at least 32 UTF-8
+bytes; placeholders and equal secrets are rejected. New server dependencies are
+exact-pinned google-auth-library 11.3.4 and nodemailer 10.5.0. Google requires
+Node 22+, so server engines now match the repository's >=22.12 baseline. Existing
+Zod 4.6.7 and jose 6.2.17 stay pinned. No frontend/Capacitor dependency changed.
 
-Passwords are not trimmed or normalized. Registration accepts 10–128 Unicode
-code points and rejects a small case-insensitive common-password denylist.
-Native asynchronous `node:crypto.scrypt` uses N=32768, r=8, p=3, a fresh 16-byte
-salt and a 32-byte derived key, with `maxmem=64 MiB` (about 32 MiB working memory
-per operation). Fixed-cost versioned hashes encode parameters, salt and key.
-Verification uses `timingSafeEqual`; unknown accounts still perform scrypt.
-New seeded admins use scrypt plus a PASSWORD identity in one transaction.
-Existing bcrypt cost-12 hashes remain valid and upgrade to scrypt only after a
-successful login. Seed reruns never rotate an existing password or escalate a runner.
+MAIL_TRANSPORT defaults to outbox in development and SMTP in production.
+Production rejects outbox and requires a valid HTTPS WEB_BASE_URL and all SMTP
+settings. Port 465 uses implicit TLS; other ports require STARTTLS. Logging/debug
+are disabled, and connection/greeting/socket timeouts are bounded. Outbox writes
+private JSON messages to ignored .local/mail-outbox/ (directory 0700, files 0600).
+These files contain sensitive links: do not share or commit them.
 
-Email is trimmed/lowercased on the server, with ASCII dot-atom local parts of at
-most 64 characters. Plus addressing is preserved; dots are not removed. Unicode
-local parts, quoted locals, empty labels, trailing/consecutive dots and control
-characters are rejected. Unicode domains become lower-case IDNA ASCII. The
-canonical address is at most 254 ASCII characters. Registration, login and rate
-limiting use the same normalization. No browser normalization is trusted.
-Display names are NFKC-normalized, trimmed and space-collapsed (2–60 code points).
-Letters, marks, numbers, spaces, apostrophes, hyphens and periods are allowed.
-Emoji, controls, zero-width/bidi formatting marks and reserved admin/support/
-territory run names are rejected, including compatibility-normalized variants.
+The short text/HTML messages use flat Clay & Pine colours and no images. Links
+are WEB_BASE_URL/verify?token=... and WEB_BASE_URL/reset?token=.... Those production
+web pages are intentionally deferred to step 11; the app deep-link handling is
+step 03. Opening a link never issues a session or signs somebody in.
 
-## Token lifetimes and rotation
+REQUIRE_VERIFIED_EMAIL_FOR_RUNS defaults true in production and false in
+development. It is validated/exported for the future run routes; no run endpoint
+is introduced here.
 
-- Access: HS256 JWT via exact-pinned `jose` 6.2.17; 900 seconds. Payload claims
-  are exactly `sub`, `iat`, `exp`; verification pins the algorithm and checks
-  server time, lifetime, required claims and user status.
-- Refresh: 30 days from issuance/rotation. Initial tokens are 32 random bytes,
-  base64url encoded. Only SHA-256 digests are persisted in `auth_tokens`.
-- Rotated successors are 32-byte HMAC-SHA-256 values using the independent
-  `REFRESH_TOKEN_DERIVATION_SECRET`. The exact UTF-8 HMAC input is
-  `JSON.stringify(['refresh-successor-v1', parentToken, successorId])`.
-- `successorId` is a fresh UUID, used as the successor row's `id` and stored in
-  the parent's `replaced_by_id`. No separate nonce column or raw-token cache is
-  needed. A retry uses the exact resent parent token and that persisted UUID to
-  recompute the successor, then compares its SHA-256 with the stored child hash
-  in constant time before returning it.
-- One retry within 10 seconds may recover that identical, still-active successor.
-  `grace_replayed_at` persists the single redemption across restarts/processes.
-  Further retries inside the window fail with `REFRESH_RETRY_EXHAUSTED` without
-  revoking the family. Reuse after the window revokes every token in the family
-  and returns `REFRESH_REUSED`. Logout also revokes that family, not other logins.
-- All refresh/logout/login mutations lock the user row before modifying token
-  state. This serializes concurrent rotations, family revocation and account
-  status changes; a successor cannot be inserted after a competing revocation.
-- Expiry/grace checks use database server time; JWT validation uses API server
-  time. Client Date/time headers are ignored. Responses expose the server Date
-  header and `expiresIn`; step 4.2 should use these for scheduling refreshes even
-  when a phone clock is wrong, while server checks remain authoritative.
+## Endpoints
 
-Keep the derivation secret stable across restarts and API instances. A changed
-secret fails hash verification during grace and revokes that family. Coordinate
-secret rotation and sign users in again. Changing the JWT secret invalidates
-existing access tokens. There is no persistent raw/encrypted refresh-token store.
+All bodies are strict, uncompressed UTF-8 JSON, limited to 16 KiB. Unknown fields
+are rejected. All errors use {error:{code,message}}. Auth responses are no-store;
+no cookies are used. POST and DELETE are permitted through the existing explicit
+CORS allowlist; Date is exposed. Helmet protections remain enabled.
 
-## Protections and remaining limitations
+| Endpoint | Body / auth | Result |
+| --- | --- | --- |
+| POST /api/auth/register | {email,password,displayName} | 201 session envelope |
+| POST /api/auth/login | {email,password} | 200 session envelope |
+| POST /api/auth/refresh | {refreshToken} | 200 rotated session |
+| POST /api/auth/logout | {refreshToken} | 204, family revoked; idempotent |
+| POST /api/auth/google | {idToken} | 200 session envelope |
+| POST /api/auth/google/link | {idToken}; Bearer | 200 {identities} |
+| GET /api/auth/identities | Bearer; no query fields | 200 {identities}, current user only |
+| POST /api/auth/verify-email/request | {}; Bearer | 202 generic message |
+| POST /api/auth/verify-email/confirm | {token}; optional Bearer | 200 message, never a login |
+| POST /api/auth/password/forgot | {email} | 202 identical generic message |
+| POST /api/auth/password/reset | {token,newPassword}; optional Bearer | 200 message, all sessions revoked |
+| POST /api/auth/password/change | {currentPassword,newPassword}; Bearer | 200 message; retain current family only |
+| GET /api/auth/sessions | Bearer; no query fields | 200 {sessions} |
+| DELETE /api/auth/sessions/:id | Bearer; UUID family id, empty body | 204; another user's/unknown family returns 404 |
+| GET /api/me | Bearer | id,email,displayName,createdAt only |
 
-Protected: transactional user/identity/session creation, database-authoritative
-email uniqueness, password hashing, short access lifetime, rotated refresh
-families with persisted replay detection, strict validation, no sensitive logs,
-explicit CORS allowlist and unchanged Helmet policy. CORS adds POST for auth and
-exposes Date; the origin allowlist and cookie-free policy are preserved.
-Auth limits are 10 requests/15 minutes per IP + canonical email, plus 50 requests/
-15 minutes per IP across auth. The existing general API limiter also applies.
-IP metadata is a keyed HMAC digest with its own domain label; user-agent metadata
-is truncated to 512 characters. Plain IPs are not stored in session rows.
+Session envelopes contain accessToken,refreshToken,expiresIn,user. Identity lists
+contain only the owner's id/provider/emailAtSignup/createdAt/lastUsedAt fields;
+Google sub and credential/token hashes are not returned. Sessions contain family
+id,createdAt,lastUsedAt,deviceLabel,current. Times/counts are derived from token
+rows; no counters are stored. The session whose family matches sid has current:true.
 
-Not yet: email ownership verification, password recovery, MFA, account-management
-UI, Google login/linking, distributed rate-limit storage, production TLS/proxy
-configuration and session-retention jobs. Immediate successful registration
-necessarily reveals that registration succeeded; generic failures do not claim
-full enumeration resistance for the overall signup workflow. Rate limits are
-process-local and reset on restart. Configure a shared store before multiple
-production instances; only set Express trust proxy for explicitly trusted proxies.
-Access JWTs remain usable until expiry after logout unless the account is
-suspended/deletion-requested. Production traffic must use HTTPS; local HTTP is
-only for development. This step does not prove a physical-phone clock/UI flow.
+Example requests (placeholders only):
 
-No future Google identity may be auto-linked merely because its email matches.
-A future provider implementation must verify its subject and require an explicit,
-authenticated account-linking flow. Only the GOOGLE enum value is reserved now.
-An account has at least one identity as an application transaction invariant,
-not a SQL CHECK. `deletion_at IS NOT NULL` blocks refresh immediately; physically
-deleting a user cascades tokens, so an already-erased token is simply invalid.
+```sh
+curl -X POST http://127.0.0.1:4000/api/auth/login -H 'Content-Type: application/json' -d '{"email":"runner@example.test","password":"REPLACE_WITH_PASSWORD"}'
+curl -X POST http://127.0.0.1:4000/api/auth/verify-email/request -H 'Authorization: Bearer REPLACE_WITH_ACCESS_TOKEN' -H 'Content-Type: application/json' -d '{}'
+curl -X POST http://127.0.0.1:4000/api/auth/verify-email/confirm -H 'Content-Type: application/json' -d '{"token":"REPLACE_WITH_EMAIL_TOKEN"}'
+curl -X POST http://127.0.0.1:4000/api/auth/password/forgot -H 'Content-Type: application/json' -d '{"email":"runner@example.test"}'
+curl -X POST http://127.0.0.1:4000/api/auth/password/reset -H 'Content-Type: application/json' -d '{"token":"REPLACE_WITH_RESET_TOKEN","newPassword":"REPLACE_WITH_NEW_PASSWORD"}'
+curl -X POST http://127.0.0.1:4000/api/auth/password/change -H 'Authorization: Bearer REPLACE_WITH_ACCESS_TOKEN' -H 'Content-Type: application/json' -d '{"currentPassword":"REPLACE_WITH_PASSWORD","newPassword":"REPLACE_WITH_NEW_PASSWORD"}'
+curl -X POST http://127.0.0.1:4000/api/auth/google -H 'Content-Type: application/json' -d '{"idToken":"REPLACE_WITH_GOOGLE_ID_TOKEN"}'
+curl -X POST http://127.0.0.1:4000/api/auth/google/link -H 'Authorization: Bearer REPLACE_WITH_ACCESS_TOKEN' -H 'Content-Type: application/json' -d '{"idToken":"REPLACE_WITH_GOOGLE_ID_TOKEN"}'
+curl http://127.0.0.1:4000/api/auth/identities -H 'Authorization: Bearer REPLACE_WITH_ACCESS_TOKEN'
+curl http://127.0.0.1:4000/api/auth/sessions -H 'Authorization: Bearer REPLACE_WITH_ACCESS_TOKEN'
+curl -X DELETE http://127.0.0.1:4000/api/auth/sessions/REPLACE_WITH_FAMILY_UUID -H 'Authorization: Bearer REPLACE_WITH_ACCESS_TOKEN'
+```
 
-## Schema changes for the ER diagram
+Do not paste real credentials/tokens into shared commands or shell history.
+The owner-run auth-proof.js helper passes sensitive curl values through stdin
+and redacts tokens and fixture email addresses in its output.
 
-Migration: `20261112000000_auth_foundation` (the Phase 1 migration is unchanged).
-Application tables: **26 -> 27**, with only `auth_identities` added; reuse
-`auth_tokens`, and do not create a separate refresh_tokens table.
+## Passwords, access tokens and refresh rotation
 
-- New enum: AuthProvider = PASSWORD, GOOGLE.
-- New auth_identities columns: id UUID PK/default gen_random_uuid(); user_id UUID
-  NOT NULL FK users.id ON DELETE CASCADE; provider AuthProvider NOT NULL;
-  provider_subject VARCHAR(255) NOT NULL; email_at_signup VARCHAR(255) NOT NULL;
-  created_at TIMESTAMPTZ(6) NOT NULL/default now(); last_used_at TIMESTAMPTZ(6) NULL.
-  Unique(provider, provider_subject); index(user_id).
-- users: password_hash becomes nullable; add suspended_at TIMESTAMPTZ(6) NULL;
-  add unique expression index users_email_lower_key on lower(email). Preserve
-  the original lowercase CHECK and exact-email unique index.
-- auth_tokens: add family_id UUID NULL, revoked_at TIMESTAMPTZ(6) NULL,
-  replaced_by_id UUID NULL, user_agent TEXT NULL, ip_hash VARCHAR(64) NULL,
-  grace_replayed_at TIMESTAMPTZ(6) NULL. Keep all existing columns/constraints,
-  including used_at. Add index(family_id), self-FK replaced_by_id -> auth_tokens.id
-  ON DELETE/UPDATE NO ACTION, and the three CHECKs below.
-- auth_tokens_refresh_family_check: REFRESH requires family_id; other kinds
-  require a null family_id.
-- auth_tokens_rotation_state_check: a successor link requires a used REFRESH
-  parent and cannot point to itself.
-- auth_tokens_grace_state_check: grace redemption requires a used REFRESH parent
-  with a recorded successor.
+Native async scrypt uses N=32768,r=8,p=3, a random 16-byte salt, a 32-byte key and
+64 MiB maxmem. Constant-time comparison; unknown users still do scrypt. Passwords
+are 10–128 code points, not trimmed/normalized, with a small common-password
+denylist. Legacy cost-12 bcrypt upgrades after successful login. Seed reruns
+preserve existing passwords and create new admin credentials with scrypt.
 
-The migration backfills PASSWORD identities and preserves all password hashes.
-Legacy REFRESH rows get family_id=id and are marked used/revoked because they
-lack rotation history. Password-reset/email-verification rows are untouched.
-No rows/tables/columns are dropped. SQL remains in the reviewed migration file.
+Email is trimmed/lowercased once on the server; plus aliases are preserved;
+local parts are ASCII dot-atoms <=64 chars, Unicode domains become IDNA ASCII,
+and canonical length is <=254. Unsafe/trailing/consecutive dots and Unicode
+local parts are rejected. Display names are NFKC-normalized and unsafe/reserved
+names rejected. Registration creates user+identity+session transactionally;
+database unique indexes arbitrate races, without an email availability pre-check.
 
-## Tests and verification
+Access JWTs use HS256 and live 900 seconds. Payload keys are **exactly sub,sid,iat,
+exp**; sid is the refresh-family UUID. Missing sid, extras, tampering, wrong
+signature, future/expired times or an inactive family are rejected. Old three-
+claim access tokens are 401 and require sign-in again; no data migration is needed.
+Auth middleware checks the account status and an active, unrevoked refresh leaf
+in one SQL query using the existing family index. Logout, session revoke and
+password changes therefore invalidate affected access tokens immediately.
 
-Tests require two disposable PostgreSQL 16 databases. They reject the same URL
-or database name as DATABASE_URL/DIRECT_URL and refuse populated test databases.
-The reset helper validates both names, requires distinct *_test databases and
-recreates only the selected disposable targets; it requires database-owner
-privileges and terminates connections only to those targets.
+Refresh tokens last 30 days. Initial values are 32 random bytes. Successors use
+HMAC-SHA-256 with REFRESH_TOKEN_DERIVATION_SECRET and exact JSON input
+['refresh-successor-v1',parentToken,successorId]. The fresh UUID is the successor
+row id and parent.replaced_by_id. Only digests persist. One retry within 10
+seconds recomputes the same successor and constant-time compares its SHA-256;
+grace_replayed_at persists that redemption across processes/restarts. Further
+in-window retries fail without revocation; later reuse revokes the family.
+
+All credential/session mutations lock the user first. Password change verifies
+the current password and revokes every other family, retaining current sid.
+Password reset verifies the mailbox through the action token, sets/replaces the
+PASSWORD identity, marks verified_at and revokes all refresh families immediately.
+This also gives Google-only users their first password. Pending reset links are
+invalidated on a password change/reset. No confirm/reset response contains tokens.
+
+## Google verification and linking policy
+
+verifyGoogleIdToken wraps google-auth-library. Production checks signature,
+audience against GOOGLE_WEB_CLIENT_ID, issuer, strict server expiry and
+email_verified. All automated tests inject a mocked verifier with a fake client
+ID; adapter tests use a fake library client. No test makes a live Google request.
+Never use email alone to match a returning Google sign-in: use (GOOGLE,sub).
+
+An authoritative Google email is @gmail.com or has a nonempty signed Workspace
+hd claim. For such a collision with an existing PASSWORD account:
+
+- If already verified, attach Google while preserving its password and sessions.
+- If unverified, clear the password hash, remove the inactive PASSWORD identity,
+  revoke every prior refresh family and pending mailbox token, then attach Google
+  and mark the email verified. This neutralizes a pre-registered password.
+
+For any other verified Google email colliding with a PASSWORD account, return
+ACCOUNT_LINK_REQUIRED with the instruction to sign in with the password and link
+Google from Settings. No state changes, revocation or second user are performed.
+A Google-only collision with a different sub gets the generic sign-in error.
+Two subjects with the same email are never merged.
+
+Explicit Google linking requires a valid active access token and a freshly
+verified Google ID token. An unused sub may be attached, including when its email
+differs from the signed-in account, as authorized. A sub already attached to the
+same user returns the identity list idempotently; one attached to anyone else is
+never moved, even when emails match. Another Google sub with the same email is
+rejected. Linking is rate limited and lists only the current user's methods.
+New non-authoritative Google-only accounts must verify their mailbox separately;
+Google's historical email_verified does not set our verified_at for that case.
+
+## Mail delivery, limits and threat notes
+
+Forgot requests take a fixed 250 ms response delay and perform no membership
+lookup before their identical 202 body. Lookup, token transaction and mail happen
+only after the response finishes. Account existence cannot select a different
+response path; event-loop/network load can still affect wall-clock latency.
+The process-local mail queue holds up to 256 tasks; failed delivery logs only a
+fixed reason tag. Jobs/outstanding SMTP sends are not durable across a crash;
+retry the request to receive a fresh link. Outbox is development-only.
+
+Auth endpoints retain the 50-request/15-minute IP backstop and the general API
+limiter. Each route gets its own account/email bucket: 10/15 minutes for core
+sign-in/refresh/logout/Google sign-in; 5/15 minutes for mailbox, password, Google
+link and session writes. Public Google/unknown-token buckets use IP identity.
+Mailbox buckets are canonical email or token owner, shared across IPs. Responses
+include Retry-After when limited. Process-local rate limits need a shared store
+before multiple production instances.
+
+Invalid/missing auth is 401; suspended/deletion-requested accounts get specific
+403 codes. AUTH-10 errors distinguish expired (410), replaced/used (409), wrong
+purpose (400), unknown (404) and a different signed-in account (403), with a next
+step. Optional Bearer on confirmation/reset must be valid if supplied and cannot
+belong to another user. These links never log somebody in by themselves.
+
+Protected: transactional identities, indexed uniqueness, constant-time hashes,
+rotated sessions, immediate revocation, strict input bounds, account ownership,
+explicit CORS and token-free logs. Not yet: MFA, distributed limits/durable mail
+jobs, production TLS/proxy/SMTP deployment, run recording, native auth/deep-link
+UI or verification/reset web pages. Immediate signup success still reveals signup
+success despite generic failure responses. Production traffic must use HTTPS.
+
+## Verify and try one real Google sign-in
 
 ```sh
 node server/scripts/reset-test-databases.js all
 npm test --prefix server
 npm run test:api --prefix server
-# To rerun just one suite, reset only db or api instead of all.
+npm test --prefix web
+npm run lint --prefix web
+npm run build --prefix web
+npm run build --prefix mobile
 ```
 
-Verified: **27 DB tests**, including the original 26-table migration followed by
-27-table auth upgrade, legacy backfill, all constraints and both territory races;
-**34 API tests**, including auth, isolated-process grace recovery and log safety.
-All passed. New tests use explicit test signing/derivation secrets, not local
-private secrets. The real npm-start/curl proof ran on the API test database and
-removed its proof account afterward. No lint/build script is configured for this
-plain Node server; all 20 JavaScript files passed `node --check` and package/lock
-JSON parsed successfully. No dependency audit vulnerabilities were reported.
-See `../docs/EDGE_CASES.md` for the required ID audit and
-`../docs/PHASE4_AUTH_VERIFICATION.md` for real output and the later commit plan.
+The DB/API suites use distinct guarded *_test databases. They never reset or
+write development. The curl proof also uses only the API test database:
 
-No staging, commits, push, branch switching or PR was performed. Existing Phase 3
-files under web/ and AGENTS.md are outside this step and remain unchanged.
+```sh
+node server/scripts/auth-proof.js
+```
+
+Run it in your Terminal as requested; it uses real curl against an owner-run
+short-lived listener, with mocked Google and mail delivery, and cleans its own
+proof account. Tokens and fixture emails are redacted; a private transcript is
+saved to ignored .local/auth-complete/curl-proof.log. It does not prove a real
+Google sign-in or SMTP delivery.
+
+For one real Google sign-in, use a test account; it creates/links a development
+account using the policy above. In your Google Cloud Web OAuth client, authorize
+**http://localhost:5174** as a JavaScript origin. If the consent app is in Testing,
+add your Google test account to its test users. The real Web client ID stays in
+server/.env and is neither printed nor displayed by this helper.
+
+In Terminal 1 (the owner starts PostgreSQL/API; stop any older API yourself first):
+
+```sh
+cd ~/Desktop/Territory-Running-App
+./scripts/local-postgres.sh start
+npm start --prefix server
+```
+
+In Terminal 2:
+
+```sh
+cd ~/Desktop/Territory-Running-App
+npm run auth:google:try --prefix server
+```
+
+Open http://localhost:5174 on the Mac, choose the Google account and look for
+Google sign-in passed plus /api/me accepted. End this test session revokes the
+family. Google renders its official button; tokens live only in page memory,
+never browser storage or console. The helper binds loopback, checks Host/Origin
+and a per-page nonce, and proxies only three fixed local API operations. It uses
+Barlow and Clay & Pine styling without changing web/mobile source. Override
+GOOGLE_TEST_PORT and GOOGLE_TEST_API_URL only for another localhost port/API.
+Press Ctrl+C in your Terminals when done; the agent does not stop your services.
+
+No real Google sign-in or actual SMTP delivery has been verified yet. Unit tests
+cover the adapters with fakes; the helper makes the interactive real attempt
+available without asking you to paste an ID token. No Android permission, APK,
+native UI, Google services key file or phone flow changed in this server step.

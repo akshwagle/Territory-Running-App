@@ -33,7 +33,7 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
       if (!origin || config.origins.includes(origin)) return callback(null, true);
       return callback(Object.assign(new Error('Origin blocked'), { publicCode: 'CORS_ORIGIN_DENIED', statusCode: 403 }));
     },
-    methods: ['GET', 'HEAD', 'OPTIONS', 'POST'],
+    methods: ['GET', 'HEAD', 'OPTIONS', 'POST', 'DELETE'],
     exposedHeaders: ['Date'],
   }));
 
