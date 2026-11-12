@@ -45,7 +45,8 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
   const mailJobs = createMailJobs(logger);
   app.locals.authJobs = mailJobs;
   app.use('/api/auth', createAuthRouter({ prisma, config, logger, clock, mailer, verifyGoogle, mailJobs }));
-  app.get('/api/me', requireAuth({ prisma, config, clock }), (req, res) => res.json(req.authUser));
+  app.get('/api/me', requireAuth({ prisma, config, clock }), (req, res) =>
+    res.json({ ...req.authUser, emailVerified: req.authEmailVerified }));
 
   app.get('/api/health', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
