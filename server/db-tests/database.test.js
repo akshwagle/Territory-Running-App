@@ -99,6 +99,24 @@ test('auth refresh family, rotation and grace CHECKs reject invalid states; hash
   assert.equal((await pool.query('SELECT * FROM auth_tokens WHERE user_id=$1', [runner.id])).rowCount, 0);
 });
 
+test('verification/reset reuse auth_tokens with null families, unique hashes, atomic single use and cascading deletion', async () => {
+  const runner = await user(pool);
+  for (const kind of ['EMAIL_VERIFY', 'PASSWORD_RESET']) {
+    const hash = randomBytes(32).toString('hex');
+    const row = (await pool.query(`INSERT INTO auth_tokens(user_id,kind,token_hash,expires_at,ip_hash)
+      VALUES($1,$2,$3,now()+interval '30 minutes',$4) RETURNING *`, [runner.id,kind,hash,'a'.repeat(64)])).rows[0];
+    assert.equal(row.family_id,null);
+    await rejectsSql(() => pool.query(`INSERT INTO auth_tokens(user_id,kind,token_hash,expires_at)
+      VALUES($1,$2,$3,now()+interval '30 minutes')`,[runner.id,kind,hash]),'23505','auth_tokens_token_hash_key');
+    const use = () => pool.query(`UPDATE auth_tokens SET used_at=clock_timestamp()
+      WHERE id=$1 AND kind=$2 AND used_at IS NULL AND expires_at>clock_timestamp() RETURNING id`,[row.id,kind]);
+    const attempts = await Promise.all([use(),use()]);
+    assert.equal(attempts.reduce((n,r)=>n+r.rowCount,0),1);
+  }
+  await pool.query('DELETE FROM users WHERE id=$1',[runner.id]);
+  assert.equal((await pool.query('SELECT * FROM auth_tokens WHERE user_id=$1',[runner.id])).rowCount,0);
+});
+
 test('AUTH-01 unique lower(email) expression index is valid and active alongside the original lowercase CHECK', async () => {
   const { rows: [index] } = await pool.query(`SELECT i.indisunique, i.indisvalid, pg_get_expr(i.indexprs,i.indrelid) AS expression
     FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE c.relname='users_email_lower_key'`);
