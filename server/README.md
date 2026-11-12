@@ -107,13 +107,18 @@ CORS allowlist; Date is exposed. Helmet protections remain enabled.
 | POST /api/auth/password/change | {currentPassword,newPassword}; Bearer | 200 message; retain current family only |
 | GET /api/auth/sessions | Bearer; no query fields | 200 {sessions} |
 | DELETE /api/auth/sessions/:id | Bearer; UUID family id, empty body | 204; another user's/unknown family returns 404 |
-| GET /api/me | Bearer | id,email,displayName,createdAt only |
+| GET /api/me | Bearer | id,email,displayName,createdAt,emailVerified only |
 
 Session envelopes contain accessToken,refreshToken,expiresIn,user. Identity lists
 contain only the owner's id/provider/emailAtSignup/createdAt/lastUsedAt fields;
 Google sub and credential/token hashes are not returned. Sessions contain family
 id,createdAt,lastUsedAt,deviceLabel,current. Times/counts are derived from token
 rows; no counters are stored. The session whose family matches sid has current:true.
+
+The step-03 app reads emailVerified from GET /api/me. This boolean is derived
+from the signed-in user's existing users.verified_at in the existing middleware
+query. No schema change or other response field was added; session-envelope
+user objects keep their original four fields.
 
 Example requests (placeholders only):
 
