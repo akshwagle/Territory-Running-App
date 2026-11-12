@@ -1,0 +1,12 @@
+@theme {
+  --color-paper: #F3EEE4;
+  --color-paper-2: #E9E2D3;
+  --color-line: #D5CCB8;
+  --color-ink: #1F2421;
+  --color-muted: #5A5F58;
+  --color-pine: #1F5A46;
+  --color-pine-deep: #14392C;
+  --color-clay: #B8452A;
+  --font-body: 'Barlow', sans-serif;
+  --font-heading: 'Barlow Condensed', sans-serif;
+}
