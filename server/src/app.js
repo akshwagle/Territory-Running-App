@@ -13,7 +13,7 @@ const { createMailJobs } = require('./auth/mailer');
 function errorBody(code, message) { return { error: { code, message } }; }
 function notFound(res) { return res.status(404).json(errorBody('NOT_FOUND', 'The requested resource was not found.')); }
 
-function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../storage/apk'), logger = console.info, clock = () => new Date(), mailer }) {
+function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../storage/apk'), logger = console.info, clock = () => new Date(), mailer, verifyGoogle }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -44,7 +44,7 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
   }));
   const mailJobs = createMailJobs(logger);
   app.locals.authJobs = mailJobs;
-  app.use('/api/auth', createAuthRouter({ prisma, config, logger, clock, mailer, mailJobs }));
+  app.use('/api/auth', createAuthRouter({ prisma, config, logger, clock, mailer, verifyGoogle, mailJobs }));
   app.get('/api/me', requireAuth({ prisma, config, clock }), (req, res) => res.json(req.authUser));
 
   app.get('/api/health', async (_req, res) => {
