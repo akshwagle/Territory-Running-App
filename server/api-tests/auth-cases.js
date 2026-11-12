@@ -13,7 +13,7 @@ const { issueAccessToken, tokenHash, successorToken, ACCESS_SECONDS } = require(
 module.exports = function authCases({ prisma, pool, config, isolated }) {
   const makeApp = (overrides = {}, extra = {}) => createApp({ prisma,
     config: { ...config, rateLimitMax: 10000, authRateLimitMax: 1000, authIpRateLimitMax: 1000, ...overrides },
-    logger: () => {}, ...extra });
+    logger: () => {}, verifyGoogle: async () => { throw new Error('Mock rejects unused Google verification.'); }, ...extra });
   const credentials = (overrides = {}) => ({ email: `${randomUUID()}@example.test`,
     password: 'Maple!RiverTrail2026', displayName: 'Trail Runner', ...overrides });
   async function register(app, input = credentials()) {
@@ -130,12 +130,12 @@ module.exports = function authCases({ prisma, pool, config, isolated }) {
     const account = await register(app);
     error(await request(app).get('/api/me'), 401, 'UNAUTHORIZED');
     error(await request(app).get('/api/me').set('Authorization', 'Bearer invalid'), 401, 'UNAUTHORIZED');
-    const bad = await issueAccessToken(account.user.id, 'a-different-secret-at-least-32-bytes-long', new Date());
+    const bad = await issueAccessToken(account.user.id, JSON.parse(Buffer.from(account.accessToken.split('.')[1], 'base64url')).sid, 'a-different-secret-at-least-32-bytes-long', new Date());
     error(await request(app).get('/api/me').set('Authorization', `Bearer ${bad}`), 401, 'UNAUTHORIZED');
-    const expired = await issueAccessToken(account.user.id, config.jwtAccessSecret, new Date(Date.now() - 901000));
+    const expired = await issueAccessToken(account.user.id, JSON.parse(Buffer.from(account.accessToken.split('.')[1], 'base64url')).sid, config.jwtAccessSecret, new Date(Date.now() - 901000));
     error(await request(app).get('/api/me').set('Authorization', `Bearer ${expired}`), 401, 'UNAUTHORIZED');
     const { SignJWT } = await import('jose');
-    const extra = await new SignJWT({ role: 'ADMIN' }).setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    const extra = await new SignJWT({ role: 'ADMIN', sid: JSON.parse(Buffer.from(account.accessToken.split('.')[1], 'base64url')).sid }).setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
       .setSubject(account.user.id).setIssuedAt().setExpirationTime('15m').sign(new TextEncoder().encode(config.jwtAccessSecret));
     error(await request(app).get('/api/me').set('Authorization', `Bearer ${extra}`), 401, 'UNAUTHORIZED');
     const futureApp = makeApp({}, { clock: () => new Date(Date.now() + 901000) });
@@ -230,7 +230,7 @@ module.exports = function authCases({ prisma, pool, config, isolated }) {
     const now = Date.now();
     assert.ok(Math.abs(Date.parse(account.response.headers.date) - now) < 2000);
     const claims = JSON.parse(Buffer.from(account.accessToken.split('.')[1], 'base64url').toString());
-    assert.deepEqual(Object.keys(claims).sort(), ['exp', 'iat', 'sub']);
+    assert.deepEqual(Object.keys(claims).sort(), ['exp', 'iat', 'sid', 'sub']);
     assert.equal(claims.exp - claims.iat, 900);
     assert.equal(account.expiresIn, 900);
     for (const offset of [-6, 6]) {

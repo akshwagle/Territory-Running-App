@@ -40,5 +40,13 @@ const refreshToken = z.string().refine(isRefreshToken);
 const registerBody = z.strictObject({ email, password, displayName });
 const loginBody = z.strictObject({ email, password: z.string().min(1).refine((value) => [...value].length <= 128) });
 const refreshBody = z.strictObject({ refreshToken });
+const actionBody = z.strictObject({ token: refreshToken });
+const resetBody = z.strictObject({ token: refreshToken, newPassword: password });
+const forgotBody = z.strictObject({ email });
+const changeBody = z.strictObject({ currentPassword: z.string().min(1).refine(value => [...value].length <= 128), newPassword: password });
+const googleBody = z.strictObject({ idToken: z.string().min(10).max(8192) });
+const emptyBody = z.strictObject({});
+const sessionParams = z.strictObject({ id: z.uuid() });
 
-module.exports = { normalizeEmail, normalizeDisplayName, isRefreshToken, registerBody, loginBody, refreshBody };
+module.exports = { normalizeEmail, normalizeDisplayName, isRefreshToken, registerBody, loginBody, refreshBody,
+  actionBody, resetBody, forgotBody, changeBody, googleBody, emptyBody, sessionParams };
