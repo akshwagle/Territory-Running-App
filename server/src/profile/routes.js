@@ -12,7 +12,7 @@ const {createExportService}=require('./exports');
 const {createDeletionService}=require('./deletion');
 
 const deleteBody=z.union([
-  z.strictObject({confirmation:z.literal('DELETE'),password:z.string().min(1).max(128)}),
+  z.strictObject({confirmation:z.literal('DELETE'),password:z.string().min(1).refine(value=>[...value].length<=128)}),
   z.strictObject({confirmation:z.literal('DELETE'),idToken:z.string().min(10).max(8192)}),
 ]);
 function createProfileRouter(options) {

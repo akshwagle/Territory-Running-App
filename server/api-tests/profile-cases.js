@@ -225,6 +225,7 @@ module.exports=function profileCases({prisma,pool,config}) {
     const results=await Promise.all([post(f,a,'/api/me/export'),post(f,a,'/api/me/export')]);results.forEach(r=>assert.equal(r.status,202));
     assert.equal(results[0].body.export.id,results[1].body.export.id);await f.app.locals.profileJobs.drain();const id=results[0].body.export.id;
     const output=await get(f,a,`/api/me/export/${id}`);assert.equal(output.status,200);assert.match(output.headers['content-disposition'],/attachment/);
+    assert.equal((await get(f,a,`/api/me/export/${id.toUpperCase()}`)).status,200);
     assert.equal(output.body.runs.length,1);assert.equal(output.body.runs[0].points[0].lat,1);assert.equal(output.body.runs[0].hexes[0].previousOwner,'Runner');
     const serialized=JSON.stringify(output.body);for(const secret of [b.user.id,b.user.email,b.user.displayName,a.accessToken,a.refreshToken,'passwordHash','encryptionKey'])assert.equal(serialized.includes(secret),false,secret==='passwordHash'?secret:'private value');
     const file=await fs.readFile(path.join(f.exportDir,`${id}.enc`));assert.equal(file.includes(Buffer.from(a.user.email)),false);assert.equal((await fs.stat(path.join(f.exportDir,`${id}.enc`))).mode&0o777,0o600);
@@ -290,5 +291,12 @@ module.exports=function profileCases({prisma,pool,config}) {
     try {await waiting;assert.equal((await remove(f,a)).status,204);}
     finally {release();await job;}
     assert.equal(delivered.length,0);
+  });
+  test('account deletion accepts the same 128-code-point Unicode password contract as registration and login',async t=>{
+    const f=await fixture(t),unicode='🌲'.repeat(128);
+    const registered=await request(f.app).post('/api/auth/register').send({email:`${randomUUID()}@example.test`,displayName:`Unicode ${randomUUID().slice(0,8)}`,password:unicode});
+    assert.equal(registered.status,201);f.accounts.push(registered.body);
+    error(await remove(f,registered.body,{confirmation:'DELETE',password:'🌲'.repeat(129)}),400,'INVALID_INPUT');
+    assert.equal((await remove(f,registered.body,{confirmation:'DELETE',password:unicode})).status,204);
   });
 };

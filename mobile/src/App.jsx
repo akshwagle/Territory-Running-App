@@ -8,6 +8,7 @@ import { WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage }
 import { HomePage, SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
 
 import { ProfilePage, PrivacyPage } from './pages/profile-pages.jsx';
+import { ConsentPage, ExportPage, DeletePage } from './pages/data-pages.jsx';
 
 export function UpdateBanner({ api, versionCode, downloadUrl }) {
   const [attempt, setAttempt] = useState(0), [state, setState] = useState({ phase: 'loading' });
@@ -95,6 +96,8 @@ export function App({ downloadUrl, nativeWatch = watchNativeAuth }) {
               <Route path="/home" element={<Protected><HomePage /></Protected>} /><Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
               <Route path="/settings/methods" element={<Protected><MethodsPage /></Protected>} /><Route path="/settings/sessions" element={<Protected><SessionsPage /></Protected>} />
               <Route path="/settings/profile" element={<Protected><ProfilePage /></Protected>} /><Route path="/settings/privacy" element={<Protected><PrivacyPage /></Protected>} />
+              <Route path="/settings/consent" element={<Protected><ConsentPage /></Protected>} /><Route path="/settings/export" element={<Protected><ExportPage /></Protected>} />
+              <Route path="/settings/delete" element={<Protected><DeletePage /></Protected>} />
               <Route path="/settings/password" element={<Protected><ChangePasswordPage /></Protected>} />
               <Route path="*" element={<section><h1>Page not found</h1><Link className="button secondary" to="/">Go home</Link></section>} />
             </Routes>

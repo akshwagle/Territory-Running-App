@@ -85,6 +85,7 @@ export function PrivacyPage() {
     <PrivacyForm initial={data.value.privacy} save={body=>auth.api.request('/api/me/privacy',{method:'PATCH',body})}/>
     <h2 className="section-title">Location consent</h2><p>Withdrawing stops recording on this phone immediately. Other devices must check the server before sending new points.</p>
     <button className="secondary" disabled={busy} onClick={withdraw}>{busy?'Working…':'Withdraw location consent'}</button>
+    <Link className="text-link" to="/settings/consent">Read consent and history</Link>
   </>}{withdrawn&&<Notice>Recording is stopped. Saved points stay encrypted. {remaining?'Choose whether to upload the earlier points or discard them.':'There is no unsent data on this phone.'}</Notice>}
     {withdrawn&&remaining>0&&<div className="stack"><button className="secondary" disabled={busy} onClick={()=>saved('upload')}>Upload earlier points</button><button className="danger" disabled={busy} onClick={()=>setConfirmDiscard(true)}>Discard saved points…</button>
       {confirmDiscard&&<div className="confirm-panel"><p>This permanently erases the saved points. They cannot be recovered.</p><button className="danger" disabled={busy} onClick={()=>saved('discard')}>Yes, discard saved points</button><button className="secondary" onClick={()=>setConfirmDiscard(false)}>Keep encrypted points</button></div>}</div>}

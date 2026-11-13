@@ -5,6 +5,7 @@ import {MemoryRouter} from 'react-router';
 import {AuthContext} from '../auth/context.jsx';
 import {ApiError} from '../auth/errors.js';
 import {ProfilePage,PrivacyPage} from './profile-pages.jsx';
+import {ConsentPage,DeletePage,ExportPage} from './data-pages.jsx';
 
 const profile={id:'me',displayName:'Trail Runner',avatarId:0,avatarColor:'#1F5A46',preferredUnits:'km',bio:'',homeRegionId:null};
 const types=['LOCATION','TERMS','PRIVACY'];
@@ -34,7 +35,7 @@ it('profile shows conflict without losing the edited name and handles an empty r
   screen.getByLabelText('Display name').value='Taken Name';await user.click(screen.getByRole('button',{name:'Save profile'}));
   expect(await screen.findByRole('alert')).toHaveTextContent('unavailable');expect(screen.getByLabelText('Display name')).toHaveValue('Taken Name');
 });
-it.each([ProfilePage,PrivacyPage])('%s shows offline error and retry instead of blank content',async Page=>{
+it.each([ProfilePage,PrivacyPage,ConsentPage,DeletePage])('%s shows offline error and retry instead of blank content',async Page=>{
   const {auth,user}=setup(Page,async()=>{throw new ApiError('NETWORK_UNAVAILABLE','Cannot reach the server.');});
   expect(await screen.findByRole('alert')).toHaveTextContent('Cannot reach');const calls=auth.api.request.mock.calls.length;await user.click(screen.getByRole('button',{name:'Try again'}));
   await waitFor(()=>expect(auth.api.request.mock.calls.length).toBeGreaterThan(calls));
@@ -52,4 +53,37 @@ it('PRIV-02 withdrawal keeps saved data and offers upload or a second explicit d
   expect(auth.pending.stopRecording).toHaveBeenCalledWith('me','consent-withdrawn');await screen.findByText(/Choose whether to upload/);
   expect(auth.pending.discard).not.toHaveBeenCalled();await user.click(screen.getByRole('button',{name:'Discard saved points…'}));expect(auth.pending.discard).not.toHaveBeenCalled();
   await user.click(screen.getByRole('button',{name:'Yes, discard saved points'}));expect(auth.pending.discard).toHaveBeenCalledWith('me','DISCARD_UNSENT_DATA');
+});
+it('PRIV-03 consent shows versioned notices and empty history, sends each revision and reports success',async()=>{
+  const {auth,user}=setup(ConsentPage,async()=>notices());
+  await screen.findByRole('button',{name:'Accept current notices'});expect(screen.getByText(/Android edition/)).toBeVisible();expect(screen.getAllByText(/Version v1/)).toHaveLength(3);
+  expect(screen.getByText('You have not recorded any consent choices.')).toBeInTheDocument();await user.click(screen.getByRole('button',{name:'Accept current notices'}));
+  await screen.findByText('Your consent choices are saved.');
+  for(const type of types)expect(auth.api.request).toHaveBeenCalledWith('/api/me/consents',{method:'POST',ifMatch:`"${type}:none"`,body:{type,version:'v1',accepted:true}});
+});
+it('PRIV-04 delete flow requires typed DELETE and an extra unsent-data tap before invoking auth deletion',async()=>{
+  const {auth,user}=setup(DeletePage,async()=>({identities:[{provider:'PASSWORD'}]}),{pendingCount:vi.fn(async()=>1)});
+  await screen.findByLabelText('Type DELETE');await user.click(screen.getByRole('button',{name:'Delete my account'}));expect(screen.getByRole('alert')).toHaveTextContent('Type DELETE');
+  await user.type(screen.getByLabelText('Type DELETE'),'DELETE');await user.type(screen.getByLabelText('Password'),'private');
+  await user.click(screen.getByRole('button',{name:'Delete my account'}));await screen.findByRole('dialog');expect(auth.deleteAccount).not.toHaveBeenCalled();
+  await user.click(screen.getByRole('button',{name:'Yes, erase unsent data and delete account'}));expect(auth.deleteAccount).toHaveBeenCalledWith({confirmation:'DELETE',password:'private',method:'password',eraseUnsent:true});
+});
+it('Google-only deletion requests fresh Google reauthentication and shows server rejection without claiming success',async()=>{
+  const {auth,user}=setup(DeletePage,async()=>({identities:[{provider:'GOOGLE'}]}),{deleteAccount:vi.fn(async()=>{throw new ApiError('REAUTHENTICATION_REQUIRED','Sign in to Google again.',401);})});
+  await screen.findByLabelText('Type DELETE');expect(screen.queryByLabelText('Password')).toBeNull();await user.type(screen.getByLabelText('Type DELETE'),'DELETE');
+  await user.click(screen.getByRole('button',{name:'Delete my account'}));expect(await screen.findByRole('alert')).toHaveTextContent('Google again');expect(auth.deleteAccount).toHaveBeenCalledWith({confirmation:'DELETE',method:'google'});
+});
+it('PRIV-06 export handles pending, ready and Android share states without displaying sensitive JSON',async()=>{
+  const sharing={send:vi.fn(async()=>{})};let downloads=0;
+  const {user}=setup(()=> <ExportPage sharing={sharing}/>,async(_url,options)=>options?.method==='POST'?{export:{id:'own-export',expiresAt:new Date(Date.now()+86400000).toISOString()}}:
+    ++downloads===1?{export:{status:'PENDING'}}:{profile:{email:'never-render@example.test'},runs:[{points:[{lat:12}]}]});
+  await user.click(screen.getByRole('button',{name:'Request export'}));await user.click(await screen.findByRole('button',{name:'Check export'}));expect(await screen.findByText(/still being prepared/)).toBeVisible();
+  await user.click(screen.getByRole('button',{name:'Check export'}));await user.click(await screen.findByRole('button',{name:'Share JSON'}));
+  expect(sharing.send).toHaveBeenCalledWith(expect.objectContaining({profile:{email:'never-render@example.test'}}));expect(screen.queryByText('never-render@example.test')).toBeNull();expect(await screen.findByText(/temporary file was removed/)).toBeVisible();
+});
+it('export reports offline and expiry errors and permits a new request',async()=>{
+  const {auth,user}=setup(ExportPage,async()=>{throw new ApiError('NETWORK_UNAVAILABLE','Cannot reach the server.');});
+  await user.click(screen.getByRole('button',{name:'Request export'}));expect(await screen.findByRole('alert')).toHaveTextContent('Cannot reach');
+  auth.api.request.mockResolvedValueOnce({export:{id:'expired',expiresAt:new Date().toISOString()}}).mockRejectedValueOnce(new ApiError('NOT_FOUND','The export has expired.',404));
+  await user.click(screen.getByRole('button',{name:'Request export'}));await user.click(await screen.findByRole('button',{name:'Check export'}));expect(await screen.findByRole('alert')).toHaveTextContent('expired');
 });

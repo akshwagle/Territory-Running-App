@@ -410,3 +410,17 @@ The build uses the existing debug key. PostgreSQL startup/migration/seed and the
 API tests use an additional `DATABASE_URL_API_TEST` so they do not reuse the DB suite's populated database or touch development. Both `localhost:5173` and `127.0.0.1:5173` are allowed for the local website, alongside the required Capacitor origins. The health 503 envelope follows the explicit endpoint contract. The AndroidX app-private signature permission is retained for receiver protection, beyond the sole platform permission INTERNET.
 
 For tooling compatibility with Node 22.19, the web tests use jsdom 27.4.0. ESLint's minimatch is overridden to 11.0.1 to remove its transitive glob advisory; web tests, lint and build pass with the override. The existing Prisma override is retained. npm installation/audit reported zero vulnerabilities for all three folders.
+
+
+## Current work: Phase 4 step 04
+
+The approved profile/privacy migration brings the database to **30 application
+tables**. Before applying it to development, the private backup was verified;
+the owner confirmed existing-account sign-in/Settings still works. Profile,
+privacy, append-only consent, atomic deletion and encrypted 24-hour exports are
+implemented in /server, with matching Android settings in /mobile. See
+[server contracts](server/README.md), [mobile phone guide](mobile/README.md) and
+[the review and schema inventory](docs/PHASE4_PROFILE_PRIVACY_REVIEW.md). Earlier
+phase results above remain historical. Step-04 profile, privacy, consent, native sharing and throwaway-account deletion
+passed on the owner's phone; the original account still works with its choices
+intact. Recording and upload integration remain Phase 4 step 05. No later step is started.
