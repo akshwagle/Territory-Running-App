@@ -264,9 +264,10 @@ module.exports = function authCases({ prisma, pool, config, isolated }) {
   test('AUTH-11 email edge forms normalize consistently and unsafe or reserved display names are rejected', async () => {
     const app = makeApp();
     const id = randomUUID();
-    const account = await register(app, credentials({ email: ` ${id}+RUN@EXAMPLE.TEST `, displayName: '  Ｔｒａｉｌ   Runner  ' }));
+    const expectedName = `Trail ${id.slice(0, 8)}`;
+    const account = await register(app, credentials({ email: ` ${id}+RUN@EXAMPLE.TEST `, displayName: `  Ｔｒａｉｌ   ${id.slice(0, 8)}  ` }));
     assert.equal(account.user.email, `${id}+run@example.test`);
-    assert.equal(account.user.displayName, 'Trail Runner');
+    assert.equal(account.user.displayName, expectedName);
     const login = await request(app).post('/api/auth/login').send({ email: ` ${id}+RuN@Example.Test `, password: account.input.password });
     assert.equal(login.status, 200);
     const unicodeDomain = await register(app, credentials({ email: `${randomUUID()}@bücher.example` }));

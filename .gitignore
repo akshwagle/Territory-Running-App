@@ -23,3 +23,4 @@ local.properties
 /.android/
 /server/storage/apk/*
 !/server/storage/apk/.gitkeep
+/server/storage/exports/

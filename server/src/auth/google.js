@@ -1,6 +1,7 @@
 'use strict';
 const { OAuth2Client } = require('google-auth-library');
-const { normalizeEmail, normalizeDisplayName } = require('./validation');
+const { normalizeEmail } = require('./validation');
+const { normalizeGoogleName } = require('../profile/names');
 
 async function verifyGoogleIdToken(idToken, config, { client = new OAuth2Client(config.googleWebClientId) } = {}) {
   // Library verifies Google's signature/certificates, audience, issuer and time.
@@ -14,7 +15,7 @@ function googleClaims(payload, audience, now) {
   if (payload.email_verified !== true) throw Object.assign(new Error('Unverified Google email.'), { code: 'GOOGLE_EMAIL_UNVERIFIED' });
   const email = normalizeEmail(payload.email);
   if (!email) throw new Error('Invalid Google identity.');
-  return { sub: payload.sub, email, name: normalizeDisplayName(payload.name) || 'Runner',
+  return { sub: payload.sub, email, name: normalizeGoogleName(payload.name),
     authoritative: email.endsWith('@gmail.com') || (typeof payload.hd === 'string' && payload.hd.length > 0) };
 }
 module.exports = { verifyGoogleIdToken, googleClaims };

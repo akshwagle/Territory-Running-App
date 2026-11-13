@@ -11,6 +11,24 @@ async function fixture(fetchImpl, extras = {}) {
   return { api, vault, storage, onSessionLost, onAccountBlocked };
 }
 
+it('PRIV-02 consent revision survives the single refresh and replay without weakening authorization',async()=>{
+  const fetchImpl=vi.fn(async(url,options)=>{
+    if(url.endsWith('/refresh'))return response(200,session('new'));
+    expect(options.headers['If-Match']).toBe('"LOCATION:12"');
+    return options.headers.Authorization.includes('.old.')?denied():response(200,{accepted:true});
+  });
+  const f=await fixture(fetchImpl);
+  expect(await f.api.request('/api/me/consents',{method:'POST',ifMatch:'"LOCATION:12"',body:{type:'LOCATION',version:'v1',accepted:true}})).toEqual({accepted:true});
+  expect(fetchImpl).toHaveBeenCalledTimes(3);expect(f.onSessionLost).not.toHaveBeenCalled();
+});
+it('deletion reauthentication errors do not rotate or discard a valid existing session',async()=>{
+  const fetchImpl=vi.fn(async()=>response(401,{error:{code:'REAUTHENTICATION_REQUIRED',message:'Confirm your password.'}}));
+  const f=await fixture(fetchImpl);
+  await expect(f.api.request('/api/me',{method:'DELETE',body:{confirmation:'DELETE',password:'wrong'}})).rejects.toMatchObject({code:'REAUTHENTICATION_REQUIRED'});
+  expect(fetchImpl).toHaveBeenCalledOnce();expect(f.vault.snapshot().session.accessToken).toBe(session().accessToken);
+  expect(f.onSessionLost).not.toHaveBeenCalled();
+});
+
 describe('API refresh and session boundaries', () => {
   it('AUTH-03 parallel expired requests share one refresh and replay each request exactly once', async () => {
     let rotations = 0, originals = 0, replays = 0;

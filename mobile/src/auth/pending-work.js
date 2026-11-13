@@ -45,6 +45,9 @@ export function createPendingWork(journal) {
     pause() { owner = null; for (const source of sources.values()) source.pause?.(); },
     resume(ownerId) { if (owner !== ownerId) work.pause(); owner = ownerId; for (const source of sources.values()) source.resume?.(ownerId); },
     isPaused: () => owner === null,
+    async stopRecording(ownerId,reason) {
+      for(const source of sources.values())await source.stopRecording?.(ownerId,reason);
+    },
     async count(ownerId) { const counts = await Promise.all([...sources.values()].map(source => source.count(ownerId))); return counts.reduce((sum, n) => sum + n, 0); },
     async upload(ownerId) {
       if (!ownerId || owner !== ownerId) throw new ApiError('UNAUTHORIZED', 'Sign in to the account that owns the saved data first.', 401);

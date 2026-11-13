@@ -12,6 +12,7 @@ const refreshFailure = (reason, code = 'INVALID_REFRESH_TOKEN') => ({ failure: {
   status: 401, code, message: 'This session cannot be renewed. Please sign in again.', reason,
 } });
 const { accountFailure, publicUser, databaseNow, lockUser, revokeFamily, createSessionTools } = require('./session-core');
+const { allocateDisplayName } = require('../profile/names');
 
 function createAuthService({ prisma, config }) {
   const { metadata, response, newFamily } = createSessionTools(config);
@@ -22,9 +23,10 @@ function createAuthService({ prisma, config }) {
     try {
       return await prisma.$transaction(async (tx) => {
         const now = await databaseNow(tx);
+        const displayName = await allocateDisplayName(tx, input.displayName);
         const user = await tx.user.create({ data: {
           username: `u_${randomBytes(14).toString('hex')}`, email: input.email,
-          passwordHash, displayName: input.displayName,
+          passwordHash, displayName,
           authIdentities: { create: { provider: 'PASSWORD', providerSubject: input.email,
             emailAtSignup: input.email, lastUsedAt: now } },
         } });
