@@ -34,7 +34,7 @@ export function AuthForm({ kind, fields, submitLabel, busyLabel, onSubmit, onSuc
       <legend className="sr-only">{submitLabel}</legend>
       {fields.map(field => <TextField key={field.name} id={field.name} name={field.name} label={field.label} required type={field.type || 'text'}
         autoComplete={field.autoComplete} autoCapitalize={field.name === 'displayName' ? 'words' : 'none'} autoCorrect="off" spellCheck={false}
-        inputMode={field.type === 'email' ? 'email' : undefined} error={errors[field.name]} help={field.help} enterKeyHint={field === fields.at(-1) ? 'go' : 'next'} />)}
+        inputMode={field.type === 'email' ? 'email' : undefined} dir={field.name === 'displayName' ? 'auto' : undefined} error={errors[field.name]} help={field.help} enterKeyHint={field === fields.at(-1) ? 'go' : 'next'} />)}
       <Button type="submit" loading={busy}>{busy ? busyLabel || 'Working…' : submitLabel}</Button>
     </fieldset>
     <Notice error>{failure}</Notice><Notice>{success}</Notice>

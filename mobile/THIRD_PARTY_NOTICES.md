@@ -228,3 +228,30 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+## UI foundation additions
+
+@capacitor/keyboard **8.0.6** and @capacitor/splash-screen **8.0.2** are MIT,
+unmodified, peer @capacitor/core >=8. Their Ionic MIT terms match the Capacitor
+plugin licence reproduced above. SystemBars is part of the existing Capacitor
+8.6.0 core; no status-bar dependency was added.
+
+**sharp 0.35.5**, Apache-2.0, is development-only in /mobile. It generates our
+own hex assets and is never imported by the app or bundled into the APK. Its
+upstream licence remains in the development package. No generator runtime is
+redistributed in the application.
+
+**Google Sans Version 14.000;[08f2ac800]**, SIL Open Font License 1.1, is used
+only by Google's button. The approved subset is 4,132 bytes (WOFF), static
+weight 500. The exact official pinned source URL, modification description and
+full upstream licence text are in
+[src/assets/google/THIRD_PARTY_NOTICES.md](src/assets/google/THIRD_PARTY_NOTICES.md),
+next to the font file. No new npm font dependency is installed.
+
+The unmodified Google G comes from
+https://developers.google.com/static/identity/images/g-logo.png and follows
+https://developers.google.com/identity/branding-guidelines. It retains Google's
+standard colours and is not licensed by the Google Sans OFL. Territory Run's
+cluster, icons, avatar and hex art are our own SVG geometry, reused from the
+existing website brand. No competitor graphics or icon package are included.

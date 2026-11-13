@@ -86,7 +86,7 @@ export function MethodsPage() {
       {!data.value.identities.some(identity => identity.provider === 'GOOGLE') && <GoogleButton link onLinked={() => { setLinked(true); data.reload(); }} />}
       <Notice>{linked ? 'Google is linked to your account.' : ''}</Notice>
     </>}
-    
+
   </section>;
 }
 
@@ -122,6 +122,6 @@ export function ChangePasswordPage() {
       <AuthForm kind="change" fields={[{ name: 'currentPassword', label: 'Current password', type: 'password', autoComplete: 'current-password' }, newPasswordField]}
         submitLabel="Change password" busyLabel="Changing password…" onSubmit={body => auth.api.request('/api/auth/password/change', { method: 'POST', body })} />
     </> : <><p>You sign in with Google. To set your first password, request a password reset link and confirm it from your email.</p><Link className="button secondary" to="/forgot">Set a password</Link></>)}
-    
+
   </section>;
 }

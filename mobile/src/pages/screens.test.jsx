@@ -214,13 +214,14 @@ it('app bootstrap, offline, blocked and verification states are explicit; resume
   act(() => auth.emit({ ...signedIn(), status: 'blocked', message: 'Account suspended. Data stays encrypted.' })); expect(screen.getByRole('heading', { name: 'Account unavailable' })).toBeVisible();
 });
 
-it.each(['newer', 'empty', 'current', 'error'])('update check supports the %s state without blocking auth', async mode => {
-  const api = { request: vi.fn(async () => { if (mode === 'empty') throw new ApiError('NO_RELEASE', 'None.', 404); if (mode === 'error') throw new ApiError('NETWORK_UNAVAILABLE', 'Offline.'); return { versionCode: mode === 'newer' ? 4 : 2 }; }) };
+it.each(['newer', 'empty', 'current', 'preview', 'error'])('update check supports the %s state without blocking auth', async mode => {
+  const api = { request: vi.fn(async () => { if (mode === 'empty') throw new ApiError('NO_RELEASE', 'None.', 404); if (mode === 'error') throw new ApiError('NETWORK_UNAVAILABLE', 'Offline.'); return { versionCode: mode === 'newer' ? 4 : mode === 'preview' ? 2 : 3 }; }) };
   view(<UpdateBanner api={api} versionCode={3} downloadUrl="https://territory.test/#download" />);
   expect(screen.getByText('Checking for updates…')).toBeVisible();
   if (mode === 'newer') expect(await screen.findByRole('link', { name: 'Open download page' })).toHaveAttribute('href', 'https://territory.test/#download');
   else if (mode === 'empty') expect(await screen.findByText('No published update yet.')).toBeVisible();
   else if (mode === 'current') expect(await screen.findByText('You have the latest published build.')).toBeVisible();
+  else if (mode === 'preview') expect(await screen.findByText('Preview build · newer than the published APK.')).toBeVisible();
   else expect(await screen.findByRole('button', { name: 'Retry update check' })).toBeEnabled();
 });
 
@@ -310,4 +311,11 @@ it('AUTH-10 an older reset response cannot consume a newer warm link or show suc
   await user.click(screen.getByRole('button', { name: 'Update password' }));
   expect(auth.resetPassword).toHaveBeenLastCalledWith({ token: second, newPassword: 'SecondMountain!2026' });
   expect(await screen.findByRole('heading', { name: 'Password updated' })).toBeVisible();
+});
+
+it('UI-07 a blocked-account screen takes priority over a previous Google error instead of stacking banners', async()=>{
+ const auth=fakeAuth({...signedIn(),status:'blocked',message:'Account unavailable.',authOutcome:{kind:'error',message:'Earlier Google failure.'}});
+ view(<App downloadUrl="http://localhost:5173/" nativeWatch={async()=>()=>{}}/>,auth,'/home');
+ expect(screen.getAllByRole('alert')).toHaveLength(1);expect(screen.getByRole('alert')).toHaveTextContent('Account unavailable.');
+ expect(screen.queryByText('Earlier Google failure.')).toBeNull();
 });

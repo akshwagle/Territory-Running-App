@@ -19,22 +19,33 @@ function setup(Page,request,extra={}) {
   return {auth,user:userEvent.setup()};
 }
 const own=()=>({profile,options:{avatarIds:Array.from({length:12},(_,i)=>i),avatarColors:['#1F5A46','#B8452A']},regions:[]});
-it('profile loads generated avatars, validates names, and saves visible autofill values with no uploads',async()=>{
+it('profile overview opens focused editors, validates names, and saves native autofill values explicitly',async()=>{
   const {auth,user}=setup(ProfilePage,async(_url,options)=>options?.method==='PATCH'?{profile}:own());
-  expect(screen.getByRole('status')).toHaveTextContent('Loading');await screen.findByLabelText('Display name');
-  screen.getByLabelText('Display name').value='Li';await user.click(screen.getByRole('button',{name:'Save profile'}));expect(screen.getByRole('alert')).toHaveTextContent('3–24');
-  screen.getByLabelText('Display name').value='Fresh Runner';screen.getByLabelText('Bio').value='Trail notes';
-  await user.click(screen.getByRole('button',{name:/Hex avatar/}));
+  expect(screen.getByRole('status')).toHaveTextContent('Loading');
+  await user.click(await screen.findByRole('button',{name:/^Display name/}));
+  screen.getByLabelText('Display name',{exact:true}).value='Li';await user.click(screen.getByRole('button',{name:'Done',exact:true}));expect(screen.getByRole('alert')).toHaveTextContent('3–24');
+  screen.getByLabelText('Display name',{exact:true}).value='Fresh Runner';await user.click(screen.getByRole('button',{name:'Done',exact:true}));
+  await user.click(screen.getByRole('button',{name:/^Bio/}));screen.getByLabelText('Bio',{exact:true}).value='Trail notes';await user.click(screen.getByRole('button',{name:'Done',exact:true}));
+  await user.click(screen.getByRole('button',{name:'Change hex avatar'}));
   await user.click(screen.getByRole('button',{name:'Avatar 12',exact:true}));await user.click(screen.getByRole('button',{name:'Clay',exact:true}));await user.click(screen.getByRole('button',{name:'Done',exact:true}));
-  await user.selectOptions(screen.getByLabelText('Distance units'),'mi');await user.click(screen.getByRole('button',{name:'Save profile'}));
+  await user.click(screen.getByRole('button',{name:/^Distance units/}));await user.click(screen.getByRole('radio',{name:'Miles'}));await user.click(screen.getByRole('button',{name:'Done',exact:true}));
+  expect(auth.api.request).not.toHaveBeenCalledWith('/api/me/profile',expect.objectContaining({method:'PATCH'}));
+  await user.click(screen.getByRole('button',{name:'Save profile'}));
   await screen.findByText('Profile saved.');expect(auth.api.request).toHaveBeenLastCalledWith('/api/me/profile',{method:'PATCH',body:{displayName:'Fresh Runner',avatarId:11,avatarColor:'#B8452A',preferredUnits:'mi',bio:'Trail notes',homeRegionId:null}});
-  expect(auth.loadMe).toHaveBeenCalledOnce();expect(document.querySelector('input[type=file]')).toBeNull();
+  expect(auth.loadMe).toHaveBeenCalledOnce();expect(screen.queryByText('Unsaved changes')).toBeNull();expect(document.querySelector('input[type=file]')).toBeNull();
 });
-it('profile shows conflict without losing the edited name and handles an empty region catalog',async()=>{
+it('profile conflict reopens the name editor without losing the draft; empty region choices are honest',async()=>{
   const {user}=setup(ProfilePage,async(_url,options)=>{if(options?.method==='PATCH')throw new ApiError('DISPLAY_NAME_UNAVAILABLE','That display name is unavailable.',409);return own();});
-  await screen.findByLabelText('Display name');expect(screen.getByText('No regions are available yet.')).toBeVisible();
-  screen.getByLabelText('Display name').value='Taken Name';await user.click(screen.getByRole('button',{name:'Save profile'}));
-  expect(await screen.findByRole('alert')).toHaveTextContent('unavailable');expect(screen.getByLabelText('Display name')).toHaveValue('Taken Name');
+  await user.click(await screen.findByRole('button',{name:/^Home region/}));expect(screen.getByText('No regions are available yet.')).toBeVisible();await user.click(screen.getByRole('button',{name:'Done',exact:true}));
+  await user.click(screen.getByRole('button',{name:/^Display name/}));screen.getByLabelText('Display name',{exact:true}).value='Taken Name';await user.click(screen.getByRole('button',{name:'Done',exact:true}));await user.click(screen.getByRole('button',{name:'Save profile'}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('unavailable');expect(screen.getByLabelText('Display name',{exact:true})).toHaveValue('Taken Name');
+});
+it('closing an editor keeps unsaved native autofill in memory and does not submit it',async()=>{
+  const {auth,user}=setup(ProfilePage,async()=>own());await user.click(await screen.findByRole('button',{name:/^Bio/}));
+  screen.getByLabelText('Bio',{exact:true}).value='Draft from keyboard';await user.click(screen.getByRole('button',{name:'Close',exact:true}));
+  expect(screen.getByText('Draft from keyboard')).toBeVisible();expect(screen.getByText('Unsaved changes')).toBeVisible();
+  await user.click(screen.getByRole('button',{name:/^Bio/}));expect(screen.getByLabelText('Bio',{exact:true})).toHaveValue('Draft from keyboard');
+  expect(auth.api.request).toHaveBeenCalledTimes(1);
 });
 it.each([ProfilePage,PrivacyPage,ConsentPage,DeletePage])('%s shows offline error and retry instead of blank content',async Page=>{
   const {auth,user}=setup(Page,async()=>{throw new ApiError('NETWORK_UNAVAILABLE','Cannot reach the server.');});
@@ -43,7 +54,7 @@ it.each([ProfilePage,PrivacyPage,ConsentPage,DeletePage])('%s shows offline erro
 });
 it('PRIV-01 privacy saves all choices including unchecked route sharing',async()=>{
   const {auth,user}=setup(PrivacyPage,async url=>url.includes('consents')?notices():{privacy:{profileVisibility:'PRIVATE',appearOnLeaderboards:false,shareRouteShapes:true}});
-  await screen.findByLabelText('Who can view your profile?');await user.selectOptions(screen.getByLabelText('Who can view your profile?'),'FOLLOWERS');
+  await user.click(await screen.findByRole('button',{name:/^Who can view your profile/}));await user.click(screen.getByRole('radio',{name:/^My followers/}));await user.click(screen.getByRole('button',{name:'Done',exact:true}));
   await user.click(screen.getByLabelText('Appear on leaderboards'));await user.click(screen.getByLabelText('Share route shapes'));
   await user.click(screen.getByRole('button',{name:'Save privacy choices'}));await screen.findByText('Privacy choices saved.');
   expect(auth.api.request).toHaveBeenCalledWith('/api/me/privacy',{method:'PATCH',body:{profileVisibility:'FOLLOWERS',appearOnLeaderboards:true,shareRouteShapes:false}});

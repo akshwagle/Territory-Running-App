@@ -64,19 +64,19 @@ export function ExportPage({sharing=exportShare}) {
 export function DeletePage() {
   const {auth}=useAuth(),navigate=useNavigate(),load=useCallback(()=>auth.api.request('/api/auth/identities'),[auth]),methods=useResource(load);
   const [method,setMethod]=useState('password'),[stage,setStage]=useState('form'),[busy,setBusy]=useState(false),[error,setError]=useState('');
-  const [request,setRequest]=useState(null);
+  const [request,setRequest]=useState(null),[fieldErrors,setFieldErrors]=useState({});
   async function finish(body) {
     setBusy(true);setError('');
     try {await auth.deleteAccount(body);navigate('/login',{replace:true});}
     catch(failure){setError(friendlyMessage(failure));}finally{setBusy(false);}
   }
   async function submit(event) {
-    event.preventDefault();setError('');
+    event.preventDefault();setError('');setFieldErrors({});
     const data=new FormData(event.currentTarget),confirmation=data.get('confirmation');
-    if(confirmation!=='DELETE'){setError('Type DELETE exactly to confirm.');return;}
+    if(confirmation!=='DELETE'){setFieldErrors({confirmation:'Type DELETE exactly to confirm.'});event.currentTarget.elements.namedItem('confirmation')?.focus();return;}
     const providers=methods.value.identities.map(row=>row.provider),chosen=providers.includes('PASSWORD')?method:'google';
     const body={confirmation,method:chosen,...(chosen==='password'?{password:data.get('password')}: {})};
-    if(chosen==='password'&&!body.password){setError('Enter your password to confirm deletion.');return;}
+    if(chosen==='password'&&!body.password){setFieldErrors({password:'Enter your password to confirm deletion.'});event.currentTarget.elements.namedItem('password')?.focus();return;}
     setBusy(true);
     try {if(await auth.pendingCount()){setRequest(body);setStage('unsent');}else await finish(body);}
     catch(failure){setError(friendlyMessage(failure));}finally{setBusy(false);}
@@ -86,8 +86,8 @@ export function DeletePage() {
     <ResourceState data={methods} label="sign-in methods"/>{methods.phase==='ready'&&stage==='form'&&<form onSubmit={submit}><fieldset disabled={busy}><legend className="sr-only">Confirm account deletion</legend>
       {methods.value.identities.length===0?<Notice error>No sign-in method is available. Refresh or contact support before deleting.</Notice>:<>
         {methods.value.identities.some(r=>r.provider==='PASSWORD')&&methods.value.identities.some(r=>r.provider==='GOOGLE')&&<><label htmlFor="deleteMethod">Confirm with</label><select id="deleteMethod" value={method} onChange={e=>setMethod(e.target.value)}><option value="password">Password</option><option value="google">Fresh Google sign-in</option></select></>}
-        {methods.value.identities.some(r=>r.provider==='PASSWORD')&&method==='password'?<TextField id="deletePassword" label="Password" name="password" type="password" autoComplete="current-password"/>:<p>A fresh native Google account picker opens after you confirm. Choose the Google account linked to this account.</p>}
-        <TextField id="confirmation" label="Type DELETE" name="confirmation" autoComplete="off" autoCapitalize="characters" spellCheck={false}/>
+        {methods.value.identities.some(r=>r.provider==='PASSWORD')&&method==='password'?<TextField id="deletePassword" label="Password" error={fieldErrors.password} name="password" type="password" autoComplete="current-password"/>:<p>A fresh native Google account picker opens after you confirm. Choose the Google account linked to this account.</p>}
+        <TextField id="confirmation" label="Type DELETE" error={fieldErrors.confirmation} name="confirmation" autoComplete="off" autoCapitalize="characters" spellCheck={false}/>
         <Button variant="destructive" type="submit">{busy?'Deleting…':'Delete my account'}</Button>
       </>}
     </fieldset></form>}{stage==='unsent'&&<Dialog title="Erase unsent data too?" onClose={()=>{setRequest(null);setStage('form');}}><p>There is encrypted unsent data on this phone. Deleting this account also permanently erases that data. It cannot be recovered.</p>

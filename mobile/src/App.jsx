@@ -22,13 +22,13 @@ export function UpdateBanner({ api, versionCode, downloadUrl }) {
   useEffect(() => {
     let active = true; setState({ phase: 'loading' });
     api.request('/api/releases/latest', { auth: false }).then(release => {
-      if (active) setState({ phase: release.versionCode > versionCode ? 'newer' : 'current' });
+      if (active) setState({ phase: release.versionCode > versionCode ? 'newer' : release.versionCode < versionCode ? 'preview' : 'current' });
     }).catch(error => { if (active) setState({ phase: error.code === 'NO_RELEASE' ? 'empty' : 'error' }); });
     return () => { active = false; };
   }, [api, versionCode, attempt]);
   if (state.phase === 'newer') return <p className="small update-check"><span>Update available. </span><a href={downloadUrl} target="_blank" rel="noreferrer">Open download page</a></p>;
   if (state.phase === 'error') return <aside className="small update-check"><span>Couldn’t check for updates.</span><button className="text-link" onClick={() => setAttempt(attempt + 1)}>Retry update check</button></aside>;
-  return <p className="small update-check" role="status">{state.phase === 'loading' ? 'Checking for updates…' : state.phase === 'empty' ? 'No published update yet.' : 'You have the latest published build.'}</p>;
+  return <p className="small update-check" role="status">{state.phase === 'loading' ? 'Checking for updates…' : state.phase === 'empty' ? 'No published update yet.' : state.phase === 'preview' ? 'Preview build · newer than the published APK.' : 'You have the latest published build.'}</p>;
 }
 
 function Protected({ children }) {
@@ -45,7 +45,7 @@ function VerificationBanner() {
     catch (failure) { setError(friendlyMessage(failure)); }
     finally { setBusy(false); }
   }
-  return <><InlineNotice action={busy ? 'Sending…' : 'Resend email'} onAction={() => { if (!busy) resend(); }}>Verify your email</InlineNotice><Notice>{message}</Notice><Notice error>{error}</Notice></>;
+  return <><InlineNotice error={Boolean(error)} action={busy ? 'Sending…' : 'Resend email'} onAction={() => { if (!busy) resend(); }}><span>Verify your email</span>{error && ` · ${error}`}</InlineNotice><Notice>{message}</Notice></>;
 
 }
 
@@ -96,14 +96,15 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
   const ready = !['restoring', 'storageError', 'blocked'].includes(state.status) &&
     !(state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname));
   return <Shell user={state.user} renderRoutes={ready ? pageRoutes : () => null}
-    footer={(!state.user || location.pathname === '/settings') && <><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
-      {location.pathname !== '/' && state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome?.kind !== 'progress' && state.authOutcome && <Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice>}
+    showFooter={!state.user || location.pathname === '/settings'}
+    footer={<><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
+      {ready && location.pathname !== '/' && state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome?.kind !== 'progress' && state.authOutcome && <Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice>}
       {location.pathname !== '/' && !state.authOutcome && linkError && <InlineNotice error>{linkError}</InlineNotice>}
       {state.status === 'restoring' ? <section><h1>Getting ready</h1><Skeleton label="Restoring your sign-in securely…"/></section> :
         state.status === 'storageError' ? <section><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
           state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><SignOutControl /></section> :
             state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><InlineNotice>{state.message}</InlineNotice><Link className="button primary" to="/login">Go to login</Link></section> : <>
-            {['offline', 'unavailable'].includes(state.status) ? <InlineNotice error action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</InlineNotice> :
+            {['offline', 'unavailable'].includes(state.status) ? <InlineNotice className="connection-notice" error action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</InlineNotice> :
               state.user && state.user.emailVerified !== true && location.pathname !== '/verify' && <VerificationBanner />}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
             {location.pathname !== '/' && <PendingNotice/>}
