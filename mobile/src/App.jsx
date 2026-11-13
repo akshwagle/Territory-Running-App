@@ -10,6 +10,7 @@ import { HomePage, SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, 
 import { UIProvider, Skeleton, InlineNotice } from './ui/index.jsx';
 import { Shell } from './ui/Shell.jsx';
 import { PendingNotice } from './ui/PendingNotice.jsx';
+import { firstScreenReady } from './platform/splash.js';
 const ProfilePage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.ProfilePage })));
 const PrivacyPage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.PrivacyPage })));
 const ConsentPage = lazy(() => import('./pages/data-pages.jsx').then(m => ({ default: m.ConsentPage })));
@@ -56,6 +57,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
   const navigateRef = useRef(navigate);
   useEffect(() => { navigateRef.current = navigate; }, [navigate]);
   useEffect(() => { auth.start(); }, [auth]);
+  useEffect(() => firstScreenReady(), []);
   useEffect(() => {
     let cancelled = false, dispose;
     const receive = raw => {

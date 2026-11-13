@@ -11,7 +11,9 @@
     "build": "vite build",
     "test": "vitest run",
     "lint": "eslint .",
-    "apk:debug": "bash ../scripts/apk-debug.sh"
+    "apk:debug": "bash ../scripts/apk-debug.sh",
+    "assets:generate": "node scripts/generate-brand-assets.mjs",
+    "assets:check": "node scripts/generate-brand-assets.mjs --check"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.1",
@@ -21,6 +23,7 @@
     "@capacitor/filesystem": "8.1.5",
     "@capacitor/keyboard": "8.0.6",
     "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2",
     "@capawesome/capacitor-google-sign-in": "0.1.4",
     "@fontsource/barlow": "5.3.0",
     "@fontsource/barlow-condensed": "5.3.0",
@@ -38,6 +41,7 @@
     "eslint": "10.14.0",
     "globals": "17.14.0",
     "jsdom": "27.4.0",
+    "sharp": "0.35.5",
     "vite": "8.3.8",
     "vitest": "5.1.0"
   }
