@@ -5,6 +5,7 @@ import { friendlyMessage } from '../auth/errors.js';
 import { DISCARD_CONFIRMATION } from '../auth/pending-work.js';
 import { AuthForm, Notice, newPasswordField } from '../components/forms.jsx';
 import { GoogleButton } from './auth-pages.jsx';
+import { Button, Dialog, EmptyState, ErrorState, ListRow, Section, Skeleton } from '../ui/index.jsx';
 
 export function useResource(load) {
   const [state, setState] = useState({ phase: 'loading', value: null, error: '' });
@@ -34,43 +35,41 @@ export function SignOutControl() {
     finally { setBusy(false); }
   }
   return <div className="sign-out">
-    <button className="secondary" disabled={busy} onClick={check}>{busy ? 'Working…' : 'Sign out'}</button>
-    {stage !== 'idle' && <div className="confirm-panel" role="dialog" aria-modal="false" aria-labelledby="sign-out-title">
-      <h2 id="sign-out-title">{stage === 'warn' ? 'Keep your unsent data?' : 'Discard the saved data?'}</h2>
+    <Button variant="secondary" disabled={busy} onClick={check}>{busy ? 'Working…' : 'Sign out'}</Button>
+    {stage !== 'idle' && <Dialog title={stage === 'warn' ? 'Keep your unsent data?' : 'Discard the saved data?'} onClose={() => { setStage('idle'); setError(''); }}>
       {stage === 'warn' ? <><p>There is unsent data on this phone. You can upload first, or sign out and keep it encrypted for this account.</p>
-        <button className="primary" disabled={busy} onClick={() => finish('upload')}>Upload first, then sign out</button>
-        <button className="secondary" disabled={busy} onClick={() => finish('keep')}>Sign out and keep data</button>
-        <button className="danger" disabled={busy} onClick={() => setStage('discard')}>Discard data…</button></> :
+        <Button disabled={busy} onClick={() => finish('upload')}>Upload first, then sign out</Button>
+        <Button variant="secondary" disabled={busy} onClick={() => finish('keep')}>Sign out and keep data</Button>
+        <Button variant="destructive" disabled={busy} onClick={() => setStage('discard')}>Discard data…</Button></> :
         <><p>This permanently removes this account’s unsent data from this phone. It cannot be recovered.</p>
-          <button className="danger" disabled={busy} onClick={() => finish('discard', DISCARD_CONFIRMATION)}>Yes, discard data and sign out</button></>}
-      <button className="secondary" disabled={busy} onClick={() => { setStage('idle'); setError(''); }}>Cancel</button>
-    </div>}
-    <Notice error>{error}</Notice>
+          <Button variant="destructive" disabled={busy} onClick={() => finish('discard', DISCARD_CONFIRMATION)}>Yes, discard data and sign out</Button></>}
+      <Button variant="secondary" disabled={busy} onClick={() => { setStage('idle'); setError(''); }}>Cancel</Button><Notice error>{error}</Notice>
+    </Dialog>}
+    {stage === 'idle' && <Notice error>{error}</Notice>}
   </div>;
 }
 
 export function HomePage() {
   const { state } = useAuth();
-  return <section><p className="eyebrow">Your field guide</p><h1>Good to see you,<br />{state.user.displayName}.</h1>
-    <p>You’re signed in. Run recording will arrive in a later build.</p>
-    <Link className="button primary" to="/settings">Account settings</Link>
+  return <section className="home-page"><p className="eyebrow">A little ground. A good run.</p>
+    <h1>Good to see you,<br/><bdi>{state.user.displayName}</bdi>.</h1>
+    <EmptyState title="Room to run">You’re signed in. Run recording will arrive in a later build.</EmptyState>
+    <div className="home-key"><span className="home-swatch"/>Pine will mark your territory.</div>
   </section>;
 }
-
 export function SettingsPage() {
   const { state } = useAuth();
   return <section><p className="eyebrow">Your account</p><h1>Settings</h1>
-    <p className="account-name">{state.user.displayName}</p><p className="wrap">{state.user.email}</p>
-    <nav className="settings-nav" aria-label="Account settings"><Link to="/settings/methods">Sign-in methods <span aria-hidden="true">→</span></Link>
-      <Link to="/settings/sessions">Active sessions <span aria-hidden="true">→</span></Link>
-      <Link to="/settings/profile">Profile <span aria-hidden="true">→</span></Link>
-      <Link to="/settings/privacy">Privacy <span aria-hidden="true">→</span></Link>
-      <Link to="/settings/consent">Consent <span aria-hidden="true">→</span></Link>
-      <Link to="/settings/export">Export my data <span aria-hidden="true">→</span></Link>
-      <Link to="/settings/delete">Delete account <span aria-hidden="true">→</span></Link>
-      <Link to="/settings/password">Change password <span aria-hidden="true">→</span></Link>
-      <Link to="/verify">Email verification <span aria-hidden="true">→</span></Link></nav>
-    <SignOutControl />
+    <div className="account-summary"><div><strong dir="auto">{state.user.displayName}</strong><p className="copyable" dir="auto">{state.user.email}</p></div></div>
+    <nav aria-label="Account settings"><Section title="Sign-in & security">
+      <ListRow to="/settings/methods" label="Sign-in methods"/>
+      <ListRow to="/settings/sessions" label="Active sessions"/>
+      <ListRow to="/settings/password" label="Change password"/>
+      <ListRow to="/verify" label="Email verification" value={state.user.emailVerified ? 'Verified' : 'Needed'}/>
+    </Section><Section title="Your data">
+      <ListRow to="/settings/export" label="Export my data"/>
+      <ListRow to="/settings/delete" label="Delete account"/>
+    </Section></nav><SignOutControl/>
   </section>;
 }
 
@@ -79,15 +78,15 @@ export function MethodsPage() {
   const load = useCallback(() => auth.api.request('/api/auth/identities'), [auth]);
   const data = useResource(load), [linked, setLinked] = useState(false);
   return <section><p className="eyebrow">Account settings</p><h1>Sign-in methods</h1>
-    {data.phase === 'loading' && <Notice>Loading sign-in methods…</Notice>}
-    {data.phase === 'error' && <><Notice error>{data.error}</Notice><button className="secondary" onClick={data.reload}>Try again</button></>}
+    {data.phase === 'loading' && <Skeleton label="Loading sign-in methods…"/>}
+    {data.phase === 'error' && <ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>}
     {data.phase === 'ready' && <>
-      {data.value.identities.length ? <ul className="resource-list">{data.value.identities.map(identity => <li key={identity.id}><strong>{identity.provider === 'PASSWORD' ? 'Password' : 'Google'}</strong><span>Linked to your account</span></li>)}</ul> : <p>No sign-in methods were found. Try refreshing this page.</p>}
-      {data.value.identities.length === 1 && <p className="notice">Only one sign-in method is linked. Keep access to that method, or add another.</p>}
+      {data.value.identities.length ? <ul className="resource-list">{data.value.identities.map(identity => <li key={identity.id}><strong>{identity.provider === 'PASSWORD' ? 'Password' : 'Google'}</strong><span>Linked to your account</span></li>)}</ul> : <EmptyState>No sign-in methods were found. Try refreshing this page.</EmptyState>}
+      {data.value.identities.length === 1 && <p className="small">Only one sign-in method is linked. Keep access to that method, or add another.</p>}
       {!data.value.identities.some(identity => identity.provider === 'GOOGLE') && <GoogleButton link onLinked={() => { setLinked(true); data.reload(); }} />}
       <Notice>{linked ? 'Google is linked to your account.' : ''}</Notice>
     </>}
-    <Link className="text-link" to="/settings">Back to settings</Link>
+    
   </section>;
 }
 
@@ -101,14 +100,14 @@ export function SessionsPage() {
     finally { setRevoking(null); }
   }
   return <section><p className="eyebrow">Account settings</p><h1>Active sessions</h1>
-    {data.phase === 'loading' && <Notice>Loading sessions…</Notice>}
-    {data.phase === 'error' && <><Notice error>{data.error}</Notice><button className="secondary" onClick={data.reload}>Try again</button></>}
+    {data.phase === 'loading' && <Skeleton label="Loading sessions…"/>}
+    {data.phase === 'error' && <ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>}
     {data.phase === 'ready' && (data.value.sessions.length ? <ul className="resource-list">{data.value.sessions.map(session => <li key={session.id}>
       <strong>{session.deviceLabel}</strong><span>{session.current ? 'This device' : 'Another signed-in device'}</span>
       <span className="small">Started {new Date(session.createdAt).toLocaleString()}<br />Last used {new Date(session.lastUsedAt).toLocaleString()}</span>
-      {!session.current && <button className="secondary" disabled={Boolean(revoking)} onClick={() => revoke(session.id)}>{revoking === session.id ? 'Revoking…' : 'Revoke'}</button>}
-    </li>)}</ul> : <p>No active sessions were found.</p>)}
-    <Notice error>{error}</Notice><Notice>{message}</Notice><Link className="text-link" to="/settings">Back to settings</Link>
+      {!session.current && <Button variant="secondary" disabled={Boolean(revoking)} onClick={() => revoke(session.id)}>{revoking === session.id ? 'Revoking…' : 'Revoke'}</Button>}
+    </li>)}</ul> : <EmptyState>No active sessions were found.</EmptyState>)}
+    <Notice error>{error}</Notice><Notice>{message}</Notice>
   </section>;
 }
 
@@ -116,13 +115,13 @@ export function ChangePasswordPage() {
   const { auth } = useAuth(), load = useCallback(() => auth.api.request('/api/auth/identities'), [auth]);
   const methods = useResource(load);
   return <section><p className="eyebrow">Account settings</p><h1>Change password</h1>
-    {methods.phase === 'loading' && <Notice>Checking your sign-in methods…</Notice>}
-    {methods.phase === 'error' && <><Notice error>{methods.error}</Notice><button className="secondary" onClick={methods.reload}>Try again</button></>}
+    {methods.phase === 'loading' && <Skeleton label="Checking your sign-in methods…"/>}
+    {methods.phase === 'error' && <ErrorState onRetry={methods.reload} label="Try again">{methods.error}</ErrorState>}
     {methods.phase === 'ready' && (methods.value.identities.some(identity => identity.provider === 'PASSWORD') ? <>
       <p>Your current session stays signed in. Other sessions end immediately.</p>
       <AuthForm kind="change" fields={[{ name: 'currentPassword', label: 'Current password', type: 'password', autoComplete: 'current-password' }, newPasswordField]}
         submitLabel="Change password" busyLabel="Changing password…" onSubmit={body => auth.api.request('/api/auth/password/change', { method: 'POST', body })} />
     </> : <><p>You sign in with Google. To set your first password, request a password reset link and confirm it from your email.</p><Link className="button secondary" to="/forgot">Set a password</Link></>)}
-    <Link className="text-link" to="/settings">Back to settings</Link>
+    
   </section>;
 }

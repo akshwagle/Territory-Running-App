@@ -135,5 +135,25 @@ form { margin-block: 24px; }
 [data-keyboard-open] form .ui-button[type=submit] { position: sticky; bottom: 0; z-index: 2; }
 @media (prefers-reduced-motion: reduce) { .welcome-hex.is-intro { opacity: 1; } }
 
+/* Signed-in pages use ruled sections, with one route to each destination. */
+.account-summary { display: flex; gap: 16px; align-items: center; border-bottom: 1px solid var(--color-line); padding-block: 4px 20px; }
+.account-summary > div { min-width: 0; }
+.account-summary strong { display: block; font-size: 1.25rem; overflow-wrap: anywhere; }
+.account-summary p { margin: 4px 0 0; overflow-wrap: anywhere; }
+.home-page h1 { margin-block: 12px 32px; }
+.home-page .ui-empty { border-top: 1px solid var(--color-line); padding-top: 28px; margin-top: 28px; }
+.home-key { font-size: .875rem; color: var(--color-muted); display: flex; align-items: center; gap: 8px; margin-block: 40px 16px; }
+.home-swatch { width: 12px; height: 12px; background: var(--color-pine); clip-path: polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%); }
+.avatar-picker-row { margin-block: 0 24px; }
+.avatar-picker-row > span:last-child { color: var(--color-pine); }
+.colour-grid .ui-chip { width: auto; }
+.colour-grid .ui-chip svg { width: 16px; }
+.resource-list { animation: content-enter var(--motion-content) var(--ease-enter); }
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--color-pine); outline-offset: 2px; }
+.settings-nav { margin-block: 24px; }
+.ui-screen:not(:has(.ui-tabs)) > main { padding-bottom: max(24px, var(--safe-bottom)); }
+.ui-screen.shell-welcome > main { padding-bottom: var(--safe-bottom); }
+@media (max-width: 350px) { h1 { font-size: 2.5rem; } .ui-dialog, .ui-sheet { padding-inline: 16px; } }
+
 @font-face { font-family: 'Google Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/google/google-sans-medium-button.woff') format('woff'); }
 .google { line-height: 20px; }

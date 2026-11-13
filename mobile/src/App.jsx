@@ -25,7 +25,7 @@ export function UpdateBanner({ api, versionCode, downloadUrl }) {
     }).catch(error => { if (active) setState({ phase: error.code === 'NO_RELEASE' ? 'empty' : 'error' }); });
     return () => { active = false; };
   }, [api, versionCode, attempt]);
-  if (state.phase === 'newer') return <aside className="update notice" aria-label="App update"><strong>Update available</strong><p>A newer Android build is ready.</p><a className="button secondary" href={downloadUrl} target="_blank" rel="noreferrer">Open download page</a></aside>;
+  if (state.phase === 'newer') return <p className="small update-check"><span>Update available. </span><a href={downloadUrl} target="_blank" rel="noreferrer">Open download page</a></p>;
   if (state.phase === 'error') return <aside className="small update-check"><span>Couldn’t check for updates.</span><button className="text-link" onClick={() => setAttempt(attempt + 1)}>Retry update check</button></aside>;
   return <p className="small update-check" role="status">{state.phase === 'loading' ? 'Checking for updates…' : state.phase === 'empty' ? 'No published update yet.' : 'You have the latest published build.'}</p>;
 }
@@ -94,7 +94,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
   const ready = !['restoring', 'storageError', 'blocked'].includes(state.status) &&
     !(state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname));
   return <Shell user={state.user} renderRoutes={ready ? pageRoutes : () => null}
-    footer={<><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
+    footer={(!state.user || location.pathname === '/settings') && <><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
       {location.pathname !== '/' && state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome?.kind !== 'progress' && state.authOutcome && <Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice>}
       {location.pathname !== '/' && !state.authOutcome && linkError && <InlineNotice error>{linkError}</InlineNotice>}
       {state.status === 'restoring' ? <section><h1>Getting ready</h1><Skeleton label="Restoring your sign-in securely…"/></section> :
