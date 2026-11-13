@@ -24,7 +24,8 @@ it('profile loads generated avatars, validates names, and saves visible autofill
   expect(screen.getByRole('status')).toHaveTextContent('Loading');await screen.findByLabelText('Display name');
   screen.getByLabelText('Display name').value='Li';await user.click(screen.getByRole('button',{name:'Save profile'}));expect(screen.getByRole('alert')).toHaveTextContent('3–24');
   screen.getByLabelText('Display name').value='Fresh Runner';screen.getByLabelText('Bio').value='Trail notes';
-  await user.click(screen.getByRole('button',{name:'Avatar 12',exact:true}));await user.click(screen.getByRole('button',{name:'Clay',exact:true}));
+  await user.click(screen.getByRole('button',{name:/Hex avatar/}));
+  await user.click(screen.getByRole('button',{name:'Avatar 12',exact:true}));await user.click(screen.getByRole('button',{name:'Clay',exact:true}));await user.click(screen.getByRole('button',{name:'Done',exact:true}));
   await user.selectOptions(screen.getByLabelText('Distance units'),'mi');await user.click(screen.getByRole('button',{name:'Save profile'}));
   await screen.findByText('Profile saved.');expect(auth.api.request).toHaveBeenLastCalledWith('/api/me/profile',{method:'PATCH',body:{displayName:'Fresh Runner',avatarId:11,avatarColor:'#B8452A',preferredUnits:'mi',bio:'Trail notes',homeRegionId:null}});
   expect(auth.loadMe).toHaveBeenCalledOnce();expect(document.querySelector('input[type=file]')).toBeNull();
