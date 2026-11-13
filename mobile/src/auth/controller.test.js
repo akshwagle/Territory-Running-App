@@ -56,7 +56,7 @@ it('AUTH-07 session expiry keeps unsent data encrypted and re-login resumes the 
   const before = structuredClone(f.storage.records.get(PENDING_KEY)); revoked = true;
   await expect(f.controller.loadMe()).rejects.toMatchObject({ status: 401 });
   expect(f.controller.getSnapshot()).toMatchObject({ status: 'signedOut', user: null });
-  expect(f.controller.getSnapshot().message).toContain('encrypted'); expect(f.pending.isPaused()).toBe(true);
+  expect(f.controller.getSnapshot().message).toBe('Your session ended. Sign in again.'); expect(f.pending.isPaused()).toBe(true);
   expect(f.storage.records.get(PENDING_KEY)).toEqual(before);
   await f.controller.login({ email: 'runner@example.test', password: 'NotSentToAnyServer' });
   expect(f.pending.isPaused()).toBe(false); expect(f.storage.records.get(PENDING_KEY)).toEqual(before);
@@ -94,7 +94,7 @@ it('AUTH-12 account deletion/suspension pauses work and preserves the separate e
   for (const code of ['ACCOUNT_SUSPENDED', 'ACCOUNT_DELETED']) {
     const f = await setup(async () => response(403, { error: { code, message: 'Unavailable.' } }));
     await f.journal.put('user-one', 'saved', 'preserve'); await f.controller.start();
-    expect(f.controller.getSnapshot().status).toBe('blocked'); expect(f.controller.getSnapshot().message).toContain('encrypted');
+    expect(f.controller.getSnapshot().status).toBe('blocked'); expect(f.controller.getSnapshot().message).toMatch(/account.*(suspended|deletion)|deletion.*account/i);
     expect(f.pending.isPaused()).toBe(true); expect(await f.journal.list('user-one')).toHaveLength(1);
   }
 });
@@ -154,4 +154,11 @@ it('a late pre-verification profile response cannot bring the verification banne
   const older = f.controller.loadMe(); await f.controller.loadMe(); oldResponse(me()); await older;
   expect(f.controller.getSnapshot().user.emailVerified).toBe(true);
   expect(f.storage.records.get(SESSION_KEY).session.user.emailVerified).toBe(true);
+});
+
+it('a clean signed-out start has no unsent-data claim; the pending hook returns only real encrypted item counts', async () => {
+  const f = await setup(async () => me(), null); await f.controller.start();
+  expect(f.controller.getSnapshot().message).toBe(''); expect(await f.controller.pendingTotal()).toBe(0);
+  await f.journal.put('another-owner', 'one', 'private');
+  expect(await f.controller.pendingTotal()).toBe(1); expect(await f.controller.pendingCount()).toBe(0);
 });

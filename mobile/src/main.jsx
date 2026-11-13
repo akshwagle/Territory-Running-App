@@ -11,6 +11,10 @@ import { createPendingJournal, createPendingWork } from './auth/pending-work.js'
 import { platformStorage } from './auth/platform-storage.js';
 import { exportShare } from './profile/export-share.js';
 import './styles.css';
+import { watchPlatform } from './platform/android.js';
+
+// The native keyboard/system bars own window resizing; CSS only consumes insets.
+watchPlatform().catch(() => { /* Native defaults remain usable if a listener fails. */ });
 
 const storage = platformStorage();
 const pending = createPendingWork(createPendingJournal(storage));

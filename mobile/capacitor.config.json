@@ -2,5 +2,21 @@
   "appId": "com.territoryrunning.app",
   "appName": "Territory Run",
   "webDir": "dist",
-  "loggingBehavior": "none"
+  "loggingBehavior": "none",
+  "zoomEnabled": false,
+  "backgroundColor": "#F3EEE4",
+  "plugins": {
+    "SystemBars": {
+      "style": "LIGHT",
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover"
+    },
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "launchFadeOutDuration": 0,
+      "backgroundColor": "#F3EEE4",
+      "showSpinner": false,
+      "androidScaleType": "CENTER"
+    }
+  }
 }

@@ -1,0 +1,16 @@
+:root {
+  --motion-short: 100ms; --motion-medium: 200ms; --motion-long: 300ms;
+  --motion-press: 90ms; --motion-tab: 150ms; --motion-sheet: 220ms; --motion-content: 150ms;
+  --ease-standard: cubic-bezier(.2,0,0,1);
+  --ease-enter: cubic-bezier(.05,.7,.1,1);
+  --ease-exit: cubic-bezier(.3,0,.8,.15);
+}
+@keyframes content-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes screen-forward { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@keyframes screen-back { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+@keyframes surface-enter { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: none; } }
+@keyframes hex-fill { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  button:active, a:active { transform: none !important; }
+}

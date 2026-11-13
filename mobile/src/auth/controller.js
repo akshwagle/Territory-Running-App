@@ -3,7 +3,6 @@ import { createApiClient } from './api-client.js';
 import { ApiError, friendlyMessage, isAccountError, isConnectionError } from './errors.js';
 import { DISCARD_CONFIRMATION } from './pending-work.js';
 
-const savedMessage = 'Any unsent data stays encrypted on this phone. Sign in to its account to continue.';
 const DELETED_ACCOUNT = 'deleted-account-cleanup-v1';
 const GOOGLE_ATTEMPT = 'auth-google-attempt-v1';
 
@@ -12,9 +11,9 @@ export function createAuthController({ origin, storage, pending, google, fetchIm
   let state = { status: 'restoring', user: null, message: '' }, starting, operation = 0, profileLoad = 0, deletedOwner = null;
   const set = patch => { state = { ...state, ...patch }; for (const listener of listeners) listener(); };
   const api = createApiClient({ origin, vault, fetchImpl, timeoutMs,
-    onSessionLost() { pending.pause(); set({ status: 'signedOut', user: null, message: `Your session ended. ${savedMessage}` }); },
-    onAccountBlocked(error) { pending.pause(); set({ status: 'blocked', message: `${friendlyMessage(error)} ${savedMessage}` }); },
-    onReauthenticationRequired() { pending.pause(); set({ status: 'reauthRequired', message: `Sign in again to continue. ${savedMessage}` }); },
+    onSessionLost() { pending.pause(); set({ status: 'signedOut', user: null, message: 'Your session ended. Sign in again.' }); },
+    onAccountBlocked(error) { pending.pause(); set({ status: 'blocked', message: friendlyMessage(error) }); },
+    onReauthenticationRequired() { pending.pause(); set({ status: 'reauthRequired', message: 'Sign in again to continue.' }); },
   });
   async function finishDeletion(ownerId) {
     operation++; profileLoad++; pending.pause();
@@ -57,7 +56,7 @@ export function createAuthController({ origin, storage, pending, google, fetchIm
         const interrupted = await storage.get(GOOGLE_ATTEMPT);
         if (interrupted) await storage.remove(GOOGLE_ATTEMPT);
         if (!session) {
-          pending.pause(); set({ status: 'signedOut', user: null, message: savedMessage,
+          pending.pause(); set({ status: 'signedOut', user: null, message: '',
             authOutcome: interrupted ? { kind: 'error', message: 'Google sign-in was interrupted before it finished. Please try again or use email login.' } : null });
           return;
         }
@@ -99,7 +98,7 @@ export function createAuthController({ origin, storage, pending, google, fetchIm
       try {
         await storage.set(GOOGLE_ATTEMPT, { version: 1, startedAt: Date.now() });
         const idToken = await google.signIn();
-        set({ authOutcome: { kind: 'progress', message: 'Google returned an ID token. Requesting your app session…' } });
+        set({ authOutcome: { kind: 'progress', message: 'Finishing your Google sign-in…' } });
         await signIn('google', { idToken });
         set({ authOutcome: { kind: 'success', message: state.status === 'authenticated' ? 'Signed in with Google.' : 'Google sign-in was accepted. Reconnect to confirm your account.' } });
       } catch (error) {
@@ -142,12 +141,12 @@ export function createAuthController({ origin, storage, pending, google, fetchIm
       try { await vault.clear(); }
       catch (error) { set({ status: 'storageError', user: null, message: friendlyMessage(error) }); throw error; }
       pending.pause();
-      set({ status: 'signedOut', user: null, authOutcome: null, message: `Signed out on this phone. ${savedMessage}${remoteFailed ? ' The server session could not be ended; you can revoke it from another signed-in device.' : ''}` });
+      set({ status: 'signedOut', user: null, authOutcome: null, message: `Signed out on this phone.${remoteFailed ? ' The server session could not be ended; you can revoke it from another signed-in device.' : ''}` });
     },
     async resetPassword(body) {
       const result = await api.request('/api/auth/password/reset', { auth: Boolean(vault.snapshot().session), method: 'POST', body });
       operation++; profileLoad++; pending.pause(); await vault.clear(); pending.pause();
-      set({ status: 'signedOut', user: null, authOutcome: null, message: `${result.message} ${savedMessage}` });
+      set({ status: 'signedOut', user: null, authOutcome: null, message: result.message });
       return result;
     },
     async confirmEmail(token) {
@@ -155,6 +154,7 @@ export function createAuthController({ origin, storage, pending, google, fetchIm
       if (vault.snapshot().session) { try { await loadMe(); } catch { /* retain confirmation success */ } }
       return result;
     },
+    async pendingTotal() { return pending.countAll(); },
     async pendingCount() { return state.user ? pending.count(state.user.id) : 0; },
   };
 }

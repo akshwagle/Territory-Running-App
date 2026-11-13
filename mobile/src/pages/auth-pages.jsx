@@ -1,32 +1,44 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../auth/context.jsx';
 import { friendlyMessage } from '../auth/errors.js';
 import { AuthForm, Notice, emailField, passwordField, newPasswordField } from '../components/forms.jsx';
+import { BrandMark, Button, InlineNotice } from '../ui/index.jsx';
+import { PendingNotice } from '../ui/PendingNotice.jsx';
+import googleG from '../assets/google-g.png';
 
-export function GoogleButton({ link = false, onLinked = () => {} }) {
+export function GoogleButton({ link = false, onLinked = () => {}, onError }) {
   const { auth } = useAuth(), navigate = useNavigate();
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [needsLink, setNeedsLink] = useState(false);
+  const inFlight = useRef(false);
   async function signIn() {
-    setBusy(true); setError(''); setNeedsLink(false);
+    if (inFlight.current) return; inFlight.current = true;
+    setBusy(true); setError(''); setNeedsLink(false); onError?.('');
     try { if (link) onLinked(await auth.linkGoogle()); else { await auth.googleSignIn(); navigate('/home', { replace: true }); } }
-    catch (failure) { if (failure.code === 'ACCOUNT_LINK_REQUIRED') setNeedsLink(true); else if (!auth.getSnapshot().authOutcome) setError(friendlyMessage(failure)); }
-    finally { setBusy(false); }
+    catch (failure) { if (failure.code === 'ACCOUNT_LINK_REQUIRED') { if (onError) onError('Sign in with your password, then link Google from Settings.'); else setNeedsLink(true); } else { const message = friendlyMessage(failure); if (onError) onError(message); else if (!auth.getSnapshot().authOutcome) setError(message); } }
+    finally { inFlight.current = false; setBusy(false); }
   }
-  return <div className="google-action">
-    <button className="secondary google" onClick={signIn} disabled={busy}>{busy ? 'Opening Google…' : link ? 'Link Google' : 'Continue with Google'}</button>
-    {needsLink && <div className="notice" role="alert"><p>An account with this email already exists. Sign in with your password, then link Google from Settings.</p><Link className="button secondary" to="/login">Go to login</Link></div>}
+  return <div className="google-action">{link && <p className="small">Link Google to this account.</p>}
+    <button type="button" className="google" onClick={signIn} disabled={busy}><img src={googleG} width="20" height="20" alt=""/>{busy ? 'Opening Google…' : 'Continue with Google'}</button>
+    {needsLink && <InlineNotice error>An account with this email already exists. Sign in with your password, then link Google from Settings.<Link className="text-link" to="/login">Go to login</Link></InlineNotice>}
     <Notice error>{error}</Notice>
   </div>;
 }
 
-export function WelcomePage() {
+let introPlayed = false;
+export function WelcomePage({ notice = '' }) {
+  const [intro] = useState(() => !introPlayed), [error, setError] = useState('');
+  useEffect(() => { introPlayed = true; }, []);
+  const cells = [[254,38,0],[300,65,1],[254,92,2],[208,119,3],[300,119,4],[254,146,5],[300,173,6],[208,173,7]];
   return <section className="welcome">
-    <p className="eyebrow">A little ground. A good run.</p><h1>Make your<br />next run count.</h1>
-    <p>Sign in to Territory Run. Your account travels with you.</p>
-    <div className="stack"><Link className="button primary" to="/signup">Create an account</Link><Link className="button secondary" to="/login">Log in with email</Link></div>
-    <p className="divider">or</p><GoogleButton />
-    <p className="small">Android edition · {__APP_VERSION__}</p>
+    <div className="welcome-hero"><div className="welcome-brand"><BrandMark width="44" height="44"/><span>TERRITORY<br/>RUN</span></div>
+      <svg className="welcome-field" viewBox="0 0 360 230" aria-hidden="true">{cells.map(([x,y,i]) => <path key={i} d="M0-25 21.65-12.5v25L0 25-21.65 12.5v-25Z" transform={`translate(${x} ${y})`} fill={i === 3 ? 'var(--color-clay)' : i % 3 === 0 ? 'none' : 'var(--color-pine)'} stroke="var(--color-paper)" strokeOpacity=".16" className={intro ? 'welcome-hex is-intro' : 'welcome-hex'} style={{animationDelay:`${i * 140}ms`}}/>)}</svg>
+      <h1>Make your<br/>next run count.</h1>
+    </div>
+    <div className="welcome-actions"><InlineNotice error>{notice || error}</InlineNotice><PendingNotice suppressed={Boolean(notice || error)}/>
+      <div className="stack"><Link className="ui-button ui-button--primary" to="/signup">Create an account</Link><Link className="ui-button ui-button--secondary" to="/login">Log in</Link></div>
+      <div className="welcome-or"><span>or</span></div><GoogleButton onError={setError}/>
+    </div>
   </section>;
 }
 
@@ -89,12 +101,12 @@ export function VerifyPage({ link, clearLink }) {
   // account is already verified; it may be expired or belong to someone else.
   const verified = done || (!link && state.user?.emailVerified === true);
   return <section><p className="eyebrow">One small step</p><h1>{verified ? 'Email verified' : 'Verify your email'}</h1>
-    <Notice>{state.message}</Notice>
+
     <p>{verified ? 'Your email is confirmed. You can return to the app.' : 'Check your inbox and open the verification link on this phone. Links last 24 hours.'}</p>
-    {!verified && hasToken && <button className="primary" disabled={busy} onClick={() => act(true)}>{busy ? 'Confirming…' : 'Confirm email'}</button>}
+    {!verified && hasToken && <Button disabled={busy} onClick={() => act(true)}>{busy ? 'Confirming…' : 'Confirm email'}</Button>}
     {!verified && !hasToken && link?.error && <Notice error>{link.error}</Notice>}
-    {!verified && state.user && <><button className="secondary" disabled={busy} onClick={() => act(false)}>{busy && !hasToken ? 'Requesting email…' : 'Resend verification email'}</button>
-      <button className="text-link" disabled={busy} onClick={async () => { setError(''); try { await auth.loadMe(); } catch (failure) { setError(friendlyMessage(failure)); } }}>I’ve verified my email · check again</button></>}
+    {!verified && state.user && <><Button variant="secondary" disabled={busy} onClick={() => act(false)}>{busy && !hasToken ? 'Requesting email…' : 'Resend verification email'}</Button>
+      <Button variant="quiet" disabled={busy} onClick={async () => { setError(''); try { await auth.loadMe(); } catch (failure) { setError(friendlyMessage(failure)); } }}>I’ve verified my email · check again</Button></>}
     {!verified && !state.user && !hasToken && <Link className="button secondary" to="/login">Log in to request a new email</Link>}
     <Notice>{message}</Notice><Notice error>{error}</Notice>
     <p className="small">Opening a link never signs you in.</p><Link className="text-link" to={state.user ? '/home' : '/login'}>Return to {state.user ? 'home' : 'login'}</Link>

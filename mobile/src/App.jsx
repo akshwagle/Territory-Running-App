@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { useAuth } from './auth/context.jsx';
 import { parseAuthLink, watchNativeAuth } from './auth/deep-links.js';
@@ -7,21 +7,28 @@ import { friendlyMessage } from './auth/errors.js';
 import { WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage } from './pages/auth-pages.jsx';
 import { HomePage, SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
 
-import { ProfilePage, PrivacyPage } from './pages/profile-pages.jsx';
-import { ConsentPage, ExportPage, DeletePage } from './pages/data-pages.jsx';
+import { UIProvider, Skeleton, InlineNotice } from './ui/index.jsx';
+import { Shell } from './ui/Shell.jsx';
+import { PendingNotice } from './ui/PendingNotice.jsx';
+import { firstScreenReady } from './platform/splash.js';
+const ProfilePage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.ProfilePage })));
+const PrivacyPage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.PrivacyPage })));
+const ConsentPage = lazy(() => import('./pages/data-pages.jsx').then(m => ({ default: m.ConsentPage })));
+const ExportPage = lazy(() => import('./pages/data-pages.jsx').then(m => ({ default: m.ExportPage })));
+const DeletePage = lazy(() => import('./pages/data-pages.jsx').then(m => ({ default: m.DeletePage })));
 
 export function UpdateBanner({ api, versionCode, downloadUrl }) {
   const [attempt, setAttempt] = useState(0), [state, setState] = useState({ phase: 'loading' });
   useEffect(() => {
     let active = true; setState({ phase: 'loading' });
     api.request('/api/releases/latest', { auth: false }).then(release => {
-      if (active) setState({ phase: release.versionCode > versionCode ? 'newer' : 'current' });
+      if (active) setState({ phase: release.versionCode > versionCode ? 'newer' : release.versionCode < versionCode ? 'preview' : 'current' });
     }).catch(error => { if (active) setState({ phase: error.code === 'NO_RELEASE' ? 'empty' : 'error' }); });
     return () => { active = false; };
   }, [api, versionCode, attempt]);
-  if (state.phase === 'newer') return <aside className="update notice" aria-label="App update"><strong>Update available</strong><p>A newer Android build is ready.</p><a className="button secondary" href={downloadUrl} target="_blank" rel="noreferrer">Open download page</a></aside>;
+  if (state.phase === 'newer') return <p className="small update-check"><span>Update available. </span><a href={downloadUrl} target="_blank" rel="noreferrer">Open download page</a></p>;
   if (state.phase === 'error') return <aside className="small update-check"><span>Couldn’t check for updates.</span><button className="text-link" onClick={() => setAttempt(attempt + 1)}>Retry update check</button></aside>;
-  return <p className="small update-check" role="status">{state.phase === 'loading' ? 'Checking for updates…' : state.phase === 'empty' ? 'No published update yet.' : 'You have the latest published build.'}</p>;
+  return <p className="small update-check" role="status">{state.phase === 'loading' ? 'Checking for updates…' : state.phase === 'empty' ? 'No published update yet.' : state.phase === 'preview' ? 'Preview build · newer than the published APK.' : 'You have the latest published build.'}</p>;
 }
 
 function Protected({ children }) {
@@ -38,18 +45,19 @@ function VerificationBanner() {
     catch (failure) { setError(friendlyMessage(failure)); }
     finally { setBusy(false); }
   }
-  return <aside className="notice verification"><strong>Verify your email</strong><p>Confirm your email before recording runs in a future production build.</p>
-    <button className="secondary" disabled={busy} onClick={resend}>{busy ? 'Requesting email…' : 'Resend email'}</button>
-    <Link className="text-link" to="/verify">Check verification</Link><Notice>{message}</Notice><Notice error>{error}</Notice></aside>;
+  return <><InlineNotice error={Boolean(error)} action={busy ? 'Sending…' : 'Resend email'} onAction={() => { if (!busy) resend(); }}><span>Verify your email</span>{error && ` · ${error}`}</InlineNotice><Notice>{message}</Notice></>;
+
 }
 
-export function App({ downloadUrl, nativeWatch = watchNativeAuth }) {
+export function App(props) { return <UIProvider><AppContent {...props}/></UIProvider>; }
+function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
   const { auth, state } = useAuth(), navigate = useNavigate(), location = useLocation();
   const [{ link, generation }, setLinkState] = useState({ link: null, generation: 0 }), [linkError, setLinkError] = useState('');
   const clearLink = expected => setLinkState(current => current.link === expected ? { ...current, link: null } : current);
   const navigateRef = useRef(navigate);
   useEffect(() => { navigateRef.current = navigate; }, [navigate]);
   useEffect(() => { auth.start(); }, [auth]);
+  useEffect(() => firstScreenReady(), []);
   useEffect(() => {
     let cancelled = false, dispose;
     const receive = raw => {
@@ -72,37 +80,36 @@ export function App({ downloadUrl, nativeWatch = watchNativeAuth }) {
       if (parsed) setLinkState(current => ({ link: parsed, generation: current.generation + 1 }));
       navigate(location.pathname, { replace: true });
     }
-    const heading = document.querySelector('h1');
-    heading?.setAttribute('tabindex', '-1'); heading?.focus();
   }, [location.pathname, location.search, navigate]);
-  return <div className="app-shell">
-    <header><Link className="wordmark" to={state.user ? '/home' : '/'} aria-label="Territory Run home">TERRITORY<span>RUN</span></Link>
-      {state.user && <Link className="header-link" to="/settings">Settings</Link>}</header>
-    <main id="main">
-      {state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome && <div className="auth-outcome"><Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice></div>}
-      {linkError && <Notice error>{linkError}</Notice>}
-      {state.status === 'restoring' ? <section><h1>Getting ready</h1><Notice>Restoring your sign-in securely…</Notice></section> :
+  const pageRoutes = routeLocation => <Suspense fallback={<Skeleton label="Loading screen…"/>}><Routes location={routeLocation}>
+    <Route path="/" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage notice={state.authOutcome?.kind === 'error' ? state.authOutcome.message : linkError} />} />
+    <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
+    <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
+    <Route path="/home" element={<Protected><HomePage /></Protected>} /><Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
+    <Route path="/settings/methods" element={<Protected><MethodsPage /></Protected>} /><Route path="/settings/sessions" element={<Protected><SessionsPage /></Protected>} />
+    <Route path="/you" element={<Protected><ProfilePage /></Protected>} /><Route path="/you/privacy" element={<Protected><PrivacyPage /></Protected>} />
+    <Route path="/you/consent" element={<Protected><ConsentPage /></Protected>} /><Route path="/settings/export" element={<Protected><ExportPage /></Protected>} />
+    <Route path="/settings/delete" element={<Protected><DeletePage /></Protected>} /><Route path="/settings/password" element={<Protected><ChangePasswordPage /></Protected>} />
+    <Route path="/settings/profile" element={<Navigate to="/you" replace/>}/><Route path="/settings/privacy" element={<Navigate to="/you/privacy" replace/>}/><Route path="/settings/consent" element={<Navigate to="/you/consent" replace/>}/>
+    <Route path="*" element={<section><h1>Page not found</h1><Link className="button secondary" to="/">Go home</Link></section>} />
+  </Routes></Suspense>;
+  const ready = !['restoring', 'storageError', 'blocked'].includes(state.status) &&
+    !(state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname));
+  return <Shell user={state.user} renderRoutes={ready ? pageRoutes : () => null}
+    showFooter={!state.user || location.pathname === '/settings'}
+    footer={<><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
+      {ready && location.pathname !== '/' && state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome?.kind !== 'progress' && state.authOutcome && <Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice>}
+      {location.pathname !== '/' && !state.authOutcome && linkError && <InlineNotice error>{linkError}</InlineNotice>}
+      {state.status === 'restoring' ? <section><h1>Getting ready</h1><Skeleton label="Restoring your sign-in securely…"/></section> :
         state.status === 'storageError' ? <section><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
           state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><SignOutControl /></section> :
-            state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><Notice>{state.message}</Notice><Link className="button primary" to="/login">Go to login</Link></section> : <>
-            {['offline', 'unavailable'].includes(state.status) && <aside className="notice"><p>{state.message}</p><p>Saved data stays encrypted. Uploads are paused until the connection and sign-in are confirmed.</p>
-              <button className="secondary" onClick={() => auth.loadMe().catch(() => {})}>Retry connection</button></aside>}
+            state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><InlineNotice>{state.message}</InlineNotice><Link className="button primary" to="/login">Go to login</Link></section> : <>
+            {['offline', 'unavailable'].includes(state.status) ? <InlineNotice className="connection-notice" error action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</InlineNotice> :
+              state.user && state.user.emailVerified !== true && location.pathname !== '/verify' && <VerificationBanner />}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
-            {state.user && state.user.emailVerified !== true && location.pathname !== '/verify' && <VerificationBanner />}
-            <Routes>
-              <Route path="/" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage />} />
-              <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
-              <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
-              <Route path="/home" element={<Protected><HomePage /></Protected>} /><Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
-              <Route path="/settings/methods" element={<Protected><MethodsPage /></Protected>} /><Route path="/settings/sessions" element={<Protected><SessionsPage /></Protected>} />
-              <Route path="/settings/profile" element={<Protected><ProfilePage /></Protected>} /><Route path="/settings/privacy" element={<Protected><PrivacyPage /></Protected>} />
-              <Route path="/settings/consent" element={<Protected><ConsentPage /></Protected>} /><Route path="/settings/export" element={<Protected><ExportPage /></Protected>} />
-              <Route path="/settings/delete" element={<Protected><DeletePage /></Protected>} />
-              <Route path="/settings/password" element={<Protected><ChangePasswordPage /></Protected>} />
-              <Route path="*" element={<section><h1>Page not found</h1><Link className="button secondary" to="/">Go home</Link></section>} />
-            </Routes>
+            {location.pathname !== '/' && <PendingNotice/>}
+
+
           </>}
-    </main>
-    <footer><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl} /><p className="small">Territory Run · Android {__APP_VERSION__}</p></footer>
-  </div>;
+  </Shell>;
 }
