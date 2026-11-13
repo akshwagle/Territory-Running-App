@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { useAuth } from './auth/context.jsx';
 import { parseAuthLink, watchNativeAuth } from './auth/deep-links.js';
@@ -7,8 +7,13 @@ import { friendlyMessage } from './auth/errors.js';
 import { WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage } from './pages/auth-pages.jsx';
 import { HomePage, SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
 
-import { ProfilePage, PrivacyPage } from './pages/profile-pages.jsx';
-import { ConsentPage, ExportPage, DeletePage } from './pages/data-pages.jsx';
+import { UIProvider, Skeleton } from './ui/index.jsx';
+import { Shell } from './ui/Shell.jsx';
+const ProfilePage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.ProfilePage })));
+const PrivacyPage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.PrivacyPage })));
+const ConsentPage = lazy(() => import('./pages/data-pages.jsx').then(m => ({ default: m.ConsentPage })));
+const ExportPage = lazy(() => import('./pages/data-pages.jsx').then(m => ({ default: m.ExportPage })));
+const DeletePage = lazy(() => import('./pages/data-pages.jsx').then(m => ({ default: m.DeletePage })));
 
 export function UpdateBanner({ api, versionCode, downloadUrl }) {
   const [attempt, setAttempt] = useState(0), [state, setState] = useState({ phase: 'loading' });
@@ -43,7 +48,8 @@ function VerificationBanner() {
     <Link className="text-link" to="/verify">Check verification</Link><Notice>{message}</Notice><Notice error>{error}</Notice></aside>;
 }
 
-export function App({ downloadUrl, nativeWatch = watchNativeAuth }) {
+export function App(props) { return <UIProvider><AppContent {...props}/></UIProvider>; }
+function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
   const { auth, state } = useAuth(), navigate = useNavigate(), location = useLocation();
   const [{ link, generation }, setLinkState] = useState({ link: null, generation: 0 }), [linkError, setLinkError] = useState('');
   const clearLink = expected => setLinkState(current => current.link === expected ? { ...current, link: null } : current);
@@ -72,13 +78,23 @@ export function App({ downloadUrl, nativeWatch = watchNativeAuth }) {
       if (parsed) setLinkState(current => ({ link: parsed, generation: current.generation + 1 }));
       navigate(location.pathname, { replace: true });
     }
-    const heading = document.querySelector('h1');
-    heading?.setAttribute('tabindex', '-1'); heading?.focus();
   }, [location.pathname, location.search, navigate]);
-  return <div className="app-shell">
-    <header><Link className="wordmark" to={state.user ? '/home' : '/'} aria-label="Territory Run home">TERRITORY<span>RUN</span></Link>
-      {state.user && <Link className="header-link" to="/settings">Settings</Link>}</header>
-    <main id="main">
+  const pageRoutes = routeLocation => <Suspense fallback={<Skeleton label="Loading screen…"/>}><Routes location={routeLocation}>
+    <Route path="/" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage />} />
+    <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
+    <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
+    <Route path="/home" element={<Protected><HomePage /></Protected>} /><Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
+    <Route path="/settings/methods" element={<Protected><MethodsPage /></Protected>} /><Route path="/settings/sessions" element={<Protected><SessionsPage /></Protected>} />
+    <Route path="/you" element={<Protected><ProfilePage /></Protected>} /><Route path="/you/privacy" element={<Protected><PrivacyPage /></Protected>} />
+    <Route path="/you/consent" element={<Protected><ConsentPage /></Protected>} /><Route path="/settings/export" element={<Protected><ExportPage /></Protected>} />
+    <Route path="/settings/delete" element={<Protected><DeletePage /></Protected>} /><Route path="/settings/password" element={<Protected><ChangePasswordPage /></Protected>} />
+    <Route path="/settings/profile" element={<Navigate to="/you" replace/>}/><Route path="/settings/privacy" element={<Navigate to="/you/privacy" replace/>}/><Route path="/settings/consent" element={<Navigate to="/you/consent" replace/>}/>
+    <Route path="*" element={<section><h1>Page not found</h1><Link className="button secondary" to="/">Go home</Link></section>} />
+  </Routes></Suspense>;
+  const ready = !['restoring', 'storageError', 'blocked'].includes(state.status) &&
+    !(state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname));
+  return <Shell user={state.user} renderRoutes={ready ? pageRoutes : () => null}
+    footer={<><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
       {state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome && <div className="auth-outcome"><Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice></div>}
       {linkError && <Notice error>{linkError}</Notice>}
       {state.status === 'restoring' ? <section><h1>Getting ready</h1><Notice>Restoring your sign-in securely…</Notice></section> :
@@ -89,20 +105,7 @@ export function App({ downloadUrl, nativeWatch = watchNativeAuth }) {
               <button className="secondary" onClick={() => auth.loadMe().catch(() => {})}>Retry connection</button></aside>}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
             {state.user && state.user.emailVerified !== true && location.pathname !== '/verify' && <VerificationBanner />}
-            <Routes>
-              <Route path="/" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage />} />
-              <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
-              <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
-              <Route path="/home" element={<Protected><HomePage /></Protected>} /><Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
-              <Route path="/settings/methods" element={<Protected><MethodsPage /></Protected>} /><Route path="/settings/sessions" element={<Protected><SessionsPage /></Protected>} />
-              <Route path="/settings/profile" element={<Protected><ProfilePage /></Protected>} /><Route path="/settings/privacy" element={<Protected><PrivacyPage /></Protected>} />
-              <Route path="/settings/consent" element={<Protected><ConsentPage /></Protected>} /><Route path="/settings/export" element={<Protected><ExportPage /></Protected>} />
-              <Route path="/settings/delete" element={<Protected><DeletePage /></Protected>} />
-              <Route path="/settings/password" element={<Protected><ChangePasswordPage /></Protected>} />
-              <Route path="*" element={<section><h1>Page not found</h1><Link className="button secondary" to="/">Go home</Link></section>} />
-            </Routes>
+
           </>}
-    </main>
-    <footer><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl} /><p className="small">Territory Run · Android {__APP_VERSION__}</p></footer>
-  </div>;
+  </Shell>;
 }
