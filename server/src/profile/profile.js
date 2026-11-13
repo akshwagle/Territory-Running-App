@@ -1,6 +1,7 @@
 'use strict';
 const { currentAccount,publicError } = require('./common');
 const { allocateDisplayName,recordDisplayNameChange } = require('./names');
+const { canView } = require('./privacy');
 
 const AVATAR_IDS=Object.freeze(Array.from({length:12},(_,i)=>i));
 const AVATAR_COLORS=Object.freeze(['#1F5A46','#B8452A','#14392C','#5A5F58','#1F2421']);
@@ -27,11 +28,19 @@ function createProfileService({prisma}) {
     });
     return get(req);
   }
+  async function publicProfile(req,id) {
+    const target=await prisma.user.findUnique({where:{id},select:{...select,deletionAt:true,suspendedAt:true,
+      privacy:{select:{profileVisibility:true}},followers:{where:{followerId:req.authUser.id},select:{followerId:true},take:1}}});
+    if(!canView(req.authUser,target,{isFollower:!!target?.followers.length}))
+      throw publicError(404,'NOT_FOUND','The requested profile was not found.');
+    const {deletionAt:_deleted,suspendedAt:_suspended,privacy:_privacy,followers:_followers,...profile}=target;
+    return {profile};
+  }
   async function history(req,id) {
     if(req.authRole!=='ADMIN')throw publicError(403,'FORBIDDEN','Administrator access is required.');
     if(!await prisma.user.findUnique({where:{id},select:{id:true}}))throw publicError(404,'NOT_FOUND','The requested account was not found.');
     return {history:await prisma.displayNameHistory.findMany({where:{userId:id},select:{id:true,displayName:true,changedAt:true,reservedUntil:true},orderBy:[{changedAt:'desc'},{id:'desc'}]})};
   }
-  return {get,patch,history};
+  return {get,patch,publicProfile,history};
 }
 module.exports={AVATAR_IDS,AVATAR_COLORS,createProfileService};

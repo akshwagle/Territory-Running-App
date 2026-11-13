@@ -6,6 +6,7 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const request=require('supertest');
 const {createApp}=require('../src/app');
+const {canView,mapIdentity,leaderboardIdentity}=require('../src/profile/privacy');
 
 module.exports=function profileCases({prisma,pool,config}) {
   const password='Profile!MountainTrail2026';
@@ -73,4 +74,32 @@ module.exports=function profileCases({prisma,pool,config}) {
     const f=await fixture(t),a=await f.signup(),b=await f.signup(),name=`Race ${randomUUID().slice(0,8)}`;
     const responses=await Promise.all([patch(f,a,'/api/me/profile',{displayName:name}),patch(f,b,'/api/me/profile',{displayName:name.toUpperCase()})]);
     assert.deepEqual(responses.map(r=>r.status).sort(),[200,409]);
+  });
+  test('PRIV-01 visibility matrix covers owner follower following-only stranger anonymous and administrator',()=>{
+    const target={id:'target',displayName:'Trail Runner',privacy:{appearOnLeaderboards:true}};
+    for(const visibility of ['PUBLIC','FOLLOWERS','PRIVATE'])for(const relation of ['owner','follower','following-only','stranger','anonymous','admin']) {
+      target.privacy.profileVisibility=visibility;
+      const viewer=relation==='anonymous'?null:{id:relation==='owner'?'target':'viewer',role:relation==='admin'?'ADMIN':'RUNNER'};
+      const expected=relation==='owner'||visibility==='PUBLIC'||visibility==='FOLLOWERS'&&relation==='follower';
+      assert.equal(canView(viewer,target,{isFollower:relation==='follower'}),expected,`${visibility}/${relation}`);
+      assert.equal(mapIdentity(viewer,target,{isFollower:relation==='follower'}).id,'target');
+      assert.equal(leaderboardIdentity(viewer,target,{isFollower:relation==='follower'}).displayName,expected?'Trail Runner':'Runner');
+    }
+    target.privacy.appearOnLeaderboards=false;assert.equal(leaderboardIdentity({id:'target'},target),null);
+    assert.equal(canView({id:'target'},{...target,deletionAt:new Date()}),false);
+  });
+  test('PRIV-01 privacy writes affect public profile reads immediately; followers have access only under FOLLOWERS',async t=>{
+    const f=await fixture(t),a=await f.signup(),b=await f.signup(),url=`/api/users/${a.user.id}/profile`;
+    assert.deepEqual((await get(f,a,'/api/me/privacy')).body.privacy,{profileVisibility:'PRIVATE',appearOnLeaderboards:false,shareRouteShapes:false});
+    error(await get(f,b,url),404,'NOT_FOUND');
+    assert.equal((await patch(f,a,'/api/me/privacy',{profileVisibility:'PUBLIC',shareRouteShapes:true,appearOnLeaderboards:true})).status,200);
+    assert.equal((await get(f,b,url)).body.profile.id,a.user.id);
+    await prisma.follow.create({data:{followerId:b.user.id,followeeId:a.user.id}});
+    await patch(f,a,'/api/me/privacy',{profileVisibility:'FOLLOWERS'});assert.equal((await get(f,b,url)).status,200);
+    await patch(f,a,'/api/me/privacy',{profileVisibility:'PRIVATE'});error(await get(f,b,url),404,'NOT_FOUND');
+    assert.equal((await get(f,a,url)).status,200);
+    assert.equal((await prisma.userPrivacySetting.findUnique({where:{userId:a.user.id}})).hideRoute,false);
+    error(await patch(f,a,'/api/me/privacy',{shareRouteShapes:'yes'}),400,'INVALID_INPUT');
+    error(await patch(f,a,'/api/me/privacy',{}),400,'INVALID_INPUT');
+    error(await get(f,a,`/api/users/${randomUUID()}/profile`),404,'NOT_FOUND');
   });};

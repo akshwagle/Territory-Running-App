@@ -13,5 +13,7 @@ const profilePatch=z.strictObject({
   bio:z.string().transform(v=>v.normalize('NFKC').trim()).refine(v=>[...v].length<=140&&!/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(v)).optional(),
   homeRegionId:id.nullable().optional(),
 }).refine(v=>Object.keys(v).length>0);
+const privacyPatch=z.strictObject({profileVisibility:z.enum(['PUBLIC','FOLLOWERS','PRIVATE']).optional(),
+  appearOnLeaderboards:z.boolean().optional(),shareRouteShapes:z.boolean().optional()}).refine(v=>Object.keys(v).length>0);
 const params=z.strictObject({id});
-module.exports={empty,profilePatch,params};
+module.exports={empty,profilePatch,privacyPatch,params};
