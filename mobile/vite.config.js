@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => {
   if (!['http:', 'https:'].includes(api.protocol) || api.username || api.password || api.search || api.hash || api.pathname !== '/') {
     throw new Error('VITE_API_URL must be an HTTP(S) origin without credentials or a path.');
   }
-  return { plugins: [react()], define: { __APP_VERSION__: JSON.stringify(version.versionName), __APP_VERSION_CODE__: JSON.stringify(version.versionCode) },
+  return { plugins: [react(), { name: 'bundle-third-party-notices', generateBundle() {
+      const notices = ['./THIRD_PARTY_NOTICES.md', './src/assets/google/THIRD_PARTY_NOTICES.md']
+        .map(file => readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n\n');
+      this.emitFile({ type: 'asset', fileName: 'THIRD_PARTY_NOTICES.txt', source: notices });
+    } }], define: { __APP_VERSION__: JSON.stringify(version.versionName), __APP_VERSION_CODE__: JSON.stringify(version.versionCode) },
     test: { environment: 'jsdom', setupFiles: ['./src/test-setup.js'] } };
 });

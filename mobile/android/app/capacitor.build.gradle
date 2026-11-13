@@ -12,7 +12,9 @@ dependencies {
     implementation project(':aparajita-capacitor-secure-storage')
     implementation project(':capacitor-app')
     implementation project(':capacitor-filesystem')
+    implementation project(':capacitor-keyboard')
     implementation project(':capacitor-share')
+    implementation project(':capacitor-splash-screen')
     implementation project(':capawesome-capacitor-google-sign-in')
 
 }
