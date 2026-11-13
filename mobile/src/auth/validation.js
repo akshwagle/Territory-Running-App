@@ -35,14 +35,16 @@ export function passwordError(value, existing = false) {
 export function normalizeDisplayName(value) {
   if (typeof value !== 'string' || value.length > 240 || /[\p{C}\p{Extended_Pictographic}]/u.test(value)) return null;
   const result = value.normalize('NFKC').trim().replace(/ +/g, ' ');
-  if ([...result].length < 2 || [...result].length > 60 || !/^[\p{L}\p{M}\p{N} .'-]+$/u.test(result)) return null;
-  return ['admin', 'administrator', 'support', 'territoryrun'].includes(result.toLowerCase().replace(/[ .'-]/g, '')) ? null : result;
+  if ([...result].length < 3 || [...result].length > 24 || !/^[\p{L}\p{M}\p{N} .'-]+$/u.test(result)) return null;
+  if (['admin', 'administrator', 'support', 'territoryrun'].includes(result.toLowerCase().replace(/[ .'-]/g, ''))) return null;
+  const denied = new Set(['fuck', 'shit', 'bitch', 'cunt', 'nigger', 'nazi']);
+  return result.toLowerCase().split(/[^\p{L}\p{M}\p{N}]+/u).some(word=>denied.has(word)) ? null : result;
 }
 
 export function formErrors(kind, values) {
   const errors = {};
   if (['signup', 'login', 'forgot'].includes(kind) && !normalizeEmail(values.email)) errors.email = 'Enter a valid email address (up to 254 characters).';
-  if (kind === 'signup' && !normalizeDisplayName(values.displayName)) errors.displayName = 'Use 2–60 letters, numbers, spaces or . ’ -; choose a name other than admin or support.';
+  if (kind === 'signup' && !normalizeDisplayName(values.displayName)) errors.displayName = 'Use 3–24 letters, numbers, spaces or . ’ -; choose a name without profanity or reserved account names.';
   if (['signup', 'login'].includes(kind)) errors.password = passwordError(values.password, kind === 'login');
   if (['reset', 'change'].includes(kind)) errors.newPassword = passwordError(values.newPassword);
   if (kind === 'change') errors.currentPassword = passwordError(values.currentPassword, true);
