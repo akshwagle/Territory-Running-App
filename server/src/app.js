@@ -9,12 +9,12 @@ const path = require('node:path');
 const { createAuthRouter } = require('./auth/routes');
 const { requireAuth } = require('./auth/middleware');
 const { createProfileRouter } = require('./profile/routes');
-const { createMailJobs } = require('./auth/mailer');
+const { createMailJobs, createMailer } = require('./auth/mailer');
 
 function errorBody(code, message) { return { error: { code, message } }; }
 function notFound(res) { return res.status(404).json(errorBody('NOT_FOUND', 'The requested resource was not found.')); }
 
-function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../storage/apk'), logger = console.info, clock = () => new Date(), mailer, verifyGoogle }) {
+function createApp({ prisma, config, exportDir, downloadDir = path.resolve(__dirname, '../storage/apk'), logger = console.info, clock = () => new Date(), mailer, verifyGoogle }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -44,12 +44,14 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
     handler(_req, res) { res.status(429).json(errorBody('RATE_LIMITED', 'Too many requests. Please try again later.')); },
   }));
   const mailJobs = createMailJobs(logger);
+  const delivery=mailer||createMailer(config);
   app.locals.authJobs = mailJobs;
-  app.use('/api/auth', createAuthRouter({ prisma, config, logger, clock, mailer, verifyGoogle, mailJobs }));
+  app.use('/api/auth', createAuthRouter({ prisma, config, logger, clock, mailer:delivery, verifyGoogle, mailJobs }));
   app.get('/api/me', requireAuth({ prisma, config, clock }), (req, res) =>
     res.json({ ...req.authUser, emailVerified: req.authEmailVerified }));
 
-  const profiles=createProfileRouter({prisma,config,clock,verifyGoogle,logger});
+  const profiles=createProfileRouter({prisma,config,clock,verifyGoogle,logger,exportDir,mailer:delivery});
+  app.locals.profileJobs=profiles.jobs;
   app.use('/api',profiles.router);
 
   app.get('/api/health', async (_req, res) => {

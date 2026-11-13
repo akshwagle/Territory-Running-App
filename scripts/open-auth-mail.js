@@ -12,7 +12,7 @@ function main() {
   const [action, ...args] = process.argv.slice(2);
   if (!['verify', 'reset'].includes(action) || args.some(arg => arg !== '--dry-run')) throw Error('Usage: node scripts/open-auth-mail.js verify|reset [--dry-run]');
   const folder = path.join(root, '.local/mail-outbox');
-  const candidates = fs.readdirSync(folder).filter(name => name.endsWith('.json')).map(name => ({ file: path.join(folder, name), stat: fs.lstatSync(path.join(folder, name)) }))
+  const candidates = fs.readdirSync(folder).filter(name => /^\d+-[0-9a-f-]{36}\.json$/.test(name)).map(name => ({ file: path.join(folder, name), stat: fs.lstatSync(path.join(folder, name)) }))
     .filter(item => item.stat.isFile() && Date.now() - item.stat.mtimeMs < 15 * 60 * 1000).sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
   let token;
   for (const item of candidates) {

@@ -64,6 +64,7 @@ function readConfig(env = process.env) {
   return {
     consentVersions,
     profileWriteLimit:integer(env.PROFILE_WRITE_LIMIT,30,'PROFILE_WRITE_LIMIT',1,10000),
+    exportRequestLimit:integer(env.EXPORT_REQUEST_LIMIT,3,'EXPORT_REQUEST_LIMIT',1,1000),
     host,
     port: integer(env.PORT, 4000, 'PORT', 1, 65535),
     origins,
