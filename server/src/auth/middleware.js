@@ -3,7 +3,7 @@
 const { verifyAccessToken } = require('./tokens');
 const { accountFailure, publicUser } = require('./session-core');
 
-function requireAuth({ prisma, config, clock = () => new Date() }) {
+function requireAuth({ prisma, config, clock = () => new Date(), allowMissingUser = false }) {
   return async (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     const match = /^Bearer ([A-Za-z0-9_.-]+)$/i.exec(req.get('authorization') || '');
@@ -22,6 +22,9 @@ function requireAuth({ prisma, config, clock = () => new Date() }) {
           AND t.user_id = u.id AND t.kind = 'REFRESH' AND t.used_at IS NULL
           AND t.revoked_at IS NULL AND t.expires_at > clock_timestamp()) AS "sessionActive"
       FROM users u WHERE u.id = ${session.userId}::uuid`;
+    if (!user && allowMissingUser) {
+      req.authUser = { id:session.userId }; req.authSessionId=session.familyId; req.authDeleted=true; return next();
+    }
     const unavailable = accountFailure(user);
     if (unavailable) {
       const { status, code, message } = unavailable.failure;
