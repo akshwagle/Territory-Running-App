@@ -136,7 +136,7 @@ it('sign-in methods shows loading, error/retry, one-method note and successful n
   const { user } = view(<MethodsPage />, auth); expect(screen.getByText('Loading sign-in methods…')).toBeVisible();
   await act(async () => task.reject(new ApiError('NETWORK_UNAVAILABLE', 'Offline.'))); expect(await screen.findByRole('alert')).toHaveTextContent('Offline.');
   await user.click(screen.getByRole('button', { name: 'Try again' })); expect(await screen.findByText(/Only one sign-in method/)).toBeVisible();
-  await user.click(screen.getByRole('button', { name: 'Link Google' })); expect(await screen.findByText('Google is linked to your account.')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Continue with Google' })); expect(await screen.findByText('Google is linked to your account.')).toBeVisible();
   expect(auth.linkGoogle).toHaveBeenCalledOnce(); expect(screen.getByText('Google', { exact: true })).toBeVisible();
 });
 

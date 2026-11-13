@@ -28,10 +28,12 @@ export function Button({ children, variant = 'primary', loading = false, disable
 export function TextField({ id: givenId, label, error, help, type = 'text', className = '', onChange, ...props }) {
   const generated = useId(), id = givenId || generated;
   const [visible, setVisible] = useState(false), [typed, setTyped] = useState('');
+  const input = useRef(null);
+  useEffect(() => { const form = input.current?.form; const reset = () => { setVisible(false); setTyped(''); }; form?.addEventListener('reset', reset); return () => form?.removeEventListener('reset', reset); }, []);
   const password = type === 'password', rules = password && props.autoComplete === 'new-password';
   return <div className={`ui-field field ${className}`}>
     <label htmlFor={id}>{label}</label><div className="ui-input-row">
-      <input id={id} type={password && visible ? 'text' : type} aria-invalid={Boolean(error)} aria-describedby={error || help || rules ? `${id}-help` : undefined}
+      <input ref={input} id={id} type={password && visible ? 'text' : type} aria-invalid={Boolean(error)} aria-describedby={error || help || rules ? `${id}-help` : undefined}
         onChange={event => { setTyped(event.target.value); onChange?.(event); }} {...props}/>
       {password && <button className="ui-eye" type="button" aria-label={`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`} aria-pressed={visible} onClick={() => setVisible(old => !old)}><Icon name={visible ? 'eye-off' : 'eye'}/></button>}
     </div>{(error || help || rules) && <p id={`${id}-help`} className={`field-help ${error ? 'error-text' : ''}`}>{error || (rules && typed ? `${[...typed].length >= 10 && [...typed].length <= 128 ? 'Length is OK.' : 'Use 10–128 characters.'} Spaces are allowed.` : help || 'Use 10–128 characters. Spaces are allowed.')}</p>}
