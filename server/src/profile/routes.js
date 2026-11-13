@@ -4,11 +4,12 @@ const {rateLimit}=require('express-rate-limit');
 const schemas=require('./validation');
 const {requireAuth}=require('../auth/middleware');
 const {createProfileService}=require('./profile');
+const {createPrivacyService}=require('./privacy');
 
 function createProfileRouter(options) {
   const {prisma,config,clock}=options;
   const router=express.Router(),auth=requireAuth({prisma,config,clock});
-  const profile=createProfileService({prisma});
+  const profile=createProfileService({prisma}),privacy=createPrivacyService({prisma});
   function validate(schema,source='body') {
     return (req,res,next)=>{
       const result=schema.safeParse(req[source]??{});
@@ -21,10 +22,11 @@ function createProfileRouter(options) {
     handler:(_req,res)=>res.status(429).json({error:{code:'RATE_LIMITED',message:'Too many requests. Please try again later.'}})});
   router.use(['/me/profile','/me/privacy','/me/consents','/me/export','/me','/users','/admin'],(_req,res,next)=>{res.set('Cache-Control','no-store');next();});
   const json=express.json({limit:'16kb',strict:true,inflate:false});
-  for(const [name,service,patchSchema] of [['profile',profile,schemas.profilePatch]]) {
+  for(const [name,service,patchSchema] of [['profile',profile,schemas.profilePatch],['privacy',privacy,schemas.privacyPatch]]) {
     router.get(`/me/${name}`,auth,validate(schemas.empty,'query'),async(req,res)=>res.json(await service.get(req)));
     router.patch(`/me/${name}`,auth,json,validate(patchSchema),writes(name),async(req,res)=>res.json(await service.patch(req,req.bodyInput)));
   }
+  router.get('/users/:id/profile',auth,validate(schemas.params,'params'),validate(schemas.empty,'query'),async(req,res)=>res.json(await profile.publicProfile(req,req.paramsInput.id)));
   router.get('/admin/users/:id/name-history',auth,validate(schemas.params,'params'),validate(schemas.empty,'query'),async(req,res)=>res.json(await profile.history(req,req.paramsInput.id)));
   return {router};
 }
