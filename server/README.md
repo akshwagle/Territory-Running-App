@@ -1,14 +1,13 @@
-# Authentication server — steps 01 and 02
+# Territory Run server — auth and profile/privacy
 
 Email/password accounts, Google sign-in/linking, mailbox verification, password
 recovery and session management. Plain JavaScript on Node 22.12+ (verified
-22.19.0), Express 5.3.0 and PostgreSQL 16.15. Website/mobile auth screens belong
-to later steps; the only browser page here is an owner-run development tool.
+22.19.0), Express 5.3.0 and PostgreSQL 16.15. The Android app reuses these endpoints; browser Google try-out remains an owner-run development tool.
 
 ## Database: reuse auth_tokens, no step-02 schema change
 
-The table count stays **27**. schema.prisma and both committed migrations are
-unchanged from main. The proposed action-token table/migration was deleted
+The auth-complete step kept **27** tables without changing either earlier migration.
+The separately approved step-04 profile/privacy migration now brings the total to **30**; see below. The proposed action-token table/migration was deleted
 without being applied. No rollback, new table, new enum, new column, new index or
 new CHECK is needed. users.verified_at and auth_tokens.ip_hash already exist.
 
@@ -26,8 +25,7 @@ new CHECK is needed. users.verified_at and auth_tokens.ip_hash already exist.
 
 The earlier migration 20261112000000_auth_foundation added auth_identities,
 nullable users.password_hash, users.suspended_at and refresh-family metadata.
-Its original ER summary remains in docs/PHASE4_AUTH_VERIFICATION.md. The current
-step adds no physical database objects.
+Its original ER summary remains in docs/PHASE4_AUTH_VERIFICATION.md. The auth-complete step added no physical database objects.
 
 ## Setup and environment
 

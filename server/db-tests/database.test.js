@@ -17,6 +17,7 @@ const { serverRoot, testDatabaseConfig, verifyEmptyDatabase, runPrisma, user, ru
 const config = testDatabaseConfig(process.env);
 const pool = new Pool({ connectionString: config.connectionString, max: 12, connectionTimeoutMillis: 5000 });
 let phase1Count;
+let authCount;
 let legacyUser;
 let legacyRefresh;
 let legacyReset;
@@ -33,21 +34,25 @@ before(async () => {
     VALUES ($1, 'REFRESH', $2, now() + interval '1 day') RETURNING *`, [legacyUser.id, randomBytes(32).toString('hex')])).rows[0];
   legacyReset = (await pool.query(`INSERT INTO auth_tokens (user_id, kind, token_hash, expires_at)
     VALUES ($1, 'PASSWORD_RESET', $2, now() + interval '1 day') RETURNING *`, [legacyUser.id, randomBytes(32).toString('hex')])).rows[0];
+  await pool.query(fs.readFileSync(path.join(serverRoot, 'prisma/migrations/20261112000000_auth_foundation/migration.sql'), 'utf8'));
+  runPrisma(['migrate', 'resolve', '--applied', '20261112000000_auth_foundation'], config.connectionString);
+  authCount = (await pool.query("SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema='public' AND table_name<>'_prisma_migrations'")).rows[0].n;
   runPrisma(['migrate', 'deploy'], config.connectionString);
 });
 after(async () => { await pool.end(); });
 
-test('Phase 1 creates exactly 26 tables; auth upgrade creates exactly 27 application tables', async (t) => {
+test('Phase 1 has 26 tables; auth has 27; reviewed profile/privacy migration has exactly 30', async (t) => {
   assert.equal(phase1Count, 26);
+  assert.equal(authCount, 27);
   const { rows } = await pool.query(`
     SELECT table_name FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name <> '_prisma_migrations' ORDER BY table_name
   `);
-  assert.equal(rows.length, 27);
-  t.diagnostic(`Verified application table count: Phase 1 = ${phase1Count}; Phase 4 auth = ${rows.length}`);
+  assert.equal(rows.length, 30);
+  t.diagnostic(`Verified application table count: Phase 1 = ${phase1Count}; auth = ${authCount}; profile/privacy = ${rows.length}`);
   assert.deepEqual(rows.map((row) => row.table_name), Object.keys(contract.columns).sort());
   const { rows: migrations } = await pool.query('SELECT migration_name, finished_at, rolled_back_at FROM _prisma_migrations');
-  assert.equal(migrations.length, 2);
+  assert.equal(migrations.length, 3);
   assert.ok(migrations.every((row) => row.finished_at && row.rolled_back_at === null));
   // A second deploy must be a no-op.
   runPrisma(['migrate', 'deploy'], config.connectionString);
@@ -126,7 +131,7 @@ test('AUTH-01 unique lower(email) expression index is valid and active alongside
   await rejectsSql(() => user(pool, { email: runner.email.toUpperCase() }), '23514', 'users_email_lowercase_check');
 });
 
-test('all 27 tables match the independent column, type and nullability contract', async () => {
+test('all 30 tables match the independent column, type and nullability contract', async () => {
   const { rows } = await pool.query(`
     SELECT c.relname AS table, a.attname AS column, format_type(a.atttypid, a.atttypmod) AS type,
            NOT a.attnotnull AS nullable
@@ -139,7 +144,7 @@ test('all 27 tables match the independent column, type and nullability contract'
   assert.deepEqual(rows, contract.expectedColumns());
 });
 
-test('all eleven enums match the specified values and order', async () => {
+test('all fourteen enums match the specified values and order', async () => {
   const { rows } = await pool.query(`
     SELECT t.typname AS name, array_agg(e.enumlabel::text ORDER BY e.enumsortorder) AS labels
     FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid
@@ -166,6 +171,13 @@ test('UUID defaults, timestamp defaults, identity columns and all explicit defau
     }
   }
   Object.assign(expected, {
+    'users.avatar_id': '0', 'users.avatar_color': "'#1F5A46'::character varying",
+    'users.preferred_units': "'km'::character varying", 'users.bio': "''::character varying",
+    'user_privacy_settings.profile_visibility': `'PRIVATE'::"ProfileVisibility"`,
+    'user_privacy_settings.appear_on_leaderboards': 'false',
+    'display_name_history.changed_at': 'now()', 'display_name_history.reserved_until': "(now() + '720:00:00'::interval)",
+    'user_consents.created_at': 'now()', 'data_exports.created_at': 'now()',
+    'data_exports.status': `'PENDING'::"ExportStatus"`, 'data_exports.expires_at': "(now() + '24:00:00'::interval)",
     'users.role': `'RUNNER'::"SystemRole"`, 'team_members.role': `'MEMBER'::"TeamRole"`,
     'seasons.status': `'UPCOMING'::"SeasonStatus"`, 'runs.status': `'UPLOADING'::"RunStatus"`,
     'run_flags.status': `'OPEN'::"FlagStatus"`, 'user_privacy_settings.hide_route': 'true',
@@ -177,11 +189,11 @@ test('UUID defaults, timestamp defaults, identity columns and all explicit defau
   for (const row of rows) {
     const key = `${row.table}.${row.column}`;
     assert.equal(row.expression, expected[key] ?? null, `Default for ${key}`);
-    assert.equal(row.identity, ['run_points.id', 'login_attempts.id'].includes(key) ? 'd' : '', `Identity for ${key}`);
+    assert.equal(row.identity, key === 'user_consents.id' ? 'a' : ['run_points.id', 'login_attempts.id'].includes(key) ? 'd' : '', `Identity for ${key}`);
   }
 });
 
-test('all primary/unique keys, ordinary indexes and both partial unique indexes match the spec', async () => {
+test('all primary/unique keys, ordinary indexes and three partial unique indexes match the spec', async () => {
   const { rows } = await pool.query(`
     SELECT c.relname AS table, i.indisprimary AS primary, i.indisunique AS unique,
            pg_get_expr(i.indpred, i.indrelid) AS predicate,
@@ -201,6 +213,7 @@ test('all primary/unique keys, ordinary indexes and both partial unique indexes 
   assert.deepEqual(rows.filter((row) => row.predicate).map((row) => ({
     table: row.table, unique: row.unique, columns: row.columns, predicate: row.predicate,
   })).sort((a, b) => a.table.localeCompare(b.table)), [
+    { table: 'data_exports', unique: true, columns: ['user_id'], predicate: `(status = ANY (ARRAY['PENDING'::"ExportStatus", 'READY'::"ExportStatus"]))` },
     { table: 'seasons', unique: true, columns: ['status'], predicate: `(status = 'ACTIVE'::"SeasonStatus")` },
     { table: 'team_members', unique: true, columns: ['team_id'], predicate: `(role = 'CAPTAIN'::"TeamRole")` },
   ]);
@@ -208,6 +221,10 @@ test('all primary/unique keys, ordinary indexes and both partial unique indexes 
     SELECT conname, convalidated FROM pg_constraint WHERE contype = 'c' AND connamespace = 'public'::regnamespace
   `);
   assert.deepEqual(checks.map((row) => row.conname).sort(), [
+    'users_id_not_audit_tombstone_check','users_profile_name_check','users_avatar_id_check',
+    'users_avatar_color_check','users_preferred_units_check','display_name_history_name_check',
+    'display_name_history_reservation_check','user_consents_version_check',
+    'data_exports_key_check','data_exports_expiry_check','data_exports_completion_check',
     'users_email_lowercase_check', 'follows_no_self_follow_check', 'badges_threshold_positive_check',
     'seasons_time_order_check', 'runs_time_order_check', 'runs_distance_nonnegative_check',
     'runs_duration_positive_check', 'run_flags_reporter_reason_check',
@@ -231,7 +248,7 @@ test('all foreign keys and delete actions match, with no foreign keys on deliber
 
 test('populated test database guard refuses reuse without changing any data', async () => {
   await assert.rejects(() => verifyEmptyDatabase(pool, config.database), /test database must be empty/);
-  assert.equal((await pool.query('SELECT migration_name FROM _prisma_migrations')).rowCount, 2);
+  assert.equal((await pool.query('SELECT migration_name FROM _prisma_migrations')).rowCount, 3);
 });
 
 test('duplicate run upload and duplicate point chunk are rejected; other users may reuse a client ID', async () => {
@@ -363,7 +380,7 @@ test('user deletion cascades dependent data but preserves audit and another runn
   assert.equal((await pool.query('SELECT * FROM run_hexes WHERE run_id = $1', [deletedRun.id])).rowCount, 0);
   assert.equal((await pool.query('SELECT * FROM hex_ownership WHERE owner_id = $1', [deleted.id])).rowCount, 0);
   assert.equal((await pool.query('SELECT * FROM follows WHERE follower_id = $1 OR followee_id = $1', [deleted.id])).rowCount, 0);
-  assert.equal((await pool.query('SELECT admin_id FROM admin_actions WHERE id = $1', [audit.id])).rows[0].admin_id, deleted.id);
+  assert.equal((await pool.query('SELECT admin_id FROM admin_actions WHERE id = $1', [audit.id])).rows[0].admin_id, '00000000-0000-0000-0000-000000000000');
   const { rows: history } = await pool.query('SELECT prev_owner_id FROM run_hexes WHERE run_id = $1 ORDER BY h3_index', [survivorRun.id]);
   assert.deepEqual(history, [{ prev_owner_id: deleted.id }, { prev_owner_id: null }]);
 });
@@ -523,3 +540,5 @@ test('seed runs twice idempotently: scrypt admin/identity, correct defaults/badg
   assert.deepEqual(await snapshot(), first);
   assert.equal((await pool.query('SELECT count(*)::int AS count FROM runs')).rows[0].count, runsBefore);
 });
+
+require('./profile-privacy-cases')({ pool });

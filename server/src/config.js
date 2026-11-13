@@ -56,6 +56,7 @@ function readConfig(env = process.env) {
   const verifiedFlag = env.REQUIRE_VERIFIED_EMAIL_FOR_RUNS ?? String(production);
   if (!['true', 'false'].includes(verifiedFlag)) throw new Error('REQUIRE_VERIFIED_EMAIL_FOR_RUNS must be true or false.');
   return {
+    profileWriteLimit:integer(env.PROFILE_WRITE_LIMIT,30,'PROFILE_WRITE_LIMIT',1,10000),
     host,
     port: integer(env.PORT, 4000, 'PORT', 1, 65535),
     origins,

@@ -8,6 +8,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createAuthRouter } = require('./auth/routes');
 const { requireAuth } = require('./auth/middleware');
+const { createProfileRouter } = require('./profile/routes');
 const { createMailJobs } = require('./auth/mailer');
 
 function errorBody(code, message) { return { error: { code, message } }; }
@@ -33,7 +34,7 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
       if (!origin || config.origins.includes(origin)) return callback(null, true);
       return callback(Object.assign(new Error('Origin blocked'), { publicCode: 'CORS_ORIGIN_DENIED', statusCode: 403 }));
     },
-    methods: ['GET', 'HEAD', 'OPTIONS', 'POST', 'DELETE'],
+    methods: ['GET', 'HEAD', 'OPTIONS', 'POST', 'PATCH', 'DELETE'],
     exposedHeaders: ['Date'],
   }));
 
@@ -47,6 +48,9 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
   app.use('/api/auth', createAuthRouter({ prisma, config, logger, clock, mailer, verifyGoogle, mailJobs }));
   app.get('/api/me', requireAuth({ prisma, config, clock }), (req, res) =>
     res.json({ ...req.authUser, emailVerified: req.authEmailVerified }));
+
+  const profiles=createProfileRouter({prisma,config,clock,verifyGoogle,logger});
+  app.use('/api',profiles.router);
 
   app.get('/api/health', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
@@ -92,6 +96,8 @@ function createApp({ prisma, config, downloadDir = path.resolve(__dirname, '../s
     if (error.publicCode === 'CORS_ORIGIN_DENIED') {
       return res.status(403).json(errorBody('CORS_ORIGIN_DENIED', 'This origin is not allowed.'));
     }
+    if (error.publicCode && Number.isInteger(error.statusCode) && error.statusCode>=400 && error.statusCode<500)
+      return res.status(error.statusCode).json(errorBody(error.publicCode,error.message));
     if (error.type === 'entity.too.large') return res.status(413).json(errorBody('BODY_TOO_LARGE', 'The request body is too large.'));
     if (error.type === 'entity.parse.failed' || error.type === 'request.aborted') {
       return res.status(400).json(errorBody('INVALID_INPUT', 'Check the supplied account details.'));
