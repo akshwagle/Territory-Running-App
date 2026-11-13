@@ -7,6 +7,7 @@ const path=require('node:path');
 const request=require('supertest');
 const {createApp}=require('../src/app');
 const {canView,mapIdentity,leaderboardIdentity}=require('../src/profile/privacy');
+const {consentSummary,locationAcceptedAt}=require('../src/profile/consents');
 
 module.exports=function profileCases({prisma,pool,config}) {
   const password='Profile!MountainTrail2026';
@@ -102,4 +103,28 @@ module.exports=function profileCases({prisma,pool,config}) {
     error(await patch(f,a,'/api/me/privacy',{shareRouteShapes:'yes'}),400,'INVALID_INPUT');
     error(await patch(f,a,'/api/me/privacy',{}),400,'INVALID_INPUT');
     error(await get(f,a,`/api/users/${randomUUID()}/profile`),404,'NOT_FOUND');
+  });
+  test('PRIV-02 consent history is ordered, retries are harmless, and stale acceptance cannot undo withdrawal',async t=>{
+    const f=await fixture(t),a=await f.signup(),url='/api/me/consents',version=config.consentVersions.LOCATION;
+    const accept={type:'LOCATION',version,accepted:true};
+    const first=await post(f,a,url,accept);assert.equal(first.status,200);assert.equal(first.body.history.length,1);
+    assert.equal((await post(f,a,url,accept)).body.history.length,1);
+    const withdrawn=await post(f,a,url,{...accept,accepted:false});assert.equal(withdrawn.status,200);assert.equal(withdrawn.body.history.length,2);
+    error(await post(f,a,url,accept),409,'CONSENT_CHANGED');
+    const current=withdrawn.body.consents.find(c=>c.type==='LOCATION');
+    const again=await auth(request(f.app).post(url),a).set('If-Match',current.etag).send(accept);assert.equal(again.status,200);assert.equal(again.body.history.length,3);
+    const rows=await prisma.userConsent.findMany({where:{userId:a.user.id},orderBy:{id:'asc'}});
+    assert.equal(locationAcceptedAt(rows,rows[0].createdAt,version),true);
+    assert.equal(locationAcceptedAt(rows,rows[1].createdAt,version),false);
+    assert.equal(locationAcceptedAt(rows,new Date(rows[0].createdAt-1),version),false);
+    const other=await f.signup();assert.equal((await get(f,other,url)).body.history.length,0);
+  });
+  test('PRIV-03 policy version bumps require fresh acceptance without modifying old consent or runs',async t=>{
+    const f=await fixture(t),a=await f.signup(),r=await run(a.user.id),old=config.consentVersions.LOCATION;
+    await post(f,a,'/api/me/consents',{type:'LOCATION',version:old,accepted:true});
+    const changed=createApp({prisma,config:{...config,consentVersions:{...config.consentVersions,LOCATION:'next-version'}},logger:()=>{}});
+    const summary=await auth(request(changed).get('/api/me/consents'),a);assert.equal(summary.body.consents[0].requiresAcceptance,true);assert.equal(summary.body.history[0].version,old);
+    error(await auth(request(changed).post('/api/me/consents'),a).send({type:'LOCATION',version:old,accepted:true}),409,'CONSENT_VERSION_CHANGED');
+    assert.equal((await prisma.run.findUnique({where:{id:r.id}})).distanceM,30);
+    assert.equal(consentSummary(await prisma.userConsent.findMany({where:{userId:a.user.id}}),{...config.consentVersions,LOCATION:'next-version'})[0].accepted,false);
   });};

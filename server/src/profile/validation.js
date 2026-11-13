@@ -15,5 +15,6 @@ const profilePatch=z.strictObject({
 }).refine(v=>Object.keys(v).length>0);
 const privacyPatch=z.strictObject({profileVisibility:z.enum(['PUBLIC','FOLLOWERS','PRIVATE']).optional(),
   appearOnLeaderboards:z.boolean().optional(),shareRouteShapes:z.boolean().optional()}).refine(v=>Object.keys(v).length>0);
+const consentBody=z.strictObject({type:z.enum(['LOCATION','TERMS','PRIVACY']),version:z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/),accepted:z.boolean()});
 const params=z.strictObject({id});
-module.exports={empty,profilePatch,privacyPatch,params};
+module.exports={empty,profilePatch,privacyPatch,consentBody,params};
