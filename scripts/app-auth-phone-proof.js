@@ -7,13 +7,14 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const adb = path.join(process.env.ANDROID_HOME || path.join(process.env.HOME, 'Library/Android/sdk'), 'platform-tools/adb');
 const pkg = 'com.territoryrunning.app';
+const version = require('../mobile/app-version.json');
 function main() {
   const devices = execFileSync(adb, ['devices'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).split('\n').map(line => line.match(/^(\S+)\s+device$/)?.[1]).filter(Boolean);
   if (devices.length !== 1) throw Error('Connect exactly one authorised Android phone.');
   const run = args => execFileSync(adb, ['-s', devices[0], ...args], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
   const details = run(['shell', 'dumpsys', 'package', pkg]);
-  if (!/versionCode=3\b/.test(details)) throw Error('Install the current 0.2.0 / code 3 debug APK first.');
-  console.log('PASS installed app: version 0.2.0 / code 3.');
+  if (!new RegExp(`versionCode=${version.versionCode}\\b`).test(details)) throw Error(`Install the current ${version.versionName} / code ${version.versionCode} debug APK first.`);
+  console.log(`PASS installed app: version ${version.versionName} / code ${version.versionCode}.`);
   const files = run(['shell', 'run-as', pkg, 'ls', 'shared_prefs']).trim().split(/\r?\n/).filter(name => /^[\w.-]+\.xml$/.test(name));
   const jwt = /eyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{8,}/;
   let encryptedSession = false;

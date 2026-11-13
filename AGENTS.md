@@ -11,7 +11,7 @@ anti-cheat flags, notifications, privacy controls and administration.
 - Backend: Node.js 22.12+ and Express 5 (plain JavaScript).
 - Database: PostgreSQL 16, Prisma 6 (exact version in server/package.json).
 - Mobile: Capacitor wraps the React app into an Android APK downloaded from the website.
-- Phase 3 landing page is merged; Phase 4 step 03 Android auth is implemented and verified, awaiting PR review.
+- Phase 3 and Phase 4 step 03 are merged; step 04 profile/privacy is implemented and phone-verified on feat/profile-privacy, awaiting PR review.
 - Step 03: native Google and email phone checks passed; recording/uploads and cross-device ACTIVE-run rules are deferred to step 05.
 - No login, runner features, UI redesign, hosting or deployment in Phase 2.
 
@@ -28,8 +28,8 @@ anti-cheat flags, notifications, privacy controls and administration.
 
 ## Phase roadmap
 1. Database: schema, migration, seed, tests (COMPLETE)
-2. Website with APK download: minimal Express API, React site with a download page, a first Capacitor APK (IN PROGRESS)
-3. Improve the website UI
+2. Website with APK download: minimal Express API, React site with a download page, a first Capacitor APK (COMPLETE)
+3. Improve the website UI (COMPLETE)
 4. App features: auth, run recording, hex claiming, map, leaderboard, profile
 5. Feature parity with popular running apps (history, stats, shoes, goals, sharing, challenges and so on)
 6. Improve the app UI
@@ -50,18 +50,19 @@ them. Pause only if following the text changes the table count or drops a table/
 
 ## Database conventions and invariants
 - Database tables and columns: snake_case; Prisma models: PascalCase, mapped explicitly.
-- Exactly 27 application tables after the approved auth-foundation migration; step 03 makes no schema change.
+- Exactly 30 application tables after the approved step-04 profile/privacy migration (27 before it).
 - UUID id defaults: gen_random_uuid(); bigint IDs: identity.
 - All timestamps use TIMESTAMPTZ; created_at defaults to now(); Prisma maintains @updatedAt.
 - Keep SQL CHECK constraints, partial unique indexes and identity definitions in migrations.
 - Do not use db push: it omits hand-written SQL rules. Review every generated migration.
 - Raw auth tokens never enter the database: token_hash stores a SHA-256 digest only.
-- admin_actions is append-only and has no foreign keys; audit data outlives users.
+- admin_actions has no foreign keys; ordinary updates/deletes/truncates are blocked. Only the reviewed account-deletion trigger may tombstone matching IDs and redact identifying notes.
 - run_hexes.h3_index and prev_owner_id deliberately have no foreign keys.
-- Deleting a run cascades its own run_hexes; another runner's prev_owner_id history survives.
+- Deleting a run cascades its own run_hexes. Another runner's history row survives; account erasure clears its prev_owner_id.
 - user_stats is rebuildable; season_scores is a frozen end-of-season snapshot.
 - Claim territory with the documented conditional upsert; sort batch cells by h3_index.
-- Service rules (consent, validation, restricted areas, erasure and point purging) belong to later phases.
+- Read endpoints must use the shared profile canView helper and privacy choices. Step 05 must check current consent before runs/points and use account-work locks before job publication.
+- Step 04 explicitly authorizes the three profile/privacy tables and seven existing-table columns; no further schema changes without review.
 
 ## Commands (from repository root)
 1. Copy server/.env.example to server/.env and set every required variable locally.

@@ -148,6 +148,8 @@ test('invalid startup environment and registration arguments fail clearly withou
 
 require('./auth-cases')({ prisma, pool, config, isolated });
 require('./auth-complete-cases')({ prisma, pool, config });
+require('./profile-name-cases')({ prisma, pool, config });
+require('./profile-cases')({ prisma, pool, config });
 
 test('release registration copies exact bytes, hashes them and idempotently upserts without deactivating older releases', async () => {
   const source = path.join(directory, 'test-source.apk');

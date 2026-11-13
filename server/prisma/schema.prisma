@@ -24,6 +24,24 @@ enum AuthProvider {
   GOOGLE
 }
 
+enum ProfileVisibility {
+  PUBLIC
+  FOLLOWERS
+  PRIVATE
+}
+
+enum ConsentType {
+  LOCATION
+  TERMS
+  PRIVACY
+}
+
+enum ExportStatus {
+  PENDING
+  READY
+  FAILED
+}
+
 enum TeamRole {
   CAPTAIN
   MEMBER
@@ -82,34 +100,45 @@ enum NotificationType {
 }
 
 model User {
-  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  username     String     @unique @db.VarChar(30)
-  email        String     @unique @db.VarChar(255)
-  passwordHash String?    @map("password_hash") @db.Text
-  displayName  String     @map("display_name") @db.VarChar(60)
-  role         SystemRole @default(RUNNER)
-  verifiedAt   DateTime?  @map("verified_at") @db.Timestamptz(6)
-  deletionAt   DateTime?  @map("deletion_at") @db.Timestamptz(6)
-  suspendedAt  DateTime?  @map("suspended_at") @db.Timestamptz(6)
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username       String     @unique @db.VarChar(30)
+  email          String     @unique @db.VarChar(255)
+  passwordHash   String?    @map("password_hash") @db.Text
+  displayName    String     @map("display_name") @db.VarChar(60)
+  avatarId       Int        @default(0) @map("avatar_id") @db.SmallInt
+  avatarColor    String     @default("#1F5A46") @map("avatar_color") @db.VarChar(7)
+  preferredUnits String     @default("km") @map("preferred_units") @db.VarChar(2)
+  bio            String     @default("") @db.VarChar(140)
+  homeRegionId   String?    @map("home_region_id") @db.Uuid
+  role           SystemRole @default(RUNNER)
+  verifiedAt     DateTime?  @map("verified_at") @db.Timestamptz(6)
+  deletionAt     DateTime?  @map("deletion_at") @db.Timestamptz(6)
+  suspendedAt    DateTime?  @map("suspended_at") @db.Timestamptz(6)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   authTokens     AuthToken[]
   authIdentities AuthIdentity[]
   privacy        UserPrivacySetting?
   membership     TeamMember?
-  following      Follow[]            @relation("Follower")
-  followers      Follow[]            @relation("Followee")
+  following      Follow[]             @relation("Follower")
+  followers      Follow[]             @relation("Followee")
   badges         UserBadge[]
   seasonScores   SeasonScore[]
   stats          UserStat?
   runs           Run[]
-  reportedFlags  RunFlag[]           @relation("Reporter")
-  resolvedFlags  RunFlag[]           @relation("Resolver")
+  reportedFlags  RunFlag[]            @relation("Reporter")
+  resolvedFlags  RunFlag[]            @relation("Resolver")
   ownedHexes     HexOwnership[]
   devices        Device[]
   notifications  Notification[]
+  homeRegion     Region?              @relation(fields: [homeRegionId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  nameHistory    DisplayNameHistory[]
+  consents       UserConsent[]
+  dataExports    DataExport[]
 
+  @@index([homeRegionId])
+  // Canonical display-name uniqueness and CHECKs live in the reviewed SQL.
   @@map("users")
 }
 
@@ -152,13 +181,15 @@ model AuthToken {
 }
 
 model UserPrivacySetting {
-  userId       String    @id @map("user_id") @db.Uuid
-  hideRoute    Boolean   @default(true) @map("hide_route")
-  homeHex      BigInt?   @map("home_hex")
-  hideRadiusM  Int       @default(200) @map("hide_radius_m")
-  consentAt    DateTime? @map("consent_at") @db.Timestamptz(6)
-  termsVersion String?   @map("terms_version") @db.VarChar(10)
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  userId               String            @id @map("user_id") @db.Uuid
+  hideRoute            Boolean           @default(true) @map("hide_route")
+  homeHex              BigInt?           @map("home_hex")
+  hideRadiusM          Int               @default(200) @map("hide_radius_m")
+  consentAt            DateTime?         @map("consent_at") @db.Timestamptz(6)
+  termsVersion         String?           @map("terms_version") @db.VarChar(10)
+  profileVisibility    ProfileVisibility @default(PRIVATE) @map("profile_visibility")
+  appearOnLeaderboards Boolean           @default(false) @map("appear_on_leaderboards")
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("user_privacy_settings")
 }
@@ -373,8 +404,52 @@ model Region {
   city      String       @db.VarChar(80)
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   cells     RegionCell[]
+  residents User[]
 
   @@map("regions")
+}
+
+model DisplayNameHistory {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  displayName   String   @map("display_name") @db.VarChar(60)
+  nameKey       String   @map("name_key") @db.Text
+  changedAt     DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+  reservedUntil DateTime @default(dbgenerated("(now() + '720 hours'::interval)")) @map("reserved_until") @db.Timestamptz(6)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([nameKey, reservedUntil])
+  @@index([userId, changedAt])
+  @@map("display_name_history")
+}
+
+model UserConsent {
+  // Reviewed SQL uses GENERATED ALWAYS AS IDENTITY, not BIGSERIAL.
+  id        BigInt      @id @default(autoincrement())
+  userId    String      @map("user_id") @db.Uuid
+  type      ConsentType
+  version   String      @db.VarChar(32)
+  accepted  Boolean
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId, type, id])
+  @@map("user_consents")
+}
+
+model DataExport {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  status        ExportStatus @default(PENDING)
+  encryptionKey Bytes        @map("encryption_key") @db.ByteA
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt     DateTime     @default(dbgenerated("(now() + '24 hours'::interval)")) @map("expires_at") @db.Timestamptz(6)
+  completedAt   DateTime?    @map("completed_at") @db.Timestamptz(6)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  // One-active-export partial unique index is in migration.sql.
+  @@index([expiresAt])
+  @@map("data_exports")
 }
 
 model RegionCell {

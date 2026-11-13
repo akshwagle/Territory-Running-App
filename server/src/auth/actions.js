@@ -3,6 +3,7 @@ const { hashPassword, verifyPassword } = require('./passwords');
 const { initialRefreshToken, tokenHash, equalHashes, hashIp } = require('./tokens');
 const { failure, accountFailure, databaseNow, lockUser, revokeSessions } = require('./session-core');
 const { messageFor } = require('./mailer');
+const { lockAccountWork } = require('../profile/common');
 const lifetimes = { EMAIL_VERIFY: 24 * 60 * 60 * 1000, PASSWORD_RESET: 30 * 60 * 1000 };
 
 function createActionService({ prisma, config, mailer }) {
@@ -16,12 +17,18 @@ function createActionService({ prisma, config, mailer }) {
       const now = await databaseNow(tx);
       // The same lock serializes re-requests, confirmation and password changes.
       await tx.authToken.updateMany({ where: { userId: user.id, kind, usedAt: null }, data: { usedAt: now } });
-      await tx.authToken.create({ data: { userId: user.id, kind, tokenHash: tokenHash(raw),
+      const row=await tx.authToken.create({ data: { userId: user.id, kind, tokenHash: tokenHash(raw),
         expiresAt: new Date(now.getTime() + lifetimes[kind]), createdAt: now,
         ipHash: hashIp(ip || 'unknown', config.refreshDerivationSecret) } });
-      return user.email;
+      return {userId:user.id,email:user.email,tokenId:row.id};
     });
-    if (issued) await mailer.send(messageFor(kind, raw, issued, config.webBaseUrl));
+    if (issued) await prisma.$transaction(async tx=>{
+      await lockAccountWork(tx,issued.userId);
+      const user=await tx.user.findUnique({where:{id:issued.userId}});
+      if(accountFailure(user)||user.email!==issued.email)return;
+      const active=await tx.authToken.findFirst({where:{id:issued.tokenId,usedAt:null,expiresAt:{gt:await databaseNow(tx)}}});
+      if(active)await mailer.send(messageFor(kind,raw,issued.email,config.webBaseUrl),{userId:issued.userId});
+    },{timeout:45000});
   }
 
   async function confirm({ token, kind, actorId, newPassword }) {

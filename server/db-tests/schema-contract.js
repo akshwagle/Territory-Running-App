@@ -4,10 +4,13 @@
 // not generated from Prisma: it catches missing/extra columns and wrong types.
 // ?: nullable; t: timestamptz(6); vN: varchar(N); other type codes are below.
 const columns = {
-  users: 'id:u username:v30 email:v255 password_hash:x? display_name:v60 role:SystemRole verified_at:t? deletion_at:t? suspended_at:t? created_at:t updated_at:t',
+  users: 'id:u username:v30 email:v255 password_hash:x? display_name:v60 avatar_id:s avatar_color:v7 preferred_units:v2 bio:v140 home_region_id:u? role:SystemRole verified_at:t? deletion_at:t? suspended_at:t? created_at:t updated_at:t',
   auth_tokens: 'id:u user_id:u kind:TokenKind token_hash:v64 expires_at:t used_at:t? created_at:t family_id:u? revoked_at:t? replaced_by_id:u? user_agent:x? ip_hash:v64? grace_replayed_at:t?',
   auth_identities: 'id:u user_id:u provider:AuthProvider provider_subject:v255 email_at_signup:v255 created_at:t last_used_at:t?',
-  user_privacy_settings: 'user_id:u hide_route:o home_hex:b? hide_radius_m:i consent_at:t? terms_version:v10?',
+  user_privacy_settings: 'user_id:u hide_route:o home_hex:b? hide_radius_m:i consent_at:t? terms_version:v10? profile_visibility:ProfileVisibility appear_on_leaderboards:o',
+  display_name_history: 'id:u user_id:u display_name:v60 name_key:x changed_at:t reserved_until:t',
+  user_consents: 'id:b user_id:u type:ConsentType version:v32 accepted:o created_at:t',
+  data_exports: 'id:u user_id:u status:ExportStatus encryption_key:y created_at:t expires_at:t completed_at:t?',
   teams: 'id:u name:v50 color_hex:v7 invite_code:v12 created_at:t',
   team_members: 'user_id:u team_id:u role:TeamRole joined_at:t',
   follows: 'follower_id:u followee_id:u created_at:t',
@@ -33,7 +36,7 @@ const columns = {
   app_releases: 'id:u version_code:i version_name:v20 apk_url:x sha256:v64 changelog:x? is_active:o published_at:t',
 };
 
-const types = { u: 'uuid', x: 'text', t: 'timestamp(6) with time zone', b: 'bigint', i: 'integer', s: 'smallint', d: 'date', o: 'boolean', f: 'double precision', r: 'real' };
+const types = { u: 'uuid', x: 'text', y: 'bytea', t: 'timestamp(6) with time zone', b: 'bigint', i: 'integer', s: 'smallint', d: 'date', o: 'boolean', f: 'double precision', r: 'real' };
 function expectedColumns() {
   return Object.entries(columns).flatMap(([table, fields]) => fields.split(' ').map((field) => {
     const [column, spec] = field.split(':');
@@ -48,6 +51,9 @@ const enums = {
   SystemRole: ['RUNNER', 'ADMIN'],
   TokenKind: ['REFRESH', 'PASSWORD_RESET', 'EMAIL_VERIFY'],
   AuthProvider: ['PASSWORD', 'GOOGLE'],
+  ProfileVisibility: ['PUBLIC', 'FOLLOWERS', 'PRIVATE'],
+  ConsentType: ['LOCATION', 'TERMS', 'PRIVACY'],
+  ExportStatus: ['PENDING', 'READY', 'FAILED'],
   TeamRole: ['CAPTAIN', 'MEMBER'],
   SeasonStatus: ['UPCOMING', 'ACTIVE', 'ENDED'],
   BadgeCriteria: ['TOTAL_DISTANCE', 'HEX_COUNT', 'STREAK_DAYS', 'RUN_COUNT'],
@@ -60,6 +66,10 @@ const enums = {
 
 // Child.column, parent.column, PostgreSQL ON DELETE action (c=CASCADE, n=SET NULL).
 const foreignKeys = [
+  ['users.home_region_id', 'regions.id', 'n'],
+  ['display_name_history.user_id', 'users.id', 'c'],
+  ['user_consents.user_id', 'users.id', 'c'],
+  ['data_exports.user_id', 'users.id', 'c'],
   ['auth_tokens.user_id', 'users.id', 'c'],
   ['auth_tokens.replaced_by_id', 'auth_tokens.id', 'a'],
   ['auth_identities.user_id', 'users.id', 'c'],
@@ -79,6 +89,7 @@ const foreignKeys = [
 const keys = {
   users: ['p:id', 'u:username', 'u:email'], auth_tokens: ['p:id', 'u:token_hash'],
   auth_identities: ['p:id', 'u:provider,provider_subject'],
+  display_name_history: ['p:id'], user_consents: ['p:id'], data_exports: ['p:id'],
   user_privacy_settings: ['p:user_id'], teams: ['p:id', 'u:name', 'u:invite_code'],
   team_members: ['p:user_id'], follows: ['p:follower_id,followee_id'],
   badges: ['p:id', 'u:code'], user_badges: ['p:user_id,badge_id'],
@@ -91,6 +102,8 @@ const keys = {
 };
 
 const indexes = [
+  'users:home_region_id', 'display_name_history:name_key,reserved_until',
+  'display_name_history:user_id,changed_at', 'user_consents:user_id,type,id', 'data_exports:expires_at',
   'auth_tokens:user_id,kind', 'auth_tokens:family_id', 'auth_identities:user_id', 'runs:user_id,started_at', 'run_flags:status,created_at',
   'hex_ownership:owner_id,claimed_at', 'run_hexes:h3_index', 'devices:user_id',
   'notifications:user_id,read_at', 'login_attempts:email,created_at',

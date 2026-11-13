@@ -9,7 +9,7 @@ export function createApiClient({ origin, vault, fetchImpl = globalThis.fetch, t
     const live = vault.snapshot().session;
     return Boolean(live && expected && live.user.id === expected.user.id && live.accessToken === expected.accessToken);
   };
-  async function send(path, { method = 'GET', body, accessToken, signal } = {}) {
+  async function send(path, { method = 'GET', body, accessToken, signal, ifMatch } = {}) {
     if (!/^\/api\/[a-zA-Z0-9/_-]+$/.test(path)) throw Error('Invalid API path.');
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -20,6 +20,7 @@ export function createApiClient({ origin, vault, fetchImpl = globalThis.fetch, t
       const response = await fetchImpl(`${url.origin}${path}`, {
         method, signal: controller.signal, credentials: 'omit', cache: 'no-store', redirect: 'error',
         headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+          ...(ifMatch ? { 'If-Match':ifMatch } : {}),
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
@@ -67,7 +68,7 @@ export function createApiClient({ origin, vault, fetchImpl = globalThis.fetch, t
     catch (error) {
       if (!auth) throw error;
       if (isAccountError(error)) { if (isCurrent(start.session)) onAccountBlocked(error); throw error; }
-      if (error.status !== 401) throw error;
+      if (error.status !== 401 || error.code !== 'UNAUTHORIZED') throw error;
       const current = vault.snapshot();
       if (!current.session || current.session.user.id !== start.session.user.id) throw error;
       // A late 401 can arrive after another caller has already rotated tokens.

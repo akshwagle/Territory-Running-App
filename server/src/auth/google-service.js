@@ -2,6 +2,7 @@
 const { randomBytes } = require('node:crypto');
 const { verifyGoogleIdToken, googleClaims } = require('./google');
 const { failure, accountFailure, databaseNow, lockUser, revokeSessions, createSessionTools } = require('./session-core');
+const { allocateDisplayName, recordDisplayNameChange } = require('../profile/names');
 
 const conflict = () => failure(409, 'GOOGLE_SIGN_IN_FAILED', 'Unable to sign in with this Google account.');
 const identitySelect = { id: true, provider: true, emailAtSignup: true, createdAt: true, lastUsedAt: true };
@@ -43,14 +44,17 @@ function createGoogleService({ prisma, config, verifyGoogle = verifyGoogleIdToke
                 methods.some(i => i.provider === 'GOOGLE' && i.emailAtSignup.toLowerCase() === claims.email)) return conflict();
             if (!claims.authoritative) return failure(409, 'ACCOUNT_LINK_REQUIRED', 'Sign in with your password, then link Google from Settings.');
             if (!user.verifiedAt) {
-              user = await tx.user.update({ where: { id: user.id }, data: { passwordHash: null, displayName: claims.name } });
+              const displayName = await allocateDisplayName(tx, claims.name, user.id);
+              await recordDisplayNameChange(tx, user, displayName);
+              user = await tx.user.update({ where: { id: user.id }, data: { passwordHash: null, displayName } });
               await revokeSessions(tx, user.id, now);
               await tx.authToken.updateMany({ where: { userId: user.id, kind: { in: ['EMAIL_VERIFY', 'PASSWORD_RESET'] }, usedAt: null }, data: { usedAt: now } });
             }
             user = await tx.user.update({ where: { id: user.id }, data: { verifiedAt: user.verifiedAt || now } });
           } else {
+            const displayName = await allocateDisplayName(tx, claims.name);
             user = await tx.user.create({ data: { email: claims.email, username: `u_${randomBytes(14).toString('hex')}`,
-              displayName: claims.name, passwordHash: null, verifiedAt: claims.authoritative ? now : null } });
+              displayName, passwordHash: null, verifiedAt: claims.authoritative ? now : null } });
           }
           await tx.authIdentity.create({ data: { userId: user.id, provider: 'GOOGLE', providerSubject: claims.sub,
             emailAtSignup: claims.email, lastUsedAt: now } });

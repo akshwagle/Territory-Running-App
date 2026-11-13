@@ -1,14 +1,13 @@
-# Authentication server — steps 01 and 02
+# Territory Run server — auth and profile/privacy
 
 Email/password accounts, Google sign-in/linking, mailbox verification, password
 recovery and session management. Plain JavaScript on Node 22.12+ (verified
-22.19.0), Express 5.3.0 and PostgreSQL 16.15. Website/mobile auth screens belong
-to later steps; the only browser page here is an owner-run development tool.
+22.19.0), Express 5.3.0 and PostgreSQL 16.15. The Android app reuses these endpoints; browser Google try-out remains an owner-run development tool.
 
 ## Database: reuse auth_tokens, no step-02 schema change
 
-The table count stays **27**. schema.prisma and both committed migrations are
-unchanged from main. The proposed action-token table/migration was deleted
+The auth-complete step kept **27** tables without changing either earlier migration.
+The separately approved step-04 profile/privacy migration now brings the total to **30**; see below. The proposed action-token table/migration was deleted
 without being applied. No rollback, new table, new enum, new column, new index or
 new CHECK is needed. users.verified_at and auth_tokens.ip_hash already exist.
 
@@ -26,8 +25,7 @@ new CHECK is needed. users.verified_at and auth_tokens.ip_hash already exist.
 
 The earlier migration 20261112000000_auth_foundation added auth_identities,
 nullable users.password_hash, users.suspended_at and refresh-family metadata.
-Its original ER summary remains in docs/PHASE4_AUTH_VERIFICATION.md. The current
-step adds no physical database objects.
+Its original ER summary remains in docs/PHASE4_AUTH_VERIFICATION.md. The auth-complete step added no physical database objects.
 
 ## Setup and environment
 
@@ -300,3 +298,125 @@ a session and /api/me accepted it. Actual SMTP delivery remains unverified.
 Automated tests still use fakes; the helper needs no pasted ID token. No Android
 permission, APK, native UI, Google services key file or phone flow changed in
 this server step.
+
+
+## Step 04: profile, privacy, consent and data ownership
+
+The reviewed `20261113000000_profile_privacy` migration adds three tables and
+seven columns to existing tables (30 application tables total). It was tested
+on disposable databases, then applied to development only after a verified
+private pg_dump backup and the owner's second go. Existing account sign-in and
+Settings passed afterwards. Complete SQL object inventory, proof output and
+phone results: [profile/privacy review](../docs/PHASE4_PROFILE_PRIVACY_REVIEW.md).
+
+All endpoints below require a signed, active `sub/sid` session, use `no-store`
+and strict Zod validation, and never require email verification. Writes are
+limited per account per process. Authentication JWT and `/api/me` fields stay
+unchanged. Bodies cannot select another account.
+
+| Method/path | Contract |
+| --- | --- |
+| GET /api/me/profile | Own profile, avatar options and available home regions |
+| PATCH /api/me/profile | Nonempty subset: displayName, avatarId, avatarColor, preferredUnits, bio, homeRegionId (nullable) |
+| GET/PATCH /api/me/privacy | profileVisibility PUBLIC/FOLLOWERS/PRIVATE, appearOnLeaderboards and shareRouteShapes |
+| GET /api/users/:id/profile | 404 unless shared `canView` permits this viewer; own profile always visible |
+| GET /api/admin/users/:id/name-history | ADMIN only; history of an existing account, otherwise 403/404 |
+| GET /api/me/consents | Current notices/revisions and complete append-only history |
+| POST /api/me/consents | `{type, version, accepted}`; type LOCATION/TERMS/PRIVACY |
+| DELETE /api/me | Exact `confirmation: "DELETE"` plus either password or fresh idToken, never both; 204 |
+| POST /api/me/export | Empty object; 202 with export metadata, existing active export reused |
+| GET /api/me/export/:id | 202 while pending, JSON attachment when ready, 404 for foreign/missing/expired/deleted resources |
+
+Names use NFKC, trim/collapse spaces and 3–24 Unicode code points. Letter, mark,
+number, space, period, apostrophe and hyphen characters are allowed. A small
+whole-word denylist rejects profanity; admin/administrator/support/territoryrun
+are reserved. This is deliberately a small local filter, not comprehensive
+language moderation. Canonical advisory locks serialize every signup, Google
+and profile name claim. Signup/Google add readable numeric suffixes (then bounded
+random suffixes); profile edits return 409 rather than silently changing the
+chosen name. Previous names are reserved to their owner for exactly 720 hours;
+deleting that account erases its history and reservation. History is admin-only.
+Avatar IDs are 0–11; colours are the five Clay & Pine palette values. Units are
+km/mi; bio is at most 140 code points; homeRegionId must identify a current region.
+
+Privacy defaults are PRIVATE, excluded from leaderboards and routes hidden.
+`shareRouteShapes` is the inverse of existing `hide_route`; no duplicate column.
+PUBLIC is viewable by everyone, FOLLOWERS by the owner and followers, PRIVATE by
+the owner only. Following someone is not the same as being followed. Admin has
+no implicit profile-view bypass. `mapIdentity` keeps the ownership ID and masks
+the name to Runner; `leaderboardIdentity` also respects opt-out. Actual map and
+leaderboard reads arrive in step 05 and must reuse these helpers.
+
+Set `LOCATION_CONSENT_VERSION`, `TERMS_VERSION` and `PRIVACY_POLICY_VERSION`
+(default `2026-11-13`, safe 1–32-character labels), and bump the applicable label
+when changing notice text. Before accepting after an earlier recorded state,
+send that notice's `etag` from GET as the `If-Match` header. Exact latest-state
+retries are no-ops; stale acceptance cannot undo a newer withdrawal. Withdrawal
+is always allowed, including an older text version. History uses identity order
+and a database timestamp taken after the user lock. `recordingPermission` checks
+all current versions; `locationAcceptedAt` evaluates the applicable consent at a
+point's time. Neither helper trusts a future recording client by itself: step 05
+must validate point times and reject points captured after withdrawal. Old runs
+are untouched by a policy bump.
+
+Deletion verifies the password outside the transaction then rechecks the hash,
+or verifies the Google token exactly as login plus iat within 300 seconds
+(30 seconds future skew) and ownership of its exact Google sub. A matching email
+alone never authorizes deletion. It serializes account work and team changes,
+clears surviving prev_owner_id references and matching login attempts, scrubs
+known aliases from surviving flag/notification text, transfers CAPTAIN to the
+longest-standing member (joined_at, user_id tie-break), or disbands an empty
+team. SystemRole is never promoted. Root deletion captures aliases before
+cascades; the reviewed trigger alone redacts audit IDs/notes. It erases sessions,
+PII, runs/points, consents/history and export keys atomically. A valid signed
+access-token retry for an already removed account returns 204; other operations
+remain rejected. No victim notification is created. After commit, registered
+work is aborted and encrypted artifacts are unlinked. Development outbox messages
+are also removed: a private owner-UUID/filename cleanup journal is prepared under the
+account lock, and messages are deleted only after the root deletion commits.
+Rollback keeps message bytes intact. New messages carry their owner's UUID;
+legacy development copies are matched to that account's canonical email. Queued
+verification/reset delivery takes the same account-work lock and rechecks the
+user and token before publishing, so it cannot send after deletion. A failed
+file cleanup can be retried by DELETE; startup/hourly cleanup also retries the
+journal after checking the committed account state. Messages belonging to other
+accounts are preserved. SMTP mailbox copies already delivered are outside the
+app's control. Future workers must take
+`lockAccountWork` and recheck the user before publication, including across API
+processes. Actual ACTIVE recording and claim jobs are deferred to step 05.
+
+Exports contain only explicitly selected own fields, runs/points, consents,
+flags, team membership/catalog and notifications. Other runners use Runner;
+flag and notification free text is omitted; notification titles are neutral. No other
+user coordinates, member lists, invite codes, push tokens, passwords, hashes,
+session credentials or export keys are included. JSON is encrypted with
+AES-256-GCM before writing to private `server/storage/exports/<uuid>.enc`
+(directory0700, files0600). Each random 32-byte key exists only in its owner's
+cascading metadata row. Deletion destroys that key even if unlink fails. Export
+creation/publication/download share the account-work lock with deletion; a
+worker cannot publish after deletion. Startup and hourly cleanup erase expired
+metadata/keys/files and orphan ciphertext; pending jobs restart on API startup.
+One active PENDING/READY export is enforced by a partial unique index. Failed or
+missing artifacts permit another request. Expiry is exactly 24 hours.
+
+`PROFILE_WRITE_LIMIT` defaults to 30 per 15 minutes per operation/account;
+`EXPORT_REQUEST_LIMIT` defaults to 3 per 15 minutes; deletion is 5 per 15 minutes.
+The existing API/IP limits also apply. These limits and background queues are
+per process, not a distributed worker service. Large exports currently build in
+memory. Production deployment needs storage sizing, backup retention and a
+shared queue/rate limiter as traffic grows. Deletion removes live data; existing
+operator backups and copies already shared outside the app need their own
+retention policy. Real SMTP delivery is still unverified.
+
+Run the guarded proofs (Postgres already running, disposable *_test DBs only):
+
+```sh
+node server/scripts/reset-test-databases.js all
+npm test --prefix server
+npm run test:api --prefix server
+node server/scripts/profile-proof.js
+```
+
+The curl helper uses a finite temporary listener and removes its test account
+and private artifacts. Automated Google and mail verifiers stay mocked. Start
+or stop the actual development services only in the owner's Terminal.

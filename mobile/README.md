@@ -238,3 +238,84 @@ or unapproved dependency change was made. Layout checks cover 320/360/430 px,
 No password, email link, token or client ID needs to be pasted into chat. Verified
 HTTPS App Links need future hosting/assetlinks.json. Server rate limits remain
 per process. Browser previews intentionally retain sign-in only in tab memory.
+
+
+## Step 04: profile, privacy, consent and data ownership
+
+Debug build **0.3.0 / code 4** adds Settings rows Profile, Privacy, Consent,
+Export my data and Delete account. It reuses the existing single auth controller,
+API client, encrypted pending-data journal and native Google adapter. No new
+location, external-storage or biometric permission is added. Generated hex
+avatars use the website's Clay & Pine tokens and Barlow fonts; no image uploads.
+Profile choices include units, a 140-character bio and an optional region.
+
+Consent shows plain versioned notices, ordered history and **Android edition**
+with the current app version. It does not block account settings or collect
+location. Privacy includes Withdraw location consent. Its generic hook stops
+recording immediately, including offline; earlier points remain encrypted and
+need an explicit upload/discard choice. An offline withdrawal reports that the
+server write must be retried. Discard requires a second tap. A future run must
+re-check server consent, versions and precise location; approximate-only is
+unusable. No Android permission is requested in this step.
+
+Deletion requires exact DELETE plus a password or fresh linked Google sign-in.
+If unsent data exists it needs an extra erasure tap before the request. A failed
+request preserves that data. After 204, session credentials, this account's
+pending data, Google credential state and local export/cache files are removed;
+other accounts' encrypted pending data is not silently erased. Interrupted local
+cleanup has an encrypted retry marker and blocks use until cleanup succeeds.
+The login screen confirms deletion. Use a throwaway account for this test.
+
+Approved exact-pinned **@capacitor/share 8.0.3** and **@capacitor/filesystem 8.1.5**
+are MIT, unmodified and compatible with Capacitor 8.6.0 (peer >=8). Filesystem's
+transitive @capacitor/synapse 1.0.4 is ISC, locked by npm. No additional direct
+dependency was added. Exports use Directory.Cache only; FileProvider exposes
+only the `territory-exports/` cache subdirectory. JSON contents never enter logs
+or the UI. The file remains readable while the receiving app is open and is
+deleted on return to Territory Run (also on cancellation); startup removes
+interrupted export cache files. A copy intentionally saved/shared to another
+app is outside Territory Run's control. Browser previews cannot use native sharing.
+
+Full npm audit: four moderate dev-tool findings in ESLint/minimatch, no high or
+critical findings; no automatic dependency upgrades were made. See
+[the review](../docs/PHASE4_PROFILE_PRIVACY_REVIEW.md) for real outputs and phone
+results. `docs/PHASE4_APP_AUTH_REVIEW.md` remains unchanged.
+
+### Phone check sequence (one at a time)
+
+1. Keep PostgreSQL and the current API running in Terminal, then install the
+   debug APK with `adb install -r` (preserves app data). Open Settings → Profile,
+   change name/avatar/units/bio, save and reopen to check persistence.
+2. Open Privacy, choose Only me, change leaderboard/route switches and save.
+   Reopen to confirm; restore any choices you want to keep.
+3. Open Consent, read all notices, accept current versions, and inspect history.
+   Privacy → Withdraw location consent must stop the recording hook and retain
+   saved points; reaccept in Consent to restore the current choices.
+4. Export my data → Request export → Check export (repeat if pending) → Share JSON.
+   Choose a trusted recipient or cancel, then return to Territory Run. The cache
+   file must be gone. No file, coordinates or token needs to be pasted in chat.
+5. Sign out and use a NEW throwaway email/alias account. Delete only that account:
+   Settings → Delete account, password, type DELETE, confirm. Expect login with
+   deletion confirmation; the deleted credentials cannot sign in. Automated
+   tests cover the extra unsent-data tap without fabricating real runs.
+6. Sign back into the original account. It must still work. Google deletion is
+   covered with the mocked verifier; fresh native Google reauthentication can be
+   tested on a separate throwaway Google identity if desired, never the owner's
+   existing account.
+
+### Deferred to step 05
+
+Uploading saved points, cross-device one-active-run enforcement and an ACTIVE
+run status remain deferred. This step adds consent/version/precision decisions,
+recording-stop and account-job cancellation interfaces with tests; it cannot
+prove real mid-run withdrawal or claim-job cancellation before those APIs exist.
+Future recording sources must register the hooks, persist their paused state,
+validate point times and recheck the account under the server publication lock.
+Map/leaderboard endpoints must reuse shared privacy projections. No counters
+or new run status were added here.
+
+Owner-confirmed step-04 phone results: Profile and Privacy save/reopen, consent
+acceptance/history and withdrawal/reacceptance, native JSON sharing, deletion of
+a fresh throwaway account, then original-account sign-in with choices intact all
+passed. Read-only checks found zero leftover temporary export files, deleted
+credentials/outbox messages/owned rows; no private values were printed.

@@ -6,7 +6,7 @@ import { DISCARD_CONFIRMATION } from '../auth/pending-work.js';
 import { AuthForm, Notice, newPasswordField } from '../components/forms.jsx';
 import { GoogleButton } from './auth-pages.jsx';
 
-function useResource(load) {
+export function useResource(load) {
   const [state, setState] = useState({ phase: 'loading', value: null, error: '' });
   const sequence = useRef(0);
   const reload = useCallback(async () => {
@@ -63,6 +63,11 @@ export function SettingsPage() {
     <p className="account-name">{state.user.displayName}</p><p className="wrap">{state.user.email}</p>
     <nav className="settings-nav" aria-label="Account settings"><Link to="/settings/methods">Sign-in methods <span aria-hidden="true">→</span></Link>
       <Link to="/settings/sessions">Active sessions <span aria-hidden="true">→</span></Link>
+      <Link to="/settings/profile">Profile <span aria-hidden="true">→</span></Link>
+      <Link to="/settings/privacy">Privacy <span aria-hidden="true">→</span></Link>
+      <Link to="/settings/consent">Consent <span aria-hidden="true">→</span></Link>
+      <Link to="/settings/export">Export my data <span aria-hidden="true">→</span></Link>
+      <Link to="/settings/delete">Delete account <span aria-hidden="true">→</span></Link>
       <Link to="/settings/password">Change password <span aria-hidden="true">→</span></Link>
       <Link to="/verify">Email verification <span aria-hidden="true">→</span></Link></nav>
     <SignOutControl />

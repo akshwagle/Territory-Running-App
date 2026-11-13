@@ -71,11 +71,12 @@ function runPrisma(args, connectionString) {
 
 async function user(db, overrides = {}) {
   const id = overrides.id || randomUUID();
-  const values = { username: `test_${id.slice(0, 20)}`, email: `${id}@test.example`, role: 'RUNNER', ...overrides };
+  const values = { username: `test_${id.slice(0, 20)}`, email: `${id}@test.example`,
+    displayName: `DB ${id.replaceAll('-', '').slice(-20)}`, role: 'RUNNER', ...overrides };
   const { rows: [row] } = await db.query(`
     INSERT INTO users (id, username, email, password_hash, display_name, role, updated_at)
-    VALUES ($1, $2, $3, $4, 'DB test runner', $5, now()) RETURNING *
-  `, [id, values.username, values.email, 'test-only-hash', values.role]);
+    VALUES ($1, $2, $3, $4, $5, $6, now()) RETURNING *
+  `, [id, values.username, values.email, 'test-only-hash', values.displayName, values.role]);
   return row;
 }
 
