@@ -15,6 +15,7 @@ export function createPendingJournal(storage) {
     return record.items;
   }
   return {
+    countAll: () => serial(async () => (await read()).length),
     list: ownerId => serial(async () => (await read()).filter(item => item.ownerId === ownerId)),
     put: (ownerId, id, payload) => serial(async () => {
       if (!ownerId || !id) throw Error('An owner and stable item ID are required.');
@@ -48,6 +49,7 @@ export function createPendingWork(journal) {
     async stopRecording(ownerId,reason) {
       for(const source of sources.values())await source.stopRecording?.(ownerId,reason);
     },
+    async countAll() { const counts = await Promise.all([...sources.values()].map(source => source.countAll ? source.countAll() : owner ? source.count(owner) : 0)); return counts.reduce((sum, n) => sum + n, 0); },
     async count(ownerId) { const counts = await Promise.all([...sources.values()].map(source => source.count(ownerId))); return counts.reduce((sum, n) => sum + n, 0); },
     async upload(ownerId) {
       if (!ownerId || owner !== ownerId) throw new ApiError('UNAUTHORIZED', 'Sign in to the account that owns the saved data first.', 401);
@@ -62,6 +64,6 @@ export function createPendingWork(journal) {
       for (const source of sources.values()) await source.discard(ownerId, confirmation);
     },
   };
-  work.register('encrypted-journal', { count: async id => (await journal.list(id)).length, discard: journal.discard });
+  work.register('encrypted-journal', { count: async id => (await journal.list(id)).length, countAll: journal.countAll, discard: journal.discard });
   return work;
 }

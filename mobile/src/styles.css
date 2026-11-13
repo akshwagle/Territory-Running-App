@@ -107,3 +107,33 @@ h1:focus { outline: none; }
 .screen-edition p { margin: 0; }
 .screen-edition .update-check { font-size: .8125rem; }
 [hidden] { display: none !important; }
+
+/* Auth: one dominant action; brand and territory have a purpose. */
+h1, h2 { text-transform: uppercase; }
+h1 { font-size: clamp(2.5rem, 10vw, 3.5rem); }
+.shell-welcome > header { min-height: var(--safe-top); height: var(--safe-top); padding: 0; border: 0; }
+.shell-welcome .ui-header-title { display: none; }
+.shell-welcome > main { padding: 0 0 var(--safe-bottom); }
+.shell-welcome .screen-edition { padding: 0 20px 12px; }
+.welcome-hero { position: relative; display: flex; flex-direction: column; justify-content: space-between; height: max(188px, calc(45dvh - var(--safe-top))); padding: 16px max(20px, var(--safe-right)) 24px max(20px, var(--safe-left)); background: var(--color-pine-deep); color: var(--color-paper); overflow: hidden; }
+.welcome-brand { display: flex; align-items: center; gap: 8px; position: relative; z-index: 1; }
+.welcome-brand span { font: 800 1.1rem/.88 var(--font-heading); letter-spacing: .05em; }
+.welcome-field { position: absolute; right: 0; bottom: -16px; height: 230px; width: 360px; max-width: 100%; }
+.welcome-hero h1 { position: relative; z-index: 1; margin: 16px 0 0; max-width: 75%; font-size: clamp(2.5rem, 11.5vw, 3.5rem); line-height: .94; text-transform: none; }
+.welcome-hex.is-intro { opacity: 0; animation: hex-fill var(--motion-medium) var(--ease-standard) forwards; }
+.welcome-actions { padding: 20px max(20px, var(--safe-right)) 16px max(20px, var(--safe-left)); }
+.welcome-actions .stack { gap: 12px; }
+.welcome-actions .ui-notice:empty { display: none; }
+.welcome-or { display: flex; align-items: center; gap: 12px; color: var(--color-muted); font-size: .875rem; margin: 8px 0; }
+.welcome-or::before, .welcome-or::after { content: ''; height: 1px; background: var(--color-line); flex: 1; }
+.google-action { margin: 0; }
+.google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 52px; border: 1px solid #747775; background: white; color: #1f1f1f; padding: 12px; font-family: 'Google Sans', Arial, sans-serif; font-weight: 500; font-size: .875rem; border-radius: 2px; }
+.google img { flex: 0 0 20px; }
+.google:active:not(:disabled) { background: #f2f2f2; transform: scale(.98); }
+.google { transition: transform var(--motion-press) var(--ease-standard); }
+form { margin-block: 24px; }
+[data-keyboard-open] form .ui-button[type=submit] { position: sticky; bottom: 0; z-index: 2; }
+@media (prefers-reduced-motion: reduce) { .welcome-hex.is-intro { opacity: 1; } }
+
+@font-face { font-family: 'Google Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/google/google-sans-medium-button.woff') format('woff'); }
+.google { line-height: 20px; }

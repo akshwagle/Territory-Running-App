@@ -7,8 +7,9 @@ import { friendlyMessage } from './auth/errors.js';
 import { WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage } from './pages/auth-pages.jsx';
 import { HomePage, SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
 
-import { UIProvider, Skeleton } from './ui/index.jsx';
+import { UIProvider, Skeleton, InlineNotice } from './ui/index.jsx';
 import { Shell } from './ui/Shell.jsx';
+import { PendingNotice } from './ui/PendingNotice.jsx';
 const ProfilePage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.ProfilePage })));
 const PrivacyPage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.PrivacyPage })));
 const ConsentPage = lazy(() => import('./pages/data-pages.jsx').then(m => ({ default: m.ConsentPage })));
@@ -43,9 +44,8 @@ function VerificationBanner() {
     catch (failure) { setError(friendlyMessage(failure)); }
     finally { setBusy(false); }
   }
-  return <aside className="notice verification"><strong>Verify your email</strong><p>Confirm your email before recording runs in a future production build.</p>
-    <button className="secondary" disabled={busy} onClick={resend}>{busy ? 'Requesting email…' : 'Resend email'}</button>
-    <Link className="text-link" to="/verify">Check verification</Link><Notice>{message}</Notice><Notice error>{error}</Notice></aside>;
+  return <><InlineNotice action={busy ? 'Sending…' : 'Resend email'} onAction={() => { if (!busy) resend(); }}>Verify your email</InlineNotice><Notice>{message}</Notice><Notice error>{error}</Notice></>;
+
 }
 
 export function App(props) { return <UIProvider><AppContent {...props}/></UIProvider>; }
@@ -80,7 +80,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
     }
   }, [location.pathname, location.search, navigate]);
   const pageRoutes = routeLocation => <Suspense fallback={<Skeleton label="Loading screen…"/>}><Routes location={routeLocation}>
-    <Route path="/" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage />} />
+    <Route path="/" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage notice={state.authOutcome?.kind === 'error' ? state.authOutcome.message : linkError} />} />
     <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
     <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
     <Route path="/home" element={<Protected><HomePage /></Protected>} /><Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
@@ -95,16 +95,17 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
     !(state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname));
   return <Shell user={state.user} renderRoutes={ready ? pageRoutes : () => null}
     footer={<><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
-      {state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome && <div className="auth-outcome"><Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice></div>}
-      {linkError && <Notice error>{linkError}</Notice>}
-      {state.status === 'restoring' ? <section><h1>Getting ready</h1><Notice>Restoring your sign-in securely…</Notice></section> :
+      {location.pathname !== '/' && state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome?.kind !== 'progress' && state.authOutcome && <Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice>}
+      {location.pathname !== '/' && !state.authOutcome && linkError && <InlineNotice error>{linkError}</InlineNotice>}
+      {state.status === 'restoring' ? <section><h1>Getting ready</h1><Skeleton label="Restoring your sign-in securely…"/></section> :
         state.status === 'storageError' ? <section><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
           state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><SignOutControl /></section> :
-            state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><Notice>{state.message}</Notice><Link className="button primary" to="/login">Go to login</Link></section> : <>
-            {['offline', 'unavailable'].includes(state.status) && <aside className="notice"><p>{state.message}</p><p>Saved data stays encrypted. Uploads are paused until the connection and sign-in are confirmed.</p>
-              <button className="secondary" onClick={() => auth.loadMe().catch(() => {})}>Retry connection</button></aside>}
+            state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><InlineNotice>{state.message}</InlineNotice><Link className="button primary" to="/login">Go to login</Link></section> : <>
+            {['offline', 'unavailable'].includes(state.status) ? <InlineNotice error action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</InlineNotice> :
+              state.user && state.user.emailVerified !== true && location.pathname !== '/verify' && <VerificationBanner />}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
-            {state.user && state.user.emailVerified !== true && location.pathname !== '/verify' && <VerificationBanner />}
+            {location.pathname !== '/' && <PendingNotice/>}
+
 
           </>}
   </Shell>;
