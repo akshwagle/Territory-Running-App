@@ -7,6 +7,7 @@ const { readConfig } = require('../src/config');
 const { hashPassword, verifyPassword, acceptablePassword } = require('../src/auth/passwords');
 const { normalizeEmail, normalizeDisplayName, isRefreshToken } = require('../src/auth/validation');
 const { equalHashes, tokenHash, successorToken } = require('../src/auth/tokens');
+const { normalizeRegistrationName, normalizeGoogleName } = require('../src/profile/names');
 
 test('auth startup requires two different secrets of at least 32 UTF-8 bytes without echoing values', () => {
   const env = { DATABASE_URL: 'postgresql://test:placeholder@localhost/isolated_test', CORS_ORIGINS: 'http://localhost:5173',
@@ -66,4 +67,15 @@ test('AUTH-11 email policy accepts 254 characters, rejects 255, preserves plus a
   assert.equal(normalizeDisplayName('Trail\u200bRunner'), null);
   assert.equal(normalizeDisplayName('Trail\u202eRunner'), null);
   assert.equal(normalizeDisplayName('Territory Run'), null);
+});
+
+test('PRIV-07 display-name normalization enforces 3-24 code points and clamps legacy signup/provider names safely', () => {
+  assert.equal(normalizeDisplayName('Li'),null);
+  assert.equal(normalizeDisplayName('a'.repeat(24)),'a'.repeat(24));
+  assert.equal(normalizeDisplayName('a'.repeat(25)),null);
+  assert.equal(normalizeRegistrationName('  Ｔｒａｉｌ   Runner  '),'Trail Runner');
+  assert.equal(normalizeRegistrationName('a'.repeat(60)),'a'.repeat(24));
+  assert.equal([...normalizeRegistrationName('𐐀'.repeat(30))].length,24);
+  for(const value of ['Li','Admin','Bad Shit','Trail 🏃'])assert.equal(normalizeGoogleName(value),'Runner');
+  assert.equal(normalizeDisplayName('Scunthorpe'),'Scunthorpe');
 });

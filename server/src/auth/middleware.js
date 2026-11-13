@@ -16,7 +16,7 @@ function requireAuth({ prisma, config, clock = () => new Date() }) {
     }
     // One query/snapshot, with the existing family_id index for the EXISTS.
     const [user] = await prisma.$queryRaw`
-      SELECT u.id, u.email, u.display_name AS "displayName", u.created_at AS "createdAt",
+      SELECT u.id, u.role, u.email, u.display_name AS "displayName", u.created_at AS "createdAt",
         u.verified_at AS "verifiedAt", u.deletion_at AS "deletionAt", u.suspended_at AS "suspendedAt",
         EXISTS (SELECT 1 FROM auth_tokens t WHERE t.family_id = ${session.familyId}::uuid
           AND t.user_id = u.id AND t.kind = 'REFRESH' AND t.used_at IS NULL
@@ -30,6 +30,7 @@ function requireAuth({ prisma, config, clock = () => new Date() }) {
     if (!user.sessionActive) return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'This session has ended. Please sign in again.' } });
     req.authUser = publicUser(user);
     req.authSessionId = session.familyId;
+    req.authRole = user.role;
     req.authEmailVerified = user.verifiedAt !== null;
     next();
   };

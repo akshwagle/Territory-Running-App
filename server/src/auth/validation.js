@@ -3,6 +3,7 @@
 const { z } = require('zod');
 const { domainToASCII } = require('node:url');
 const { acceptablePassword } = require('./passwords');
+const { normalizeDisplayName, normalizeRegistrationName } = require('../profile/names');
 
 function normalizeEmail(value) {
   if (typeof value !== 'string' || value.length > 1024) return null;
@@ -21,16 +22,8 @@ function normalizeEmail(value) {
   return result.length <= 254 ? result : null;
 }
 
-function normalizeDisplayName(value) {
-  if (typeof value !== 'string' || value.length > 240 || /[\p{C}\p{Extended_Pictographic}]/u.test(value)) return null;
-  const result = value.normalize('NFKC').trim().replace(/ +/g, ' ');
-  if ([...result].length < 2 || [...result].length > 60 || !/^[\p{L}\p{M}\p{N} .'-]+$/u.test(result)) return null;
-  const reserved = result.toLowerCase().replace(/[ .'-]/g, '');
-  return ['admin', 'administrator', 'support', 'territoryrun'].includes(reserved) ? null : result;
-}
-
 const email = z.string().transform(normalizeEmail).refine((value) => value !== null);
-const displayName = z.string().transform(normalizeDisplayName).refine((value) => value !== null);
+const displayName = z.string().transform(normalizeRegistrationName).refine((value) => value !== null);
 const password = z.string().refine(acceptablePassword);
 function isRefreshToken(value) {
   return typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value) &&
