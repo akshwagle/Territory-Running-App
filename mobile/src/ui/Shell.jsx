@@ -14,7 +14,7 @@ const TITLES = { '/home': 'Territory Run', '/you': 'You', '/you/privacy': 'Priva
   '/login': 'Log in', '/signup': 'Create account', '/forgot': 'Password help', '/reset': 'Reset password', '/verify': 'Email verification' };
 const CACHEABLE = new Set(['/home', '/you', '/you/privacy', '/you/consent', '/settings', '/settings/methods', '/settings/sessions', '/settings/export']);
 
-export function Shell({ user, children, renderRoutes, footer, nativeBack = watchBack, exit = exitApp }) {
+export function Shell({ user, children, renderRoutes, footer, showFooter = true, nativeBack = watchBack, exit = exitApp }) {
   const location = useLocation(), navigate = useNavigate(), type = useNavigationType();
   const scroll = useRef(null), positions = useRef(new Map()), cache = useRef(new Map());
   const identity = user?.id || null, priorIdentity = useRef(identity), last = useRef(null), history = useRef([]);
@@ -37,7 +37,7 @@ export function Shell({ user, children, renderRoutes, footer, nativeBack = watch
     // Tabs are roots. After logout/deep links the old account's history must
     // never cause a Protected -> login redirect loop.
     if (previous && (!identity || ['/home', '/you', '/settings'].some(prefix => previous.pathname.startsWith(prefix)))) navigate(-1);
-    else navigate(parentRoute(location.pathname), { replace: true });
+    else navigate(parentRoute(location.pathname), { replace: true, state: { direction: 'back' } });
   };
   useEffect(() => {
     let cancelled = false, dispose;
@@ -46,18 +46,18 @@ export function Shell({ user, children, renderRoutes, footer, nativeBack = watch
   }, [nativeBack]);
   useLayoutEffect(() => {
     if (scroll.current) scroll.current.scrollTop = positions.current.get(location.pathname) || 0;
-    const heading = scroll.current?.querySelector('[data-active=true] h1, :scope > .route-page h1');
+    const heading = scroll.current?.querySelector('[data-active=true] h1');
     heading?.setAttribute('tabindex', '-1'); heading?.focus({ preventScroll: true });
   }, [location.key, location.pathname]);
-  const direction = location.state?.tab ? 'tab' : type === 'POP' ? 'back' : 'forward';
+  const direction = type === 'POP' || location.state?.direction === 'back' ? 'back' : location.state?.tab ? 'tab' : 'forward';
   return <Screen title={TITLES[location.pathname] || 'Territory Run'} onBack={!root ? () => backRef.current() : undefined}
     className={location.pathname === '/' ? 'shell-welcome' : ''} scrollRef={scroll}
     onScroll={event => positions.current.set(location.pathname, event.currentTarget.scrollTop)}
     bottom={identity ? <TabBar tabs={TABS} active={activeTab} onSelect={(event, tab) => { event.preventDefault(); if (tab.to !== location.pathname) navigate(tab.to, { state: { tab: true } }); }}/>:null}>
     {barError && <p className="small" role="alert">System back is unavailable. Use the Back button above, or reopen the app.</p>}
     {children}
-    {[...cache.current.entries()].map(([path, entry]) => <div key={`${identity}:${path}`} hidden={!canCache || path !== location.pathname} inert={!canCache || path !== location.pathname} data-active={canCache && path === location.pathname} className="route-page" data-direction={direction}>{renderRoutes(entry)}</div>)}
-    {!canCache && <div key={`${identity}:${location.pathname}`} className="route-page" data-direction={direction}>{renderRoutes(location)}</div>}
-    {footer && <div className="screen-edition">{footer}</div>}
+    {[...cache.current.entries()].map(([path, entry]) => <div key={`${identity}:${path}`} hidden={!canCache || path !== location.pathname} inert={!canCache || path !== location.pathname} aria-hidden={!canCache || path !== location.pathname} data-active={canCache && path === location.pathname} className="route-page" data-route={path} data-direction={direction}>{renderRoutes(entry)}</div>)}
+    {!canCache && <div key={`${identity}:${location.pathname}`} className="route-page" data-active="true" data-route={location.pathname} data-direction={direction}>{renderRoutes(location)}</div>}
+    {footer && <div className="screen-edition" hidden={!showFooter}>{footer}</div>}
   </Screen>;
 }

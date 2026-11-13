@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "apk:debug": "bash ../scripts/apk-debug.sh",
     "assets:generate": "node scripts/generate-brand-assets.mjs",
-    "assets:check": "node scripts/generate-brand-assets.mjs --check"
+    "assets:check": "node scripts/generate-brand-assets.mjs --check",
+    "check:bundle": "node scripts/check-budgets.mjs"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.1",

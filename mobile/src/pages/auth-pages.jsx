@@ -13,7 +13,7 @@ export function GoogleButton({ link = false, onLinked = () => {}, onError }) {
   const inFlight = useRef(false);
   async function signIn() {
     if (inFlight.current) return; inFlight.current = true;
-    setBusy(true); setError(''); setNeedsLink(false);
+    setBusy(true); setError(''); setNeedsLink(false); onError?.('');
     try { if (link) onLinked(await auth.linkGoogle()); else { await auth.googleSignIn(); navigate('/home', { replace: true }); } }
     catch (failure) { if (failure.code === 'ACCOUNT_LINK_REQUIRED') { if (onError) onError('Sign in with your password, then link Google from Settings.'); else setNeedsLink(true); } else { const message = friendlyMessage(failure); if (onError) onError(message); else if (!auth.getSnapshot().authOutcome) setError(message); } }
     finally { inFlight.current = false; setBusy(false); }
@@ -101,7 +101,7 @@ export function VerifyPage({ link, clearLink }) {
   // account is already verified; it may be expired or belong to someone else.
   const verified = done || (!link && state.user?.emailVerified === true);
   return <section><p className="eyebrow">One small step</p><h1>{verified ? 'Email verified' : 'Verify your email'}</h1>
-    
+
     <p>{verified ? 'Your email is confirmed. You can return to the app.' : 'Check your inbox and open the verification link on this phone. Links last 24 hours.'}</p>
     {!verified && hasToken && <Button disabled={busy} onClick={() => act(true)}>{busy ? 'Confirming…' : 'Confirm email'}</Button>}
     {!verified && !hasToken && link?.error && <Notice error>{link.error}</Notice>}

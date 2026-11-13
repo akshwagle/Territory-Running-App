@@ -35,8 +35,8 @@ export function TextField({ id: givenId, label, error, help, type = 'text', clas
     <label htmlFor={id}>{label}</label><div className="ui-input-row">
       <input ref={input} id={id} type={password && visible ? 'text' : type} aria-invalid={Boolean(error)} aria-describedby={error || help || rules ? `${id}-help` : undefined}
         onChange={event => { setTyped(event.target.value); onChange?.(event); }} {...props}/>
-      {password && <button className="ui-eye" type="button" aria-label={`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`} aria-pressed={visible} onClick={() => setVisible(old => !old)}><Icon name={visible ? 'eye-off' : 'eye'}/></button>}
-    </div>{(error || help || rules) && <p id={`${id}-help`} className={`field-help ${error ? 'error-text' : ''}`}>{error || (rules && typed ? `${[...typed].length >= 10 && [...typed].length <= 128 ? 'Length is OK.' : 'Use 10–128 characters.'} Spaces are allowed.` : help || 'Use 10–128 characters. Spaces are allowed.')}</p>}
+      {password && <button className="ui-eye" type="button" disabled={props.disabled} aria-label={`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`} aria-pressed={visible} onClick={() => setVisible(old => !old)}><Icon name={visible ? 'eye-off' : 'eye'}/></button>}
+    </div>{(error || help || rules) && <p id={`${id}-help`} role={error ? 'alert' : undefined} className={`field-help ${error ? 'error-text' : ''}`}>{error || (rules && typed ? `${[...typed].length >= 10 && [...typed].length <= 128 ? 'Length is OK.' : 'Use 10–128 characters.'} Spaces are allowed.` : help || 'Use 10–128 characters. Spaces are allowed.')}</p>}
   </div>;
 }
 export function Switch({ label, ...props }) {
@@ -83,8 +83,8 @@ export function Toast({ children, onDismiss }) {
   useEffect(() => { setVisible(true); const timer = setTimeout(() => { setVisible(false); dismiss.current?.(); }, 4000); return () => clearTimeout(timer); }, [children]);
   return visible ? <div className="ui-toast" role="status"><span>{children}</span><button type="button" aria-label="Dismiss message" onClick={() => { setVisible(false); onDismiss?.(); }}><Icon name="close"/></button></div> : null;
 }
-export function InlineNotice({ children, error = false, action, onAction, onDismiss }) {
-  return children ? <div className={`ui-notice ${error ? 'ui-notice--error' : ''}`} role={error ? 'alert' : 'status'}>
+export function InlineNotice({ children, error = false, action, onAction, onDismiss, className = '' }) {
+  return children ? <div className={`ui-notice ${error ? 'ui-notice--error' : ''} ${className}`} role={error ? 'alert' : 'status'}>
     {error && <Icon name="warning"/>}<span>{children}</span>{action && <button type="button" onClick={onAction}>{action}</button>}{onDismiss && <button type="button" aria-label="Dismiss notice" onClick={onDismiss}><Icon name="close"/></button>}
   </div> : null;
 }

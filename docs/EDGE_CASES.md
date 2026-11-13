@@ -64,3 +64,65 @@ throwaway credentials, outbox messages and owned database rows. Real run recordi
 | PRIV-06 | One active export, no IDOR/other-user coordinates, Runner redactions, 24h cleanup, delete race and Android cache lifecycle | server/src/profile/exports.js; data_exports constraints; mobile export-share.js | PRIV-06 concurrent exports reuse one active job, encrypt files and exclude other users, secrets and rival names; PRIV-06 expiry removes ciphertext and keys, missing artifacts fail safely, and export cannot outlive deletion; PRIV-06 cache remains readable after chooser selection until the app resumes from the receiving app | PASS API/DB/mobile; native share phone check and empty-cache return PASS |
 | PRIV-07 | Case-insensitive names, advisory serialization, suffixes, 30-day reservations and admin-only history | server/src/profile/names.js, profile.js, auth modules; migration; mobile profile form | PRIV-07 exact profile edits reject canonical conflicts and reserve released names for 30 days; history is admin-only; PRIV-07 parallel registration and Google name claims are unique without deadlocks or errors; PRIV-07 an in-flight advisory lock forces a suffix even before the competing row exists | PASS API/unit/DB/UI |
 | PRIV-08 | Approximate-only Android location is unusable for recording; explain need for Precise first | mobile/src/profile/consent-controls.js, ConsentPage | PRIV-08 approximate location is unusable; asks for precise location without requesting any OS permission | PASS parameterized permission-decision tests; actual permission prompt deferred to recording in step 05 |
+
+## Step 04b: UI foundation
+
+No API or schema changes. These checks use the owner-authorised Android phone,
+read-only device navigation and guarded test databases. Device size/density,
+font scale, navigation overlays and test network/media overrides were restored.
+No real account was deleted or fixture run created.
+
+| ID | Scenario | Where implemented | Test / manual check name | Status |
+| --- | --- | --- | --- | --- |
+| UI-01 | Camera cutout, gesture and three-button bars never cover header/tab controls | core SystemBars, platform/android.js, ui/Screen and TabBar, native theme | UI-01 real-camera cutout and both native navigation modes | PASS phone screenshots/geometry: top35px; bottom48px/config0 and14px/config2; tab background reaches832px and controls end784/818px |
+| UI-02 | 130% system font at320px, no clipping/overflow and reachable forms | rem type, wrapping, own scroll, TextField/Button | UI-02 Android font_scale1.3 at320CSSpx | PASS real phone: body16→20.8px and labels14→18.2px, no horizontal overflow; text/target layout also covered by UI-10 fixture |
+| UI-03 | Every form can reveal its focused field and submit, then restore after IME closes | platform/android.js; safe-area CSS; sticky form submit | UI-03 native IME events reveal the focused field and restore the layout without subtracting height twice; UI-03 owner login/create-account keyboard checks | PASS automated + owner confirmed login/create; corrected build measured12 visible field/action pairs across auth, profile and password/delete forms; editor Done also closes IME |
+| UI-04 | Device dark/force-dark does not invert the paper palette | AppCompat light theme, forceDarkAllowed=false, WebSettings darkening opt-out, color-scheme | UI-04 phone in night mode retains paper and light app scheme | PASS device night mode enabled; app paper rgb(243,238,228), dark media=false; native opt-out built into APK |
+| UI-05 | System back closes overlays first, pops nested routes, exits at root; no protected-history loop | platform/navigation.js, ui/Shell.jsx, modal stack | UI-05 dialog traps focus, native back closes it first, and cleanup restores focus; UI-05 a cold nested screen goes to its parent rather than exiting or redirect-looping; UI-05 phone sheet/nested/root | PASS automated and real Back: avatar sheet closed, Privacy→You, root exit; signed-in session survives reopening; 72 rapid tab switches had zero overlapping/missing/mismatched frames, scroll restored, owner confirmed no overlap |
+| UI-06 | Rotation/split-screen remains usable | portrait manifest, responsive flex shell and scroll areas | UI-06 owner rotation and split-screen check | PASS owner confirmed portrait lock;384×416 short-window geometry/scroll test has no overlap. Actual Samsung split-screen mode not exercised |
+| UI-07 | Slow/offline screens settle to Retry, no infinite spinner or duplicate writes | bounded API client, useResource, Skeleton/ErrorState, disabled write buttons and submit guard | UI-07 busy button blocks repeated taps; error has a working Retry; skeleton announces loading; UI-07 phone offline read/recovery | PASS automated form/resource cases; phone methods/sessions/password/privacy/consent/delete showed Retry without a remaining skeleton; delayed read showed skeleton then content; already-loaded cached privacy stays usable offline; page errors suppress duplicate connection banners; release footer stays mounted |
+| UI-08 | Reduced motion has no slides/scales | ui/motion.css; reduced-media overrides | UI-08 phone reduced-motion media check | PASS real WebView: reduced=true, running animations0, transitionDuration0s; buttons override active transform under reduced motion; 36 reduced-motion tab switches had zero moving frames |
+| UI-09 | TalkBack names, roles, order; art excluded | semantic HTML, labels, aria-current, aria-hidden, focus trap/restore | UI-09 controls have names, switch state and a labelled current tab; decorative icons are hidden; UI-09 owner TalkBack | PASS automated semantics; owner confirmed spoken names/roles/order on preview; focused-editor/radio semantics also have component coverage |
+| UI-10 | 24-char names,60-char email, RTL/non-Latin, no overflow | bdi/dir=auto, min-width0, overflow-wrap and row-value ellipsis | UI-10 physical WebView synthetic long-text fixture at320px/130% | PASS public fixture: scrollWidth=clientWidth=320px, button52.46px; RTL text wraps; no private account values logged |
+
+Manual repeat checks (test names start with their ID):
+
+- **UI-01 cutout/bars**: use Android Display navigation settings for gesture,
+  then three-button. Header and all tab labels stay above system areas; tab
+  background continues underneath. Restore the original mode afterwards.
+- **UI-02 system font**: set Android Font size to130%, open the320px layout,
+  check headings, fields and button labels; scroll remains available. Restore.
+- **UI-03 every form keyboard**: login/signup, forgot/reset/change password,
+  profile name/bio and delete password/DELETE. Focus each field, use Next,
+  reach submit without hiding text, close IME and verify header/tabs restore.
+  Do not submit account deletion or send private values during this layout check.
+- **UI-04 light**: turn device dark mode on, reopen/resume the app and check
+  paper/pine/clay and input readability. No developer force-dark setting needed.
+- **UI-05 back**: visit each nested destination, open avatar/discard overlays,
+  use system Back; overlay first, parent next, exit only from a root. Reopen
+  without clearing data; sign-in must survive.
+- **UI-06 rotate/split**: rotate while in a form; portrait lock holds. If Samsung
+  offers split-screen, open beside Settings and check scrolling/inputs/tabs in
+  the smaller area; if unavailable, record that limitation, not a fabricated pass.
+- **UI-07 network**: test real read-only screens with unavailable API, Retry
+  after reconnect, then delayed responses; preserve entered values and encrypted
+  saved work. Use only mocked/disposable data for destructive-write failures.
+- **UI-08 reduced**: enable reduced motion before navigating/pressing/opening
+  sheets; no movement/press scaling/hex reveal. Disable afterwards if desired.
+- **UI-09 TalkBack**: enable in Android Accessibility, explore back/tabs,
+  profile fields, password eye, switches and avatar dialog; labels and roles
+  match the visual order and decorative hexes are skipped. Turn off afterwards.
+- **UI-10 long text**: use synthetic text in a local layout fixture, never change
+  the owner's profile just for overflow checks;320px and130% must wrap/ellipsis.
+
+Text contrast checks (normal text AA): ink/paper13.63:1, muted/paper5.65:1,
+clay/paper4.63:1, paper/pine6.96:1, paper/deep-pine11:1, error/paper-2 6.42:1.
+Owner correction: replaced the reported large form boxes with a profile overview, focused editors, lighter fields and contained unsaved-change actions. Final phone sign-in/review confirmation remains pending before the PR.
+
+
+Owner navigation correction: incoming-only tab fade replaces the two-layer
+crossfade that briefly overlaid Settings and You. UI-05 rapid taps must show
+exactly one active page at every frame, preserve scroll/drafts, and focus only
+that page's heading. UI-08 repeats the stress check with reduced motion. Both
+passed on the phone, and the owner confirmed the overlap is gone. Back direction
+and the persistent release footer have regression coverage as well.
