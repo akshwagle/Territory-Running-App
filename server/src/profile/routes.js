@@ -5,11 +5,12 @@ const schemas=require('./validation');
 const {requireAuth}=require('../auth/middleware');
 const {createProfileService}=require('./profile');
 const {createPrivacyService}=require('./privacy');
+const {createConsentService}=require('./consents');
 
 function createProfileRouter(options) {
   const {prisma,config,clock}=options;
   const router=express.Router(),auth=requireAuth({prisma,config,clock});
-  const profile=createProfileService({prisma}),privacy=createPrivacyService({prisma});
+  const profile=createProfileService({prisma}),privacy=createPrivacyService({prisma}),consents=createConsentService({prisma,config});
   function validate(schema,source='body') {
     return (req,res,next)=>{
       const result=schema.safeParse(req[source]??{});
@@ -28,6 +29,8 @@ function createProfileRouter(options) {
   }
   router.get('/users/:id/profile',auth,validate(schemas.params,'params'),validate(schemas.empty,'query'),async(req,res)=>res.json(await profile.publicProfile(req,req.paramsInput.id)));
   router.get('/admin/users/:id/name-history',auth,validate(schemas.params,'params'),validate(schemas.empty,'query'),async(req,res)=>res.json(await profile.history(req,req.paramsInput.id)));
+  router.get('/me/consents',auth,validate(schemas.empty,'query'),async(req,res)=>res.json(await consents.get(req)));
+  router.post('/me/consents',auth,json,validate(schemas.consentBody),writes('consent'),async(req,res)=>res.json(await consents.post(req,req.bodyInput)));
   return {router};
 }
 module.exports={createProfileRouter};
