@@ -65,6 +65,9 @@ export function SettingsPage() {
       <Link to="/settings/sessions">Active sessions <span aria-hidden="true">→</span></Link>
       <Link to="/settings/profile">Profile <span aria-hidden="true">→</span></Link>
       <Link to="/settings/privacy">Privacy <span aria-hidden="true">→</span></Link>
+      <Link to="/settings/consent">Consent <span aria-hidden="true">→</span></Link>
+      <Link to="/settings/export">Export my data <span aria-hidden="true">→</span></Link>
+      <Link to="/settings/delete">Delete account <span aria-hidden="true">→</span></Link>
       <Link to="/settings/password">Change password <span aria-hidden="true">→</span></Link>
       <Link to="/verify">Email verification <span aria-hidden="true">→</span></Link></nav>
     <SignOutControl />

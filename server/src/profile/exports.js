@@ -94,7 +94,7 @@ function createExportService({prisma,jobs,directory=path.resolve(__dirname,'../.
       if(!row)throw publicError(404,'NOT_FOUND','The requested export was not found or has expired.');
       if(row.status==='PENDING')return {pending:true,export:dto(row)};
       if(row.status==='FAILED')throw publicError(409,'EXPORT_FAILED','The export could not be prepared. Request a new one.');
-      try {return {data:decrypt(await fs.readFile(file(id)),row.encryptionKey)};}
+      try {return {data:decrypt(await fs.readFile(file(row.id)),row.encryptionKey)};}
       catch {
         await tx.dataExport.update({where:{id},data:{status:'FAILED',completedAt:await databaseNow(tx)}});
         return {unavailable:true};

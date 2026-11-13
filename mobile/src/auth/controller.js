@@ -4,17 +4,29 @@ import { ApiError, friendlyMessage, isAccountError, isConnectionError } from './
 import { DISCARD_CONFIRMATION } from './pending-work.js';
 
 const savedMessage = 'Any unsent data stays encrypted on this phone. Sign in to its account to continue.';
+const DELETED_ACCOUNT = 'deleted-account-cleanup-v1';
 const GOOGLE_ATTEMPT = 'auth-google-attempt-v1';
 
-export function createAuthController({ origin, storage, pending, google, fetchImpl, timeoutMs }) {
+export function createAuthController({ origin, storage, pending, google, fetchImpl, timeoutMs, clearCaches = async () => {} }) {
   const vault = createVault(storage), listeners = new Set();
-  let state = { status: 'restoring', user: null, message: '' }, starting, operation = 0, profileLoad = 0;
+  let state = { status: 'restoring', user: null, message: '' }, starting, operation = 0, profileLoad = 0, deletedOwner = null;
   const set = patch => { state = { ...state, ...patch }; for (const listener of listeners) listener(); };
   const api = createApiClient({ origin, vault, fetchImpl, timeoutMs,
     onSessionLost() { pending.pause(); set({ status: 'signedOut', user: null, message: `Your session ended. ${savedMessage}` }); },
     onAccountBlocked(error) { pending.pause(); set({ status: 'blocked', message: `${friendlyMessage(error)} ${savedMessage}` }); },
     onReauthenticationRequired() { pending.pause(); set({ status: 'reauthRequired', message: `Sign in again to continue. ${savedMessage}` }); },
   });
+  async function finishDeletion(ownerId) {
+    operation++; profileLoad++; pending.pause();
+    await vault.clear();
+    await storage.remove(GOOGLE_ATTEMPT);
+    await pending.discard(ownerId,DISCARD_CONFIRMATION);
+    await clearCaches();
+    await google.signOut?.();
+    await storage.remove(DELETED_ACCOUNT);
+    deletedOwner=null;
+    set({status:'signedOut',user:null,authOutcome:null,message:'Your account and its data on this phone have been deleted.'});
+  }
   async function loadMe() {
     if (!vault.snapshot().session) return;
     const load = ++profileLoad;
@@ -39,6 +51,8 @@ export function createAuthController({ origin, storage, pending, google, fetchIm
     if (starting) return starting;
     starting = (async () => {
       try {
+        const deleted=deletedOwner?{ownerId:deletedOwner}:await storage.get(DELETED_ACCOUNT);
+        if(deleted?.ownerId){await finishDeletion(deleted.ownerId);return;}
         const session = await vault.restore();
         const interrupted = await storage.get(GOOGLE_ATTEMPT);
         if (interrupted) await storage.remove(GOOGLE_ATTEMPT);
@@ -92,6 +106,24 @@ export function createAuthController({ origin, storage, pending, google, fetchIm
         set({ authOutcome: { kind: 'error', message: friendlyMessage(error), code: error.code } });
         throw error;
       } finally { try { await storage.remove(GOOGLE_ATTEMPT); } catch { /* a future start reports an interrupted attempt */ } }
+    },
+    async deleteAccount({confirmation,password,method='password',eraseUnsent=false}) {
+      const ownerId=state.user?.id;
+      if(!ownerId)throw new ApiError('UNAUTHORIZED','Sign in before deleting your account.',401);
+      if(confirmation!=='DELETE')throw new ApiError('CONFIRM_DELETE','Type DELETE exactly to confirm.');
+      if(await pending.count(ownerId)&&!eraseUnsent)throw new ApiError('CONFIRM_UNSENT_ERASURE','Confirm that your unsent data will be erased too.');
+      const body=method==='google'?{confirmation,idToken:await google.signIn()}:{confirmation,password};
+      await pending.stopRecording(ownerId,'account-deletion');
+      await api.request('/api/me',{method:'DELETE',body});
+      operation++;profileLoad++;pending.pause();deletedOwner=ownerId;
+      try {
+        await storage.set(DELETED_ACCOUNT,{ownerId});
+        await finishDeletion(ownerId);
+      } catch {
+        await vault.clear().catch(()=>{});
+        set({status:'storageError',user:null,message:'Your account was deleted. Local cleanup is incomplete. Keep this app closed to other users and tap Try again to finish removing saved data.'});
+        throw new ApiError('LOCAL_CLEANUP_REQUIRED','Account deleted. Retry local cleanup before using this phone again.');
+      }
     },
     async linkGoogle() { const idToken = await google.signIn(); return api.request('/api/auth/google/link', { method: 'POST', body: { idToken } }); },
     async signOut({ mode = 'keep', confirmation } = {}) {

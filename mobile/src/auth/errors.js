@@ -18,7 +18,7 @@ export function isAccountError(error) {
 
 export function friendlyMessage(error) {
   if (error?.code === 'ACCOUNT_SUSPENDED') return 'Your account is suspended. Contact support before trying again.';
-  if (error?.code === 'ACCOUNT_DELETED') return 'This account has a deletion request. Contact support if this was a mistake.';
+  if (error?.code === 'ACCOUNT_DELETED') return 'This account has been deleted or is awaiting deletion. Sign in to a different account or contact support if this was a mistake.';
   if (error?.code === 'RATE_LIMITED' && error.retryAfter) return `Too many attempts. Try again in ${error.retryAfter} seconds.`;
   return error instanceof ApiError ? error.message : 'Something went wrong. Please try again.';
 }
