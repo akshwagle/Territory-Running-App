@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 @import 'tailwindcss';
 @import './styles/tokens.css';
 :root {
@@ -6,7 +7,7 @@
   background: var(--color-paper);
   font-synthesis: none;
   line-height: 1.5;
-  color-scheme: light;
+  color-scheme: dark;
 }
 * {
   box-sizing: border-box;
@@ -93,33 +94,43 @@ svg {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 20px;
   padding: 12px 20px;
-  border: 1px solid var(--color-pine);
-  border-radius: 2px;
-  font-size: 16px;
-  font-weight: 600;
+  border: 1px solid var(--tactical-primary);
+  border-radius: var(--radius-micro);
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   text-decoration: none;
-  transition: color 150ms, background-color 150ms, transform 80ms;
+  transition: color 150ms, background-color 150ms, transform 80ms, box-shadow 150ms;
 }
 .button-primary {
-  background: var(--color-pine);
-  color: var(--color-paper);
+  background: var(--tactical-primary);
+  color: #101810;
+  border-color: var(--tactical-primary);
+  box-shadow: 0 0 12px rgba(141, 187, 101, 0.25);
 }
 .button-primary:hover {
-  background: var(--color-pine-deep);
+  background: var(--tactical-primary-bright);
+  box-shadow: 0 0 18px rgba(168, 215, 126, 0.4);
 }
 .button-outline {
-  background: transparent;
-  color: var(--color-pine);
+  background: var(--tactical-surface-container);
+  border-color: var(--tactical-border);
+  color: var(--tactical-readout);
 }
 .button-outline:hover:not(:disabled) {
-  background: var(--color-paper-2);
+  background: var(--tactical-surface-container-high);
+  border-color: var(--tactical-primary);
+  color: var(--tactical-primary);
 }
 .button:disabled {
-  background: var(--color-paper-2);
-  border-color: var(--color-line);
-  color: var(--color-muted);
+  background: var(--tactical-surface-container);
+  border-color: var(--tactical-border);
+  color: var(--tactical-recon);
+  opacity: 0.6;
 }
 .availability {
   display: inline-flex;
@@ -143,14 +154,70 @@ svg {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--color-paper);
-  border-bottom: 1px solid transparent;
+  background: rgba(13, 21, 13, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--tactical-border);
 }
 .topbar[data-scrolled="true"] {
-  border-color: var(--color-line);
+  border-color: var(--tactical-primary);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
+
+/* Tactical Status Strip */
+.tactical-status-strip {
+  background: var(--tactical-surface-lowest);
+  border-bottom: 1px solid var(--tactical-border);
+  padding: 5px 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--tactical-recon);
+}
+.tactical-status-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.tactical-status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tactical-ping {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tactical-secondary);
+  box-shadow: 0 0 8px var(--tactical-secondary);
+  animation: pulse 2s infinite;
+}
+.tactical-divider {
+  color: var(--tactical-border);
+}
+.topbar-links {
+  display: none;
+  align-items: center;
+  gap: 24px;
+}
+@media (min-width: 900px) {
+  .topbar-links {
+    display: flex;
+  }
+}
+.topbar-links a {
+  font: 600 13px/1 var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tactical-recon);
+  text-decoration: none;
+  transition: color 150ms;
+}
+.topbar-links a:hover {
+  color: var(--tactical-primary);
+}
+
 .topbar-inner {
-  min-height: 76px;
+  min-height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -159,16 +226,17 @@ svg {
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 10px;
 }
 .logo-mark {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
 }
 .wordmark {
-  font: 800 25px/.95 var(--font-heading);
-  letter-spacing: .06em;
+  font: 800 24px/.95 var(--font-heading);
+  letter-spacing: .08em;
+  color: var(--tactical-readout);
 }
 .brand-link {
   min-height: 48px;
@@ -176,6 +244,193 @@ svg {
   align-items: center;
   text-decoration: none;
   color: inherit;
+}
+
+/* Tactical Hero Ribbon */
+.tactical-hero-ribbon {
+  margin-top: 24px;
+  background: var(--tactical-surface-container);
+  border: 1px solid var(--tactical-border);
+  border-radius: var(--radius-micro);
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (min-width: 768px) {
+  .tactical-hero-ribbon {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+.tactical-ribbon-live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--tactical-primary);
+}
+.tactical-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tactical-primary);
+  box-shadow: 0 0 10px var(--tactical-primary);
+}
+.tactical-conquest-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+@media (min-width: 640px) {
+  .tactical-conquest-overview {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+}
+.conquest-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.conquest-legend span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.conquest-legend span i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.legend-allied { color: var(--tactical-primary); }
+.legend-allied i { background: var(--tactical-primary); }
+.legend-hostile { color: var(--tactical-threat); }
+.legend-hostile i { background: var(--tactical-threat); }
+.legend-contested { color: var(--tactical-secondary); }
+.legend-contested i { background: var(--tactical-secondary); }
+.legend-neutral { color: var(--tactical-neutral); }
+.legend-neutral i { background: var(--tactical-neutral); }
+
+.conquest-meter-bar {
+  display: flex;
+  height: 6px;
+  width: 140px;
+  background: var(--tactical-surface-floor);
+  border-radius: 2px;
+  overflow: hidden;
+  gap: 1px;
+}
+.bar-allied { background: var(--tactical-primary); }
+.bar-hostile { background: var(--tactical-threat); }
+.bar-contested { background: var(--tactical-secondary); }
+.bar-neutral { background: var(--tactical-neutral); }
+
+/* Hero Telemetry Matrix */
+.hero-telemetry-matrix {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 480px;
+}
+.telemetry-pod {
+  background: var(--tactical-surface-container);
+  border: 1px solid var(--tactical-border);
+  border-radius: var(--radius-micro);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pod-label {
+  font: 600 10px var(--font-heading);
+  letter-spacing: 0.1em;
+  color: var(--tactical-recon);
+  text-transform: uppercase;
+}
+.pod-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--tactical-readout);
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.pod-value small {
+  font-size: 10px;
+  color: var(--tactical-primary);
+  font-weight: 600;
+}
+.pod-sub {
+  font-size: 9px;
+  color: var(--tactical-recon);
+  letter-spacing: 0.05em;
+}
+.text-allied { color: var(--tactical-primary) !important; }
+.text-threat { color: var(--tactical-threat) !important; }
+
+/* Command Center Deck (Hero Art Frame) */
+.tactical-command-deck {
+  background: var(--tactical-surface-container);
+  border: 1px solid var(--tactical-border);
+  border-radius: var(--radius-micro);
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+.command-deck-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--tactical-surface-lowest);
+  border-bottom: 1px solid var(--tactical-border);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--tactical-recon);
+}
+.deck-coordinates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.deck-grid {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.grid-badge {
+  background: var(--tactical-surface-container-high);
+  border: 1px solid var(--tactical-border);
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-size: 10px;
+  color: var(--tactical-primary);
+}
+.radar-status {
+  font-size: 10px;
+}
+.command-deck-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--tactical-surface-lowest);
+  border-top: 1px solid var(--tactical-border);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--tactical-recon);
+}
+@media (max-width: 640px) {
+  .hidden-mobile {
+    display: none !important;
+  }
 }
 .hero {
   padding-top: 48px;
@@ -254,58 +509,73 @@ h1 > span:last-child {
   align-self: center;
 }
 .map-figure {
-  background: var(--color-paper-2);
-  border: 1px solid var(--color-line);
+  background: var(--tactical-surface-container);
+  border: 1px solid var(--tactical-border);
+  border-radius: var(--radius-micro);
+  overflow: hidden;
 }
 .map-topline {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid var(--color-line);
-  padding: 12px 16px;
+  border-bottom: 1px solid var(--tactical-border);
+  padding: 10px 16px;
   font-size: 10px;
-  letter-spacing: .1em;
+  letter-spacing: .12em;
   font-weight: 600;
-  color: var(--color-muted);
+  font-family: var(--font-heading);
+  color: var(--tactical-recon);
+  background: var(--tactical-surface-lowest);
 }
 .territory-map {
   width: 100%;
+  background: #0c130c;
 }
 .territory-map polygon {
   transition: opacity 150ms;
 }
 .map-labels {
-  font: 600 10px var(--font-body);
-  letter-spacing: 1px;
+  font: 600 10px var(--font-heading);
+  letter-spacing: 1.5px;
+  fill: var(--tactical-recon) !important;
 }
 .map-figure figcaption {
-  padding: 14px 16px;
-  border-top: 1px solid var(--color-line);
-  font-size: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--tactical-border);
+  font-size: 11px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px 16px;
+  background: var(--tactical-surface-lowest);
+  font-family: var(--font-heading);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 .map-figure figcaption > span {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  color: var(--tactical-readout);
 }
 .map-figure i {
   display: inline-block;
   width: 8px;
   height: 8px;
+  border-radius: 1px;
 }
 .legend-pine {
-  background: var(--color-pine);
+  background: var(--tactical-primary);
+  box-shadow: 0 0 6px rgba(141, 187, 101, 0.4);
 }
 .legend-clay {
-  background: var(--color-clay);
+  background: var(--tactical-threat);
+  box-shadow: 0 0 6px rgba(201, 76, 76, 0.4);
 }
 .map-figure small {
   width: 100%;
-  color: var(--color-muted);
-  font-size: 11px;
+  color: var(--tactical-recon);
+  font-size: 10px;
+  letter-spacing: 0.08em;
 }
 .hero-footnote {
   grid-column: 1 / -1;
@@ -400,24 +670,28 @@ h1 > span:last-child {
   text-transform: uppercase;
 }
 .development-label {
-  background: var(--color-paper);
+  background: var(--tactical-surface-container-high);
+  border: 1px solid var(--tactical-border);
   padding: 3px 6px;
-  border-radius: 2px;
-  color: var(--color-clay);
-  font-size: 14px;
+  border-radius: var(--radius-micro);
+  color: var(--tactical-secondary);
+  font-size: 11px;
+  font-family: var(--font-mono);
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   white-space: nowrap;
 }
 .install-band {
-  border-bottom: 1px solid var(--color-pine);
-  background: var(--color-pine-deep);
-  color: var(--color-paper);
+  border-bottom: 1px solid var(--tactical-border);
+  background: var(--tactical-surface-low);
+  color: var(--tactical-on-surface);
 }
 .install-band .eyebrow {
-  color: var(--color-paper-2);
+  color: var(--tactical-recon);
 }
 .install-band :focus-visible, .footer :focus-visible {
-  box-shadow: 0 0 0 4px var(--color-paper);
+  box-shadow: 0 0 0 4px var(--tactical-primary);
 }
 .install-intro {
   grid-column: 1 / 9;
@@ -439,10 +713,11 @@ h1 > span:last-child {
   grid-template-columns: 40px 1fr;
   gap: 24px;
   padding: 24px 0;
-  border-top: 1px solid var(--color-pine);
+  border-top: 1px solid var(--tactical-border);
 }
 .install-number {
   font: 800 30px/.95 var(--font-heading);
+  color: var(--tactical-primary);
 }
 .install-steps h3 {
   font-size: 32px;
@@ -454,17 +729,19 @@ h1 > span:last-child {
 .play-protect {
   padding: 24px 0;
   margin-top: 16px;
-  border-top: 1px solid var(--color-pine);
+  border-top: 1px solid var(--tactical-border);
 }
 .play-protect h3 {
-  font-family: var(--font-body);
+  font-family: var(--font-mono);
   font-weight: 600;
   font-size: 12px;
   letter-spacing: .1em;
   line-height: 1.4;
+  color: var(--tactical-secondary);
 }
 .play-protect p {
   font-size: 17px;
+  color: var(--tactical-recon);
 }
 .install-phone {
   grid-column: 9 / -1;
@@ -474,41 +751,46 @@ h1 > span:last-child {
   padding-top: 16px;
 }
 .phone-frame {
-  border: 1px solid var(--color-paper-2);
-  border-radius: 2px;
+  border: 1px solid var(--tactical-border);
+  border-radius: var(--radius-micro);
   max-width: 272px;
   height: 470px;
   padding: 9px;
   margin-inline: auto;
+  background: var(--tactical-surface-lowest);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 .phone-speaker {
   height: 12px;
   width: 40px;
-  border-top: 2px solid var(--color-paper-2);
+  border-top: 2px solid var(--tactical-border);
   margin: 10px auto 6px;
 }
 .phone-screen {
-  background: var(--color-paper);
-  color: var(--color-ink);
+  background: var(--tactical-surface);
+  color: var(--tactical-on-surface);
   height: 414px;
   padding: 24px 18px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  border: 1px solid var(--tactical-border);
 }
 .phone-screen .eyebrow {
-  color: var(--color-muted);
+  color: var(--tactical-recon);
   font-size: 9px;
+  font-family: var(--font-mono);
 }
 .phone-screen h3 {
   font-size: 48px;
   margin-top: 26px;
+  color: var(--tactical-readout);
 }
 .phone-rule {
   display: block;
   width: 40px;
   height: 1px;
-  background: var(--color-pine);
+  background: var(--tactical-primary);
   margin: 24px 0 16px;
 }
 .phone-screen p {
@@ -517,17 +799,21 @@ h1 > span:last-child {
 .phone-status {
   font-size: 11px;
   padding: 10px;
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--tactical-border);
+  background: var(--tactical-surface-container);
+  color: var(--tactical-primary);
+  font-family: var(--font-mono);
   margin-top: 20px;
 }
 .phone-bottom {
   margin-top: auto;
   font-size: 8px;
   letter-spacing: .08em;
-  color: var(--color-muted);
+  color: var(--tactical-recon);
+  font-family: var(--font-mono);
 }
 .phone-figure figcaption {
-  color: var(--color-paper-2);
+  color: var(--tactical-recon);
   font-size: 14px;
   margin: 28px auto 0;
   max-width: 26ch;
@@ -540,13 +826,15 @@ h1 > span:last-child {
 .release-card {
   min-height: 640px;
   padding: 32px;
-  background: var(--color-paper);
-  color: var(--color-ink);
-  border: 1px solid var(--color-line);
-  border-radius: 2px;
+  background: var(--tactical-surface-container);
+  color: var(--tactical-on-surface);
+  border: 1px solid var(--tactical-border);
+  border-radius: var(--radius-micro);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
 }
 .release-card .eyebrow {
-  color: var(--color-muted);
+  color: var(--tactical-recon);
+  font-family: var(--font-mono);
 }
 .release-heading {
   display: flex;
@@ -557,14 +845,19 @@ h1 > span:last-child {
 }
 .release-heading h3 {
   font-size: 40px;
+  color: var(--tactical-readout);
 }
 .tag {
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--tactical-border);
+  background: var(--tactical-surface-container-high);
+  color: var(--tactical-secondary);
   padding: 5px 8px;
   white-space: nowrap;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: .08em;
+  font-family: var(--font-mono);
+  border-radius: var(--radius-micro);
 }
 .release-facts {
   margin-top: 24px;
@@ -575,19 +868,22 @@ h1 > span:last-child {
   justify-content: space-between;
   gap: 16px;
   padding: 10px 0;
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--tactical-border);
 }
 .release-facts dt {
-  color: var(--color-muted);
+  color: var(--tactical-recon);
 }
 .release-facts dd {
   margin: 0;
+  color: var(--tactical-readout);
+  font-family: var(--font-mono);
 }
 .changelog {
   margin-block: 20px;
   white-space: pre-wrap;
   font-size: 17px;
   overflow-wrap: anywhere;
+  color: var(--tactical-on-surface);
 }
 .release-card > .button {
   margin-bottom: 24px;
@@ -603,15 +899,16 @@ h1 > span:last-child {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--tactical-border);
   padding-top: 12px;
 }
 .checksum-heading h4 {
-  font-family: var(--font-body);
+  font-family: var(--font-mono);
   font-weight: 600;
   font-size: 12px;
   line-height: 1.4;
   letter-spacing: .08em;
+  color: var(--tactical-recon);
 }
 .copy-button {
   display: inline-flex;
@@ -620,63 +917,75 @@ h1 > span:last-child {
   min-height: 48px;
   min-width: 92px;
   justify-content: center;
-  color: var(--color-pine);
-  border: 1px solid var(--color-line);
-  border-radius: 2px;
-  background: transparent;
+  color: var(--tactical-primary);
+  border: 1px solid var(--tactical-border);
+  border-radius: var(--radius-micro);
+  background: var(--tactical-surface-container-high);
   font-size: 16px;
-  transition: background-color 150ms;
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 150ms;
 }
 .copy-button:hover {
-  background: var(--color-paper-2);
+  background: var(--tactical-surface-variant);
+  border-color: var(--tactical-primary);
 }
 .checksum {
   display: block;
   overflow-wrap: anywhere;
   user-select: all;
-  font: 14px/1.7 ui-monospace, monospace;
+  font: 13px/1.7 var(--font-mono);
   margin-top: 12px;
   padding: 12px;
-  background: var(--color-paper-2);
+  background: var(--tactical-surface-lowest);
+  border: 1px solid var(--tactical-border);
+  color: var(--tactical-readout);
+  border-radius: var(--radius-micro);
 }
 .release-card .copy-status {
   margin-block: 8px;
   min-height: 24px;
   font-size: 14px;
-  color: var(--color-pine);
+  font-family: var(--font-mono);
+  color: var(--tactical-primary);
 }
 .release-card :focus-visible {
-  outline-color: var(--color-pine);
+  outline-color: var(--tactical-primary);
   box-shadow: none;
 }
 .verify-details {
   font-size: 16px;
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--tactical-border);
 }
 .verify-details summary {
   min-height: 48px;
   display: list-item;
   padding-block: 12px;
   cursor: pointer;
-  color: var(--color-pine);
+  color: var(--tactical-primary);
   font-weight: 600;
 }
 .verify-details p {
   margin-block: 12px;
+  color: var(--tactical-recon);
 }
 .verify-command {
   display: block;
-  font-size: 13px;
+  font: 13px/1.5 var(--font-mono);
   white-space: normal;
   overflow-wrap: anywhere;
   padding: 12px;
-  background: var(--color-paper-2);
+  background: var(--tactical-surface-lowest);
+  border: 1px solid var(--tactical-border);
+  color: var(--tactical-primary);
+  border-radius: var(--radius-micro);
 }
 .faq-list details {
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--tactical-border);
 }
 .faq-list details:last-child {
-  border-bottom: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--tactical-border);
 }
 .faq-list summary {
   list-style: none;
@@ -689,6 +998,11 @@ h1 > span:last-child {
   padding-block: 18px;
   font-size: 21px;
   font-weight: 600;
+  color: var(--tactical-readout);
+  transition: color 150ms;
+}
+.faq-list summary:hover {
+  color: var(--tactical-primary);
 }
 .faq-list summary::-webkit-details-marker {
   display: none;
@@ -696,6 +1010,7 @@ h1 > span:last-child {
 .faq-list p {
   padding: 0 32px 28px 0;
   font-size: 18px;
+  color: var(--tactical-recon);
 }
 .hex-divider {
   width: 180px;
@@ -703,9 +1018,9 @@ h1 > span:last-child {
   margin-top: 44px;
 }
 .footer {
-  border-top: 1px solid var(--color-pine);
-  background: var(--color-pine-deep);
-  color: var(--color-paper);
+  border-top: 1px solid var(--tactical-border);
+  background: var(--tactical-surface-lowest);
+  color: var(--tactical-recon);
   padding-block: 48px;
 }
 .footer-grid {
@@ -719,12 +1034,18 @@ h1 > span:last-child {
 }
 .footer .wordmark {
   font-size: 28px;
+  color: var(--tactical-readout);
 }
 .footer p {
   font-size: 17px;
+  color: var(--tactical-recon);
 }
 .footer a {
-  color: var(--color-paper);
+  color: var(--tactical-readout);
+  transition: color 150ms;
+}
+.footer a:hover {
+  color: var(--tactical-primary);
 }
 .footer-links {
   display: flex;
@@ -745,10 +1066,10 @@ h1 > span:last-child {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--color-paper);
+  color: var(--tactical-primary);
 }
 .text-download:disabled {
-  color: var(--color-paper-2);
+  color: var(--tactical-recon);
   text-decoration: none;
 }
 .mobile-download {
@@ -766,14 +1087,18 @@ h1 > span:last-child {
   align-items: center;
   gap: 16px;
   padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--color-line);
-  background: var(--color-paper);
+  border-top: 1px solid var(--tactical-border);
+  background: var(--tactical-surface-lowest);
+  color: var(--tactical-readout);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
 }
 .mobile-download > span {
   font: 800 20px/.95 var(--font-heading);
+  color: var(--tactical-readout);
 }
 .mobile-download small {
   font: 400 12px/1.5 var(--font-body);
+  color: var(--tactical-recon);
 }
 @media (min-width: 1440px) {
   .hero {
