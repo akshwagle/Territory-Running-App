@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { LazyMotion, MotionConfig } from 'motion/react';
 import * as m from 'motion/react-m';
 import Logo from './components/Logo.jsx';
@@ -9,15 +9,18 @@ import Roadmap from './components/Roadmap.jsx';
 import InstallGuide from './components/InstallGuide.jsx';
 import FAQ from './components/FAQ.jsx';
 import ThemeToggle from './components/ThemeToggle.jsx';
-import Dashboard from './components/Dashboard.jsx';
 import useRelease, { releaseDate, releaseErrorMessage } from './hooks/useRelease.js';
 import useDownloadVisibility, { getDevice } from './hooks/useDownloadVisibility.js';
 import useScrolled from './hooks/useScrolled.js';
 import useStickyPresence from './hooks/useStickyPresence.js';
 import usePresentationMotion, { loadMotion } from './hooks/usePresentationMotion.js';
 import { useTheme } from './hooks/useTheme.js';
+import { useAuth } from './hooks/useAuth.js';
 
-function LandingPage({ theme, toggleTheme, onNavigate }) {
+const Dashboard = lazy(() => import('./components/Dashboard.jsx'));
+const AuthPage = lazy(() => import('./components/AuthPage.jsx'));
+
+function LandingPage({ theme, toggleTheme, onNavigate, isAuthenticated }) {
   const { state, retry } = useRelease();
   const [device] = useState(getDevice);
   const heroRef = useRef(null);
@@ -53,8 +56,8 @@ function LandingPage({ theme, toggleTheme, onNavigate }) {
         </div>
         <div className="topbar-actions">
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
-          <button type="button" className="btn-nav-login" onClick={() => onNavigate('dashboard')}>Log In</button>
-          <button type="button" className="btn-nav-get-started" onClick={() => onNavigate('dashboard')}>Get Started →</button>
+          <button type="button" className="btn-nav-login" onClick={() => onNavigate(isAuthenticated ? 'dashboard' : 'auth')}>Log In</button>
+          <button type="button" className="btn-nav-get-started" onClick={() => onNavigate(isAuthenticated ? 'dashboard' : 'auth')}>Get Started →</button>
           <div className="sr-only"><DownloadControl {...control} compact /></div>
         </div>
       </nav>
@@ -84,10 +87,10 @@ function LandingPage({ theme, toggleTheme, onNavigate }) {
               Turn your everyday runs into a battle for territory. Track your routes, claim real-world areas and compete with runners around you.
             </p>
             <div className="hero-cta-group">
-              <button type="button" className="hero-btn-primary" onClick={() => onNavigate('dashboard')}>
+              <button type="button" className="hero-btn-primary" onClick={() => onNavigate(isAuthenticated ? 'dashboard' : 'auth')}>
                 Get Started <span aria-hidden="true">→</span>
               </button>
-              <button type="button" className="hero-btn-secondary" onClick={() => onNavigate('dashboard')}>
+              <button type="button" className="hero-btn-secondary" onClick={() => onNavigate(isAuthenticated ? 'dashboard' : 'auth')}>
                 Explore the Platform
               </button>
             </div>
@@ -271,14 +274,24 @@ function LandingPage({ theme, toggleTheme, onNavigate }) {
 }
 
 export default function App() {
-  const [view, setView] = useState(() => (typeof window !== 'undefined' && window.location.hash === '#dashboard' ? 'dashboard' : 'landing'));
+  const auth = useAuth();
+  const [view, setView] = useState(() => {
+    if (typeof window === 'undefined') return 'landing';
+    const hash = window.location.hash;
+    if (hash === '#dashboard') return 'dashboard';
+    if (hash === '#auth' || hash === '#login' || hash === '#register') return 'auth';
+    return 'landing';
+  });
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     const handleHash = () => {
-      if (window.location.hash === '#dashboard') {
+      const hash = window.location.hash;
+      if (hash === '#dashboard') {
         setView('dashboard');
-      } else if (window.location.hash === '#home' || window.location.hash === '#top' || window.location.hash === '') {
+      } else if (hash === '#auth' || hash === '#login' || hash === '#register') {
+        setView('auth');
+      } else if (hash === '#home' || hash === '#top' || hash === '') {
         setView('landing');
       }
     };
@@ -290,6 +303,8 @@ export default function App() {
     setView(newView);
     if (newView === 'dashboard') {
       window.location.hash = '#dashboard';
+    } else if (newView === 'auth') {
+      window.location.hash = '#auth';
     } else {
       window.location.hash = '#top';
     }
@@ -298,10 +313,37 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <LazyMotion features={loadMotion} strict>
-        {view === 'dashboard' ? (
-          <Dashboard theme={theme} onToggleTheme={toggleTheme} onNavigateLanding={() => handleNavigate('landing')} />
+        {view === 'auth' ? (
+          <Suspense fallback={<div className="dashboard-loading font-mono">Loading Authentication...</div>}>
+            <AuthPage
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              onNavigateLanding={() => handleNavigate('landing')}
+              onSuccess={() => handleNavigate('dashboard')}
+              auth={auth}
+            />
+          </Suspense>
+        ) : view === 'dashboard' ? (
+          <Suspense fallback={<div className="dashboard-loading font-mono">Loading Tactical Dashboard...</div>}>
+            <Dashboard
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              onNavigateLanding={() => handleNavigate('landing')}
+              onLogout={async () => {
+                await auth.logout();
+                handleNavigate('landing');
+              }}
+              user={auth.user}
+              profile={auth.profile}
+            />
+          </Suspense>
         ) : (
-          <LandingPage theme={theme} toggleTheme={toggleTheme} onNavigate={handleNavigate} />
+          <LandingPage
+            theme={theme}
+            toggleTheme={toggleTheme}
+            onNavigate={handleNavigate}
+            isAuthenticated={auth.isAuthenticated}
+          />
         )}
       </LazyMotion>
     </MotionConfig>

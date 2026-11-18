@@ -1,10 +1,48 @@
 import { useState } from 'react';
 import ThemeToggle from './ThemeToggle.jsx';
 import DashboardMap from './DashboardMap.jsx';
+import LocationSelectorModal from './LocationSelectorModal.jsx';
+import LiveRunTracker from './LiveRunTracker.jsx';
 
-export default function Dashboard({ theme, onToggleTheme, onNavigateLanding }) {
+export default function Dashboard({
+  theme,
+  onToggleTheme,
+  onNavigateLanding,
+  onLogout,
+  user,
+  profile,
+}) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+
+  const currentUserName = user?.displayName || 'Prashant C.';
+  const firstName = currentUserName.split(' ')[0] || currentUserName;
+  const userInitials = currentUserName
+    .split(' ')
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'RC';
+  const [currentLocation, setCurrentLocation] = useState(() => {
+    try {
+      const saved = localStorage.getItem('run_conquer_selected_location');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // Ignore
+    }
+    return {
+      city: 'Bengaluru',
+      country: 'India',
+      coords: { latitude: 12.9716, longitude: 77.5946, accuracy: 8 },
+      source: 'gps',
+    };
+  });
+
+  const locationLabel = currentLocation?.city
+    ? `${currentLocation.city}, ${currentLocation.country === 'India' ? 'IN' : currentLocation.country}`
+    : (currentLocation?.coords ? `${currentLocation.coords.latitude.toFixed(2)}, ${currentLocation.coords.longitude.toFixed(2)}` : 'Bengaluru, IN');
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
@@ -19,7 +57,7 @@ export default function Dashboard({ theme, onToggleTheme, onNavigateLanding }) {
   const leaderboardUsers = [
     { rank: 1, name: 'Aarya S.', distance: '186.4 km', avatar: 'AS', isUser: false },
     { rank: 2, name: 'Rohan P.', distance: '172.1 km', avatar: 'RP', isUser: false },
-    { rank: 3, name: 'Prashant C.', distance: '124.8 km', avatar: 'PC', isUser: true },
+    { rank: 3, name: currentUserName, distance: '124.8 km', avatar: userInitials, isUser: true },
     { rank: 4, name: 'Meera K.', distance: '118.3 km', avatar: 'MK', isUser: false },
     { rank: 5, name: 'Nishant V.', distance: '112.6 km', avatar: 'NV', isUser: false },
   ];
@@ -131,7 +169,7 @@ export default function Dashboard({ theme, onToggleTheme, onNavigateLanding }) {
             </svg>
             <span>Settings</span>
           </button>
-          <button type="button" className="sidebar-action-btn text-destructive" onClick={onNavigateLanding}>
+          <button type="button" className="sidebar-action-btn text-destructive" onClick={onLogout || onNavigateLanding}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
             </svg>
@@ -145,7 +183,7 @@ export default function Dashboard({ theme, onToggleTheme, onNavigateLanding }) {
         {/* TOP BAR / WELCOME HEADER */}
         <header className="dashboard-topbar">
           <div className="dashboard-welcome">
-            <h1 className="welcome-title font-heading">Welcome back, Prashant 👋</h1>
+            <h1 className="welcome-title font-heading">Welcome back, {firstName} 👋</h1>
             <p className="welcome-subtitle">Continue your conquest. New territory awaits.</p>
           </div>
 
@@ -165,6 +203,19 @@ export default function Dashboard({ theme, onToggleTheme, onNavigateLanding }) {
               <kbd className="search-kbd">Ctrl K</kbd>
             </div>
 
+            <button
+              type="button"
+              className="dashboard-location-pill-btn"
+              onClick={() => setIsLocationModalOpen(true)}
+              title="Click to detect or change operational sector"
+              aria-label={`Operational sector: ${locationLabel}`}
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+              </svg>
+              <span>{locationLabel}</span>
+            </button>
+
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
 
             <button type="button" className="dashboard-icon-btn" aria-label="Notifications">
@@ -175,17 +226,34 @@ export default function Dashboard({ theme, onToggleTheme, onNavigateLanding }) {
               <span className="notification-dot" />
             </button>
 
-            <div className="user-profile-badge">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=80&h=80&q=80"
-                alt="Prashant C."
-                className="user-avatar-img"
-              />
+            <div className="user-profile-badge" title={currentUserName}>
+              {profile?.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={currentUserName}
+                  className="user-avatar-img"
+                />
+              ) : (
+                <div
+                  className="user-avatar-initials-badge"
+                  style={{
+                    backgroundColor: profile?.avatarColor || 'var(--accent-lime-bg)',
+                    color: profile?.avatarColor ? '#ffffff' : 'var(--accent-lime)',
+                  }}
+                  aria-label={currentUserName}
+                >
+                  {userInitials}
+                </div>
+              )}
             </div>
           </div>
         </header>
 
-        {/* 5 TOP METRIC CARDS */}
+        {activeTab === 'run' ? (
+          <LiveRunTracker theme={theme} onNavigateMap={() => setActiveTab('map')} />
+        ) : (
+          <>
+            {/* 5 TOP METRIC CARDS */}
         <div className="dashboard-stats-grid">
           <div className="stat-card">
             <div className="stat-icon-wrap lime">
@@ -263,7 +331,11 @@ export default function Dashboard({ theme, onToggleTheme, onNavigateLanding }) {
         <div className="dashboard-middle-grid">
           {/* Main Map */}
           <div className="middle-map-column">
-            <DashboardMap theme={theme} />
+            <DashboardMap
+              theme={theme}
+              locationLabel={locationLabel}
+              onOpenLocationSelector={() => setIsLocationModalOpen(true)}
+            />
           </div>
 
           {/* Right Column Stack */}
@@ -479,7 +551,18 @@ export default function Dashboard({ theme, onToggleTheme, onNavigateLanding }) {
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
+
+      {/* Location Selection & GPS Modal */}
+      <LocationSelectorModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        currentLocation={currentLocation}
+        onLocationConfirmed={(newLoc) => setCurrentLocation(newLoc)}
+        theme={theme}
+      />
     </div>
   );
 }
