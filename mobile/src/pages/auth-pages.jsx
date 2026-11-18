@@ -6,6 +6,65 @@ import { AuthForm, Notice, emailField, passwordField, newPasswordField } from '.
 import { BrandMark, Button, InlineNotice } from '../ui/index.jsx';
 import { PendingNotice } from '../ui/PendingNotice.jsx';
 import googleG from '../assets/google-g.png';
+import runnerHero from '../assets/runner-hero.jpg';
+
+/* ─── Splash / Onboarding page ─────────────────────────────────────── */
+export function SplashPage() {
+  const navigate = useNavigate();
+
+  return (
+    <section className="splash-page" aria-label="Territory Run welcome">
+      {/* Full-bleed runner image background */}
+      <div className="splash-bg" aria-hidden="true">
+        <img
+          src={runnerHero}
+          alt=""
+          className="splash-runner-img"
+        />
+        {/* Soft atmospheric vignette for text legibility */}
+        <div className="splash-scrim" />
+      </div>
+
+      {/* Top Left: Logo */}
+      <div className="splash-top-left">
+        <div className="splash-brand">
+          <div className="splash-brand-icon">
+            <BrandMark width="20" height="20" />
+          </div>
+          <div className="splash-brand-text">
+            <span className="splash-brand-title">TERRITORY</span>
+            <span className="splash-brand-sub">RUN</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Content: Clean, spacious, no clutter */}
+      <div className="splash-content">
+        <h1 className="splash-headline">
+          Find Your Next<br />
+          Big Challenge.
+        </h1>
+
+        {/* Action button */}
+        <button
+          type="button"
+          className="splash-cta"
+          onClick={() => navigate('/welcome')}
+        >
+          <span className="cta-label">Start Journey</span>
+          <span className="cta-chevrons" aria-hidden="true">
+            <span>›</span><span>›</span><span>›</span><span>›</span>
+          </span>
+        </button>
+
+        <p className="splash-hint">
+          Already have an account?{' '}
+          <Link to="/login" className="splash-link">Log in</Link>
+        </p>
+      </div>
+    </section>
+  );
+}
 
 export function GoogleButton({ link = false, onLinked = () => {}, onError }) {
   const { auth } = useAuth(), navigate = useNavigate();

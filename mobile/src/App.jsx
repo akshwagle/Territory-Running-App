@@ -4,7 +4,7 @@ import { useAuth } from './auth/context.jsx';
 import { parseAuthLink, watchNativeAuth } from './auth/deep-links.js';
 import { Notice } from './components/forms.jsx';
 import { friendlyMessage } from './auth/errors.js';
-import { WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage } from './pages/auth-pages.jsx';
+import { SplashPage, WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage } from './pages/auth-pages.jsx';
 import { HomePage, SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
 
 import { UIProvider, Skeleton, InlineNotice } from './ui/index.jsx';
@@ -82,7 +82,8 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
     }
   }, [location.pathname, location.search, navigate]);
   const pageRoutes = routeLocation => <Suspense fallback={<Skeleton label="Loading screen…"/>}><Routes location={routeLocation}>
-    <Route path="/" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage notice={state.authOutcome?.kind === 'error' ? state.authOutcome.message : linkError} />} />
+    <Route path="/" element={state.user ? <Navigate to="/home" replace /> : <SplashPage />} />
+    <Route path="/welcome" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage notice={state.authOutcome?.kind === 'error' ? state.authOutcome.message : linkError} />} />
     <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
     <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
     <Route path="/home" element={<Protected><HomePage /></Protected>} /><Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
@@ -96,10 +97,10 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
   const ready = !['restoring', 'storageError', 'blocked'].includes(state.status) &&
     !(state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname));
   return <Shell user={state.user} renderRoutes={ready ? pageRoutes : () => null}
-    showFooter={!state.user || location.pathname === '/settings'}
+    showFooter={!state.user && location.pathname !== '/' || location.pathname === '/settings'}
     footer={<><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
-      {ready && location.pathname !== '/' && state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome?.kind !== 'progress' && state.authOutcome && <Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice>}
-      {location.pathname !== '/' && !state.authOutcome && linkError && <InlineNotice error>{linkError}</InlineNotice>}
+      {ready && location.pathname !== '/' && location.pathname !== '/welcome' && state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome?.kind !== 'progress' && state.authOutcome && <Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice>}
+      {location.pathname !== '/' && location.pathname !== '/welcome' && !state.authOutcome && linkError && <InlineNotice error>{linkError}</InlineNotice>}
       {state.status === 'restoring' ? <section><h1>Getting ready</h1><Skeleton label="Restoring your sign-in securely…"/></section> :
         state.status === 'storageError' ? <section><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
           state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><SignOutControl /></section> :
@@ -107,7 +108,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
             {['offline', 'unavailable'].includes(state.status) ? <InlineNotice className="connection-notice" error action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</InlineNotice> :
               state.user && state.user.emailVerified !== true && location.pathname !== '/verify' && <VerificationBanner />}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
-            {location.pathname !== '/' && <PendingNotice/>}
+            {location.pathname !== '/' && location.pathname !== '/welcome' && <PendingNotice/>}
 
 
           </>}
