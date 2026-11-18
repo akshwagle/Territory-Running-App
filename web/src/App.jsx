@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LazyMotion, MotionConfig } from 'motion/react';
 import * as m from 'motion/react-m';
 import Logo from './components/Logo.jsx';
@@ -8,13 +8,16 @@ import HowItWorks from './components/HowItWorks.jsx';
 import Roadmap from './components/Roadmap.jsx';
 import InstallGuide from './components/InstallGuide.jsx';
 import FAQ from './components/FAQ.jsx';
+import ThemeToggle from './components/ThemeToggle.jsx';
+import Dashboard from './components/Dashboard.jsx';
 import useRelease, { releaseDate, releaseErrorMessage } from './hooks/useRelease.js';
 import useDownloadVisibility, { getDevice } from './hooks/useDownloadVisibility.js';
-
 import useScrolled from './hooks/useScrolled.js';
 import useStickyPresence from './hooks/useStickyPresence.js';
 import usePresentationMotion, { loadMotion } from './hooks/usePresentationMotion.js';
-function LandingPage() {
+import { useTheme } from './hooks/useTheme.js';
+
+function LandingPage({ theme, toggleTheme, onNavigate }) {
   const { state, retry } = useRelease();
   const [device] = useState(getDevice);
   const heroRef = useRef(null);
@@ -28,107 +31,220 @@ function LandingPage() {
   return <div className={sticky.present ? 'landing-page has-sticky' : 'landing-page'}>
     <a className="skip-link" href="#main">Skip to content</a>
     <header className="topbar" data-scrolled={scrolled}>
-      <div className="tactical-status-strip" aria-hidden="true">
-        <div className="container tactical-status-inner">
-          <div className="tactical-status-item">
-            <span className="tactical-ping"></span>
-            <span className="font-mono">DEFCON 2 // ACTIVE SECTOR RECON</span>
-          </div>
-          <div className="tactical-status-item hidden-mobile">
-            <span className="font-mono">GPS FIX: 98% / 14 SATS</span>
-            <span className="tactical-divider">•</span>
-            <span className="font-mono">MGRS 32U PU 4821 9104</span>
-          </div>
-        </div>
-      </div>
       <nav className="container topbar-inner" aria-label="Main">
-        <a className="brand-link" href="#top" aria-label="Territory Run home"><Logo /></a>
+        <a className="brand-link" href="#top" aria-label="Territory Run home">
+          <span className="brand-logo-mark" aria-hidden="true">
+            <svg viewBox="0 0 28 28" width="24" height="24" fill="none">
+              <path d="M4 22L12 4l6 10 6-10v18" stroke="var(--accent-lime)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <span className="brand-text-block">
+            <span className="brand-title font-heading">RUN & CONQUER</span>
+            <span className="brand-tagline">RUN · CLAIM · DEFEND</span>
+          </span>
+        </a>
         <div className="topbar-links">
-          <a href="#how-it-works">Briefing</a>
-          <a href="#roadmap">Roadmap</a>
-          <a href="#install">Install</a>
-          <a href="#faq">FAQ</a>
+          <a href="#top" className="topbar-nav-link active">Home</a>
+          <a href="#activities" className="topbar-nav-link" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}>Activities</a>
+          <a href="#communities" className="topbar-nav-link" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}>Communities</a>
+          <a href="#map" className="topbar-nav-link" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}>Map</a>
+          <a href="#challenges" className="topbar-nav-link" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}>Challenges</a>
+          <a href="#leaderboard" className="topbar-nav-link" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}>Leaderboard</a>
         </div>
-        <DownloadControl {...control} compact />
+        <div className="topbar-actions">
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <button type="button" className="btn-nav-login" onClick={() => onNavigate('dashboard')}>Log In</button>
+          <button type="button" className="btn-nav-get-started" onClick={() => onNavigate('dashboard')}>Get Started →</button>
+          <div className="sr-only"><DownloadControl {...control} compact /></div>
+        </div>
       </nav>
     </header>
 
     <main id="main" tabIndex={-1}>
-      <div className="tactical-hero-ribbon container" aria-label="Sector control overview">
-        <div className="tactical-ribbon-live">
-          <span className="tactical-live-dot" aria-hidden="true"></span>
-          <span className="font-mono font-semibold">LIVE SECTOR FEED // ALPHA-7</span>
-        </div>
-        <div className="tactical-conquest-overview">
-          <div className="conquest-legend font-mono">
-            <span className="legend-allied"><i aria-hidden="true"></i> 42.4% ALLIED</span>
-            <span className="legend-hostile"><i aria-hidden="true"></i> 35.2% HOSTILE</span>
-            <span className="legend-contested"><i aria-hidden="true"></i> 14.1% CONTESTED</span>
-            <span className="legend-neutral hidden-mobile"><i aria-hidden="true"></i> 8.3% NEUTRAL</span>
-          </div>
-          <div className="conquest-meter-bar" aria-hidden="true">
-            <div className="bar-allied" style={{ width: '42.4%' }} />
-            <div className="bar-hostile" style={{ width: '35.2%' }} />
-            <div className="bar-contested" style={{ width: '14.1%' }} />
-            <div className="bar-neutral" style={{ width: '8.3%' }} />
-          </div>
-        </div>
-      </div>
-
-      <section id="top" className="hero container grid-12" aria-labelledby="hero-title">
-        <div className="hero-copy">
-          <p className="eyebrow hero-kicker">GPS RUNNING // TACTICAL TERRITORY CONQUEST</p>
-          <h1 id="hero-title" aria-label="Run it. Claim it. Defend it.">{['RUN IT.', 'CLAIM IT.', 'DEFEND IT.'].map((line, index) => <m.span key={line} aria-hidden="true" initial={!animate ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: index * 0.08 }}>{line}</m.span>)}</h1>
-          <p className="hero-description">Every street you run turns hexes on the map into your territory. Another runner can take them back.</p>
-          <div className="hero-download" ref={heroRef}><DownloadControl {...control} /></div>
-          <div className={`hero-release${state.kind === 'loading' ? ' release-placeholder' : ''}`} aria-live="polite" aria-busy={state.kind === 'loading'}>
-            {state.kind === 'release' && <><span className="version-chip">v{state.release.versionName} · Android · early build</span><time dateTime={state.release.publishedAt}>Released {releaseDate(state.release.publishedAt)}</time></>}
-            {state.kind === 'loading' && <p role="status">Checking for the latest version…</p>}
-            {state.kind === 'empty' && <p role="status">The first version is coming soon.</p>}
-            {state.kind === 'error' && <p role="alert">{releaseErrorMessage}</p>}
-          </div>
-          {device === 'desktop' && <p className="desktop-note" data-ready={state.kind === 'release'} aria-hidden={state.kind !== 'release'}>Open this page on your Android phone to install.</p>}
-
-          <div className="hero-telemetry-matrix" aria-label="Sortie metrics preview">
-            <div className="telemetry-pod">
-              <span className="pod-label">SORTIE DIST</span>
-              <div className="pod-value font-telemetry">8.42<small>KM</small></div>
-              <span className="pod-sub font-mono">GPS-HD // H3 R11</span>
+      <section id="top" className="hero container athletic-hero" aria-labelledby="hero-title">
+        <div className="hero-two-column-layout">
+          {/* LEFT COLUMN: ~45% */}
+          <div className="hero-copy-column">
+            <p className="eyebrow hero-kicker">GPS RUNNING / TERRITORY CONQUEST</p>
+            <h1 id="hero-title" aria-label="Run it. Claim it. Defend it.">
+              {['RUN IT.', 'CLAIM IT.', 'DEFEND IT.'].map((line, index) => (
+                <m.span
+                  key={line}
+                  className={line === 'DEFEND IT.' ? (theme === 'light' ? 'hero-headline-defend brush-highlight' : 'hero-headline-defend glow-defend') : 'hero-headline-line'}
+                  aria-hidden="true"
+                  initial={!animate ? false : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.08 }}
+                >
+                  {line}
+                </m.span>
+              ))}
+            </h1>
+            <p className="hero-description">
+              Turn your everyday runs into a battle for territory. Track your routes, claim real-world areas and compete with runners around you.
+            </p>
+            <div className="hero-cta-group">
+              <button type="button" className="hero-btn-primary" onClick={() => onNavigate('dashboard')}>
+                Get Started <span aria-hidden="true">→</span>
+              </button>
+              <button type="button" className="hero-btn-secondary" onClick={() => onNavigate('dashboard')}>
+                Explore the Platform
+              </button>
             </div>
-            <div className="telemetry-pod">
-              <span className="pod-label">TARGET PACE</span>
-              <div className="pod-value font-telemetry">4:32<small>/KM</small></div>
-              <span className="pod-sub font-mono text-allied">+12s Sector Record</span>
-            </div>
-            <div className="telemetry-pod">
-              <span className="pod-label">COMBAT PULSE</span>
-              <div className="pod-value font-telemetry">164<small>BPM</small></div>
-              <span className="pod-sub font-mono text-threat">Zone 4 Tactical</span>
-            </div>
-          </div>
 
-          <a className="how-link" href="#how-it-works">Ops Briefing <span aria-hidden="true">↓</span></a>
-        </div>
-        <div className="hero-art">
-          <div className="tactical-command-deck">
-            <div className="command-deck-header font-mono" aria-hidden="true">
-              <div className="deck-coordinates">
-                <span className="text-allied">[+]</span>
-                <span>LAT 60.1834° N / LON 24.9521° E</span>
+            {/* Accessible slots for release download tests and intersection observers without visual clutter */}
+            <div className="sr-only">
+              <div className="hero-download" ref={heroRef}><DownloadControl {...control} /></div>
+              <div className={`hero-release${state.kind === 'loading' ? ' release-placeholder' : ''}`} aria-live="polite" aria-busy={state.kind === 'loading'}>
+                {state.kind === 'release' && <><span className="version-chip">v{state.release.versionName} · Android · early build</span><time dateTime={state.release.publishedAt}>Released {releaseDate(state.release.publishedAt)}</time></>}
+                {state.kind === 'loading' && <p role="status">Checking for the latest version…</p>}
+                {state.kind === 'empty' && <p role="status">The first version is coming soon.</p>}
+                {state.kind === 'error' && <p role="alert">{releaseErrorMessage}</p>}
               </div>
-              <div className="deck-grid">
-                <span className="grid-badge">GRID 4A-NORD</span>
-                <span className="radar-status text-allied">● RADAR 3.2KM</span>
-              </div>
+              {device === 'desktop' && <p className="desktop-note" data-ready={state.kind === 'release'} aria-hidden={state.kind !== 'release'}>Open this page on your Android phone to install.</p>}
             </div>
-            <TerritoryMap />
-            <div className="command-deck-footer font-mono" aria-hidden="true">
-              <span>RADAR SCAN: 3.2KM RADIUS • AES-256-MIL</span>
-              <span className="text-allied">[WAR ROOM ACTIVE]</span>
+          </div>
+
+          {/* RIGHT COLUMN: ~55% VISUAL STAGE */}
+          <div className="hero-visual-stage" aria-hidden="true">
+            {/* Fine lime-green topographic contour lines */}
+            <svg className="hero-topo-bg" viewBox="0 0 700 500" fill="none" preserveAspectRatio="xMidYMid slice">
+              <g stroke="var(--accent-lime)" strokeWidth="1" strokeOpacity="0.22">
+                <ellipse cx="380" cy="260" rx="360" ry="220" />
+                <ellipse cx="380" cy="260" rx="280" ry="170" />
+                <ellipse cx="380" cy="260" rx="200" ry="120" strokeDasharray="3 5" />
+                <ellipse cx="380" cy="260" rx="130" ry="80" />
+                <path d="M 50,420 Q 200,340 380,360 T 700,310" />
+                <path d="M 80,120 Q 280,180 500,140 T 700,160" strokeDasharray="4 6" />
+              </g>
+            </svg>
+
+            {/* Technical markings and coordinates */}
+            <div className="hero-tech-overlays font-mono">
+              <span className="tech-coord-vert">27.1767° N · 78.0081° E</span>
+              <span className="tech-crosshair ch-tl">+</span>
+              <span className="tech-crosshair ch-br">+</span>
+            </div>
+
+            {/* Hexagonal territory outlines in upper-right */}
+            <div className="hero-hex-cluster">
+              <svg viewBox="0 0 220 180" width="200" height="160" fill="none">
+                <polygon points="40,15 75,35 75,75 40,95 5,75 5,35" stroke="var(--accent-lime)" strokeWidth="1.5" strokeOpacity="0.35" />
+                <polygon points="110,15 145,35 145,75 110,95 75,75 75,35" stroke="var(--accent-lime)" strokeWidth="1.5" strokeOpacity="0.5" />
+                <polygon points="180,15 215,35 215,75 180,95 145,75 145,35" stroke="var(--accent-lime)" strokeWidth="1.5" strokeOpacity="0.3" />
+                <polygon points="75,80 110,100 110,140 75,160 40,140 40,100" stroke="var(--accent-lime)" strokeWidth="1.5" strokeOpacity="0.45" />
+                {/* Highlighted central territory hexagon */}
+                <polygon points="145,80 180,100 180,140 145,160 110,140 110,100" fill="var(--accent-lime)" fillOpacity="0.85" stroke="var(--accent-lime)" strokeWidth="2" />
+                <path d="M140 126l-3-6 4 2 4-5 4 5 4-2-3 6z" fill="#070907" />
+              </svg>
+            </div>
+
+            {/* Sprinting Athlete Image (occupying right half, seamless transparent edges) */}
+            <div className="hero-athlete-wrap">
+              <img
+                src={theme === 'dark' ? '/assets/athlete-runner-dark.png' : '/assets/athlete-runner-light.png'}
+                alt="Sprinting runner in athletic motion"
+                className="hero-athlete-img"
+              />
+            </div>
+
+            {/* Floating LIVE RUN Information Panel */}
+            <div className="live-run-panel">
+              <div className="live-run-header">
+                <span className="live-run-pulse-dot" />
+                <span className="live-run-title font-mono">LIVE RUN</span>
+              </div>
+              <div className="live-run-sparkline">
+                <svg viewBox="0 0 120 30" width="120" height="30" fill="none" stroke="var(--accent-lime)" strokeWidth="2">
+                  <path d="M0 24 Q30 8 60 18 T120 10" />
+                  <path d="M0 24 Q30 8 60 18 T120 10 L120 30 L0 30 Z" fill="var(--accent-lime)" fillOpacity="0.15" stroke="none" />
+                </svg>
+              </div>
+              <div className="live-run-metric-primary">
+                <span className="live-dist-val font-heading">5.42</span>
+                <span className="live-dist-unit font-mono">km</span>
+              </div>
+              <div className="live-run-metrics-row font-mono">
+                <div className="live-metric-col">
+                  <span className="live-metric-label">PACE</span>
+                  <span className="live-metric-val">4:18 <small>/km</small></span>
+                </div>
+                <div className="live-metric-divider" />
+                <div className="live-metric-col">
+                  <span className="live-metric-label">HR</span>
+                  <span className="live-metric-val">164 <small>bpm</small></span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div className="hero-footnote font-mono"><span>ANDROID / EARLY ACCESS</span></div>
+
+        {/* BOTTOM FEATURE STRIP */}
+        <div className="hero-features-strip" aria-label="Key Features">
+          <div className="hero-feature-card">
+            <div className="feature-icon-badge">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="5" r="2" />
+                <path d="M10 22v-6l-2-2 3-5 3 2 3-1" />
+                <path d="M7 11l3-1 2 3 4-2" />
+              </svg>
+            </div>
+            <div className="feature-info">
+              <h3 className="feature-title font-heading">TRACK RUNS</h3>
+              <p className="feature-desc">GPS-based running with distance, pace and route history.</p>
+            </div>
+          </div>
+
+          <div className="hero-feature-card">
+            <div className="feature-icon-badge">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                <line x1="4" y1="22" x2="4" y2="15" />
+              </svg>
+            </div>
+            <div className="feature-info">
+              <h3 className="feature-title font-heading">CLAIM TERRITORY</h3>
+              <p className="feature-desc">Convert your running routes into real-world territories.</p>
+            </div>
+          </div>
+
+          <div className="hero-feature-card">
+            <div className="feature-icon-badge">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <polyline points="9 12 11 14 15 10" />
+              </svg>
+            </div>
+            <div className="feature-info">
+              <h3 className="feature-title font-heading">DEFEND & EXPAND</h3>
+              <p className="feature-desc">Run again to strengthen and defend your controlled areas.</p>
+            </div>
+          </div>
+
+          <div className="hero-feature-card">
+            <div className="feature-icon-badge">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 9H3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h3M18 9h3a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-3" />
+                <path d="M6 2h12v7a6 6 0 0 1-12 0V2zM12 15v5M8 20h8" />
+              </svg>
+            </div>
+            <div className="feature-info">
+              <h3 className="feature-title font-heading">COMPETE</h3>
+              <p className="feature-desc">Climb leaderboards and win seasonal challenges.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Down arrow indicator */}
+        <div className="hero-scroll-prompt">
+          <a href="#how-it-works" className="hero-scroll-arrow" aria-label="Scroll to how it works">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </a>
+        </div>
+
+        <div className="hero-footnote font-mono sr-only"><span>ANDROID / EARLY ACCESS</span></div>
       </section>
 
       <HowItWorks />
@@ -155,5 +271,39 @@ function LandingPage() {
 }
 
 export default function App() {
-  return <MotionConfig reducedMotion="user"><LazyMotion features={loadMotion} strict><LandingPage /></LazyMotion></MotionConfig>;
+  const [view, setView] = useState(() => (typeof window !== 'undefined' && window.location.hash === '#dashboard' ? 'dashboard' : 'landing'));
+  const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === '#dashboard') {
+        setView('dashboard');
+      } else if (window.location.hash === '#home' || window.location.hash === '#top' || window.location.hash === '') {
+        setView('landing');
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  const handleNavigate = (newView) => {
+    setView(newView);
+    if (newView === 'dashboard') {
+      window.location.hash = '#dashboard';
+    } else {
+      window.location.hash = '#top';
+    }
+  };
+
+  return (
+    <MotionConfig reducedMotion="user">
+      <LazyMotion features={loadMotion} strict>
+        {view === 'dashboard' ? (
+          <Dashboard theme={theme} onToggleTheme={toggleTheme} onNavigateLanding={() => handleNavigate('landing')} />
+        ) : (
+          <LandingPage theme={theme} toggleTheme={toggleTheme} onNavigate={handleNavigate} />
+        )}
+      </LazyMotion>
+    </MotionConfig>
+  );
 }
