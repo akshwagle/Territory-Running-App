@@ -246,6 +246,230 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--color-pine)
 .privacy-choices { margin-block: 8px 28px; }
 .privacy-choices .ui-row-label { max-width: 65%; }
 @media (prefers-reduced-motion: reduce) { .ui-button:active, .google:active { transform: none !important; } }
+
+/* ─── Splash / Onboarding page ─────────────────────────────────────────── */
+.splash-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #050806;
+  color: #f1f5f0;
+  padding:
+    max(20px, var(--safe-top))
+    max(24px, var(--safe-right))
+    max(28px, var(--safe-bottom))
+    max(24px, var(--safe-left));
+  box-sizing: border-box;
+}
+
+/* Full-bleed runner background container */
+.splash-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.splash-runner-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: contrast(1.04);
+}
+
+/* Atmospheric gradient scrim for pristine text contrast with full runner visibility */
+.splash-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 10, 8, 0.25) 0%,
+    rgba(6, 10, 8, 0.0) 30%,
+    rgba(6, 10, 8, 0.15) 55%,
+    rgba(5, 8, 6, 0.72) 75%,
+    rgba(5, 8, 6, 0.95) 92%,
+    #050806 100%
+  );
+}
+
+/* Top Left: Logo & Tag Stack */
+.splash-top-left {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  animation: splash-fade-down 0.6s var(--ease-enter, cubic-bezier(.05,.7,.1,1)) both;
+}
+.splash-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px 4px 4px;
+  background: rgba(14, 20, 16, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+.splash-brand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: rgba(25, 36, 26, 0.85);
+  border: 1px solid rgba(141, 187, 101, 0.35);
+  border-radius: 6px;
+}
+.splash-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 0.92;
+}
+.splash-brand-title {
+  font-family: var(--font-heading, 'Space Grotesk', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+}
+.splash-brand-sub {
+  font-family: var(--font-heading, 'Space Grotesk', sans-serif);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #ff9f43;
+}
+
+/* Bottom content section: open, spacious, free */
+.splash-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+  animation: splash-fade-up 0.7s 0.12s var(--ease-enter, cubic-bezier(.05,.7,.1,1)) both;
+}
+
+.splash-headline {
+  font-family: var(--font-heading, 'Space Grotesk', sans-serif);
+  font-size: clamp(2.4rem, 11vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  margin: 0 0 28px;
+  color: #ffffff;
+  text-transform: none;
+}
+.headline-accent {
+  color: #ffffff;
+  display: inline-block;
+}
+
+/* Vibrant green pill CTA (matching reference photo) */
+.splash-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 60px;
+  padding: 16px 24px;
+  background: #00e600;
+  color: #050a06;
+  font-family: var(--font-heading, 'Space Grotesk', sans-serif);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  box-shadow:
+    0 10px 25px -4px rgba(0, 230, 0, 0.4),
+    0 0 35px rgba(0, 230, 0, 0.2);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  margin-bottom: 18px;
+}
+.splash-cta:hover {
+  background: #1aff1a;
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 30px -4px rgba(0, 230, 0, 0.5),
+    0 0 45px rgba(0, 230, 0, 0.3);
+}
+.splash-cta:active:not(:disabled) {
+  transform: scale(0.98);
+  background: #00cc00;
+}
+.cta-label {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #050a06;
+}
+.cta-chevrons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: rgba(5, 10, 6, 0.7);
+  letter-spacing: -2px;
+}
+.cta-chevrons span {
+  display: inline-block;
+  animation: chevron-pulse 1.6s infinite ease-in-out;
+}
+.cta-chevrons span:nth-child(1) { animation-delay: 0s; }
+.cta-chevrons span:nth-child(2) { animation-delay: 0.15s; }
+.cta-chevrons span:nth-child(3) { animation-delay: 0.3s; }
+.cta-chevrons span:nth-child(4) { animation-delay: 0.45s; }
+
+@keyframes chevron-pulse {
+  0%, 100% { opacity: 0.3; transform: translateX(0); }
+  50% { opacity: 1; transform: translateX(2px); }
+}
+
+/* Secondary hint link */
+.splash-hint {
+  font-size: 0.88rem;
+  color: #8c9c89;
+  margin: 0;
+  text-align: center;
+}
+.splash-link {
+  color: #ffab40;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  min-height: auto;
+  display: inline;
+}
+.splash-link:hover, .splash-link:active {
+  color: #ffd180;
+}
+
+@keyframes splash-fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes splash-fade-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash-runner-img, .splash-float-hex, .splash-header, .splash-content, .cta-chevrons span {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+/* ─────────────────────────────────────────────────────────────────────────── */
 [data-keyboard-open] .ui-sheet .editor-actions { position: sticky; bottom: 0; z-index: 2; background: var(--color-paper); padding-block: 8px; }
 [data-keyboard-open] .ui-sheet .editor-actions .ui-button { position: static; }
 .ui-input-row input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 0; border-bottom: 3px solid var(--color-pine); caret-color: var(--color-pine); }

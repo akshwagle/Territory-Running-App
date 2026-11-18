@@ -8,7 +8,7 @@ export const TABS = [
   { to: '/you', label: 'You', icon: 'user' },
   { to: '/settings', label: 'Settings', icon: 'settings' },
 ];
-const TITLES = { '/home': 'Territory Run', '/you': 'You', '/you/privacy': 'Privacy', '/you/consent': 'Consent',
+const TITLES = { '/': 'Territory Run', '/welcome': 'Territory Run', '/you': 'You', '/you/privacy': 'Privacy', '/you/consent': 'Consent',
   '/settings': 'Settings', '/settings/methods': 'Sign-in methods', '/settings/sessions': 'Active sessions',
   '/settings/password': 'Password', '/settings/export': 'Export data', '/settings/delete': 'Delete account',
   '/login': 'Log in', '/signup': 'Create account', '/forgot': 'Password help', '/reset': 'Reset password', '/verify': 'Email verification' };
@@ -51,7 +51,7 @@ export function Shell({ user, children, renderRoutes, footer, showFooter = true,
   }, [location.key, location.pathname]);
   const direction = type === 'POP' || location.state?.direction === 'back' ? 'back' : location.state?.tab ? 'tab' : 'forward';
   return <Screen title={TITLES[location.pathname] || 'Territory Run'} onBack={!root ? () => backRef.current() : undefined}
-    className={location.pathname === '/' ? 'shell-welcome' : ''} scrollRef={scroll}
+    className={location.pathname === '/' || location.pathname === '/welcome' ? 'shell-welcome' : ''} scrollRef={scroll}
     onScroll={event => positions.current.set(location.pathname, event.currentTarget.scrollTop)}
     bottom={identity ? <TabBar tabs={TABS} active={activeTab} onSelect={(event, tab) => { event.preventDefault(); if (tab.to !== location.pathname) navigate(tab.to, { state: { tab: true } }); }}/>:null}>
     {barError && <p className="small" role="alert">System back is unavailable. Use the Back button above, or reopen the app.</p>}
