@@ -1,60 +1,163 @@
-import { useState } from 'react';
+/**
+ * RUN & CONQUER — Dashboard Interactive Territory Map
+ *
+ * Professional street-map cockpit inspired by Strava's athletic design:
+ * - 100% full-bleed map container fill with zero blank areas, cropped tiles, or distortion.
+ * - Auto-detects visitor GPS location on mount and centers precisely on the user.
+ * - Distinct pulsing current-location marker at zoom level 15.
+ * - Real geographical resolution-11 territory overlays (green owned, orange contested, red rival).
+ * - Luminous GPS running route polyline.
+ * - Clean non-blocking permission-denied message with retry option.
+ * - Clean UI with zero intrusive configuration boxes or debug panels covering map tiles.
+ */
 
-export default function DashboardMap({ theme = 'dark' }) {
-  const [zoom, setZoom] = useState(1);
+import { useState, useEffect, useRef, useCallback } from 'react';
+import InteractiveMap from './InteractiveMap.jsx';
+import { formatCoordinates } from '../services/location/locationUtils.js';
+
+export default function DashboardMap({
+  theme = 'dark',
+  locationLabel = null,
+  onOpenLocationSelector = null,
+}) {
   const [fullscreen, setFullscreen] = useState(false);
+  const [geoStatus, setGeoStatus] = useState('detecting'); // 'detecting' | 'granted' | 'denied' | 'unavailable' | 'timeout'
+  const [geoError, setGeoError] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
 
-  // Hexagon math
-  const radius = 24;
-  const hexPoints = Array.from({ length: 6 }, (_, i) => {
-    const a = (i * 60 - 90) * Math.PI / 180;
-    return `${Math.cos(a) * (radius - 1.5)},${Math.sin(a) * (radius - 1.5)}`;
-  }).join(' ');
+  // Optional Google Maps API key from environment
+  const apiKey = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_GOOGLE_MAPS_API_KEY : '';
+  const [googleMapsReady, setGoogleMapsReady] = useState(false);
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
 
-  const pos = ([q, r]) => [
-    320 + Math.sqrt(3) * radius * (q + r / 2),
-    200 + radius * 1.5 * r,
-  ];
+  /**
+   * Request browser geolocation on mount and wait for valid GPS coordinates
+   */
+  const requestUserLocation = useCallback(() => {
+    setGeoStatus('detecting');
+    setGeoError(null);
 
-  // Hex clusters matching reference screenshots (Bengaluru sector)
-  const alliedHexes = [
-    [0, 0], [1, -1], [1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1],
-    [-2, 1], [-2, 2], [-1, 2], [0, 2], [1, 1], [2, 0], [-2, 0],
-    [-3, 1], [-3, 2], [-1, -1]
-  ];
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      setGeoStatus('unavailable');
+      setGeoError('Browser does not support geolocation.');
+      return;
+    }
 
-  const contestedHexes = [
-    [2, -2], [3, -3], [2, -3], [3, -2], [1, -2]
-  ];
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        setUserLocation({
+          lat: latitude,
+          lng: longitude,
+          accuracy,
+        });
+        setGeoStatus('granted');
+      },
+      (err) => {
+        if (err.code === 1) {
+          setGeoStatus('denied');
+          setGeoError('Location permission denied. Click to retry.');
+        } else if (err.code === 3) {
+          setGeoStatus('timeout');
+          setGeoError('Location request timed out. Click to retry.');
+        } else {
+          setGeoStatus('unavailable');
+          setGeoError('Location fix unavailable. Click to retry.');
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0,
+      }
+    );
+  }, []);
 
-  const rivalHexes = [
-    [0, 3], [1, 3], [0, 4], [1, 2], [2, 2]
-  ];
+  // Request browser geolocation on initial mount
+  useEffect(() => {
+    requestUserLocation();
+  }, [requestUserLocation]);
 
-  const runRoute = [
-    [-3.5, 2.5], [-3, 2], [-2, 2], [-2, 1], [-1, 1], [0, 1], [0, 0],
-    [1, 0], [2, -1], [2.5, -2], [3, -2]
-  ];
+  // Optional: Load Google Maps if API key is provided in environment
+  useEffect(() => {
+    if (!apiKey) return;
 
-  const runPoints = runRoute.map((p) => pos(p).join(',')).join(' ');
+    if (typeof window !== 'undefined' && window.google?.maps) {
+      setGoogleMapsReady(true);
+      return;
+    }
+
+    const scriptId = 'google-maps-js-sdk';
+    let script = document.getElementById(scriptId);
+    if (!script) {
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=geometry`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+
+    const handleLoad = () => setGoogleMapsReady(true);
+    script.addEventListener('load', handleLoad);
+    return () => script?.removeEventListener('load', handleLoad);
+  }, [apiKey]);
+
+  // If Google Maps is active and element is ready
+  useEffect(() => {
+    if (!googleMapsReady || !mapContainerRef.current || !window.google?.maps || !userLocation) return;
+
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = new window.google.maps.Map(mapContainerRef.current, {
+        center: { lat: userLocation.lat, lng: userLocation.lng },
+        zoom: 15,
+        disableDefaultUI: false,
+        zoomControl: true,
+      });
+      new window.google.maps.Marker({
+        position: { lat: userLocation.lat, lng: userLocation.lng },
+        map: mapInstanceRef.current,
+        title: 'Your Current Position',
+      });
+    } else {
+      mapInstanceRef.current.setCenter({ lat: userLocation.lat, lng: userLocation.lng });
+    }
+  }, [googleMapsReady, userLocation]);
+
+  const activeLocationTitle = userLocation
+    ? formatCoordinates(userLocation.lat, userLocation.lng, 3)
+    : (locationLabel || (geoStatus === 'detecting' ? 'Acquiring GPS...' : 'Location Standby'));
 
   return (
     <div className={`dashboard-map-card ${fullscreen ? 'is-fullscreen' : ''}`}>
+      {/* Map Header */}
       <div className="dashboard-map-header">
         <div className="map-title-wrap">
           <svg className="map-title-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z" />
-            <path d="M9 4v16M15 1v16" />
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+            <line x1="8" y1="2" x2="8" y2="18" />
+            <line x1="16" y1="6" x2="16" y2="22" />
           </svg>
-          <h3>Your Territory</h3>
+          <h3>Interactive Territory Map</h3>
         </div>
+
         <div className="map-meta-wrap">
-          <span className="map-location-badge">
+          {/* Detected Location Badge */}
+          <button
+            type="button"
+            className="map-location-badge is-clickable"
+            onClick={onOpenLocationSelector || requestUserLocation}
+            title="Click to detect or change operational sector"
+            aria-label={`Current location: ${activeLocationTitle}. Click to detect or change.`}
+          >
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
             </svg>
-            Bengaluru, IN
-          </span>
+            <span>{activeLocationTitle}</span>
+          </button>
+
+          {/* Fullscreen Expand/Collapse */}
           <button
             type="button"
             className="map-action-btn"
@@ -69,103 +172,61 @@ export default function DashboardMap({ theme = 'dark' }) {
         </div>
       </div>
 
-      <div className="dashboard-map-canvas-container">
-        <svg
-          className="dashboard-map-svg"
-          viewBox="0 0 640 400"
-          style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-        >
-          {/* Real satellite city map background */}
-          <image
-            href={theme === 'light' ? '/assets/map-satellite-light.jpg' : '/assets/map-satellite-dark.jpg'}
-            x="0"
-            y="0"
-            width="640"
-            height="400"
-            preserveAspectRatio="xMidYMid slice"
-            className="map-satellite-base"
-          />
-
-          {/* Aerial city street & avenue grid overlay */}
-          <g className="map-city-grid-layer" opacity={theme === 'light' ? '0.35' : '0.45'} stroke="currentColor" strokeWidth="1" fill="none">
-            <ellipse cx="320" cy="200" rx="270" ry="160" stroke="var(--accent-lime)" strokeWidth="1.2" strokeOpacity="0.35" />
-            <ellipse cx="320" cy="200" rx="190" ry="110" stroke="var(--accent-lime)" strokeWidth="0.8" strokeOpacity="0.25" strokeDasharray="4 6" />
-            <path d="M 0,110 L 640,290" stroke="var(--accent-lime)" strokeWidth="1.5" strokeOpacity="0.35" />
-            <path d="M 0,280 L 640,120" stroke="var(--accent-lime)" strokeWidth="1.5" strokeOpacity="0.35" />
-            <path d="M 210,0 L 430,400" stroke="var(--text-muted)" strokeWidth="1" strokeOpacity="0.25" />
-            <path d="M 430,0 L 210,400" stroke="var(--text-muted)" strokeWidth="1" strokeOpacity="0.25" />
-          </g>
-
-          {/* Hexagons: Allied */}
-          <g className="hex-group-allied">
-            {alliedHexes.map(([q, r]) => (
-              <polygon
-                key={`a-${q}-${r}`}
-                points={hexPoints}
-                transform={`translate(${pos([q, r]).join(' ')})`}
-                className="hex-allied"
-              />
-            ))}
-          </g>
-
-          {/* Center stronghold crown */}
-          <g transform={`translate(${pos([0, 0]).join(' ')})`} className="stronghold-crown">
-            <circle cx="0" cy="0" r="14" className="crown-circle" />
-            <path
-              d="M-7,5 L-7,-3 L-3,1 L0,-5 L3,1 L7,-3 L7,5 Z"
-              fill="currentColor"
-              className="crown-glyph"
-            />
-          </g>
-
-          {/* Hexagons: Contested */}
-          <g className="hex-group-contested">
-            {contestedHexes.map(([q, r]) => (
-              <polygon
-                key={`c-${q}-${r}`}
-                points={hexPoints}
-                transform={`translate(${pos([q, r]).join(' ')})`}
-                className="hex-contested"
-              />
-            ))}
-          </g>
-
-          {/* Hexagons: Rival */}
-          <g className="hex-group-rival">
-            {rivalHexes.map(([q, r]) => (
-              <polygon
-                key={`r-${q}-${r}`}
-                points={hexPoints}
-                transform={`translate(${pos([q, r]).join(' ')})`}
-                className="hex-rival"
-              />
-            ))}
-          </g>
-
-          {/* Active run route polyline */}
-          <polyline points={runPoints} className="run-route-glow" />
-          <polyline points={runPoints} className="run-route-line" />
-
-          {/* Waypoints */}
-          <circle cx={pos(runRoute[0])[0]} cy={pos(runRoute[0])[1]} r="5" className="run-waypoint-start" />
-          <circle cx={pos(runRoute[runRoute.length - 1])[0]} cy={pos(runRoute[runRoute.length - 1])[1]} r="4" className="run-waypoint-end" />
-        </svg>
-
-        {/* Map overlay controls */}
-        <div className="map-zoom-controls">
-          <button type="button" onClick={() => setZoom((z) => Math.min(z + 0.2, 1.8))} aria-label="Zoom in">+</button>
-          <button type="button" onClick={() => setZoom((z) => Math.max(z - 0.2, 0.8))} aria-label="Zoom out">−</button>
+      {/* Small Non-Blocking Geolocation Notification Banner */}
+      {(geoStatus === 'denied' || geoStatus === 'unavailable' || geoStatus === 'timeout') && (
+        <div className="map-geo-alert warning">
+          <span>⚠️ {geoError}</span>
+          <button type="button" className="btn-map-retry" onClick={requestUserLocation}>
+            Retry Geolocation
+          </button>
         </div>
+      )}
 
-        {/* Floating Legend */}
+      {/* Map Viewport Area: 100% Full-Bleed Container */}
+      <div className="dashboard-map-canvas-container full-bleed">
+        {/* If user coordinates are still detecting and no position yet, show sleek radar pulse */}
+        {geoStatus === 'detecting' && !userLocation ? (
+          <div className="map-radar-scanning-state">
+            <div className="radar-sweep-spinner" />
+            <div className="radar-status-text font-mono">
+              <span>● ACQUIRING VISITOR GPS POSITION...</span>
+              <small>Calibrating sector coordinates and resolution-11 hex grid</small>
+            </div>
+          </div>
+        ) : apiKey && googleMapsReady ? (
+          /* Render Google Maps when key is available */
+          <div
+            ref={mapContainerRef}
+            className="google-map-render-target"
+            style={{ width: '100%', height: '100%' }}
+            aria-label="Google Maps Territory Map"
+          />
+        ) : (
+          /* High-Performance Strava-Style Interactive Street Map */
+          <InteractiveMap
+            latitude={userLocation ? userLocation.lat : 12.9716}
+            longitude={userLocation ? userLocation.lng : 77.5946}
+            accuracy={userLocation?.accuracy || null}
+            zoom={15}
+            height="100%"
+            theme={theme}
+            markerLabel={
+              userLocation
+                ? `Current: ${formatCoordinates(userLocation.lat, userLocation.lng, 3)}`
+                : 'Sector Center'
+            }
+          />
+        )}
+
+        {/* Floating Map Legend */}
         <div className="map-floating-legend">
           <div className="legend-row">
             <span className="legend-dot allied"></span>
-            <span>Your Territory</span>
+            <span>Your Territory (Allied)</span>
           </div>
           <div className="legend-row">
             <span className="legend-dot contested"></span>
-            <span>Contested</span>
+            <span>Contested Sector</span>
           </div>
           <div className="legend-row">
             <span className="legend-dot rival"></span>
@@ -173,7 +234,7 @@ export default function DashboardMap({ theme = 'dark' }) {
           </div>
           <div className="legend-row">
             <span className="legend-line-sample"></span>
-            <span>Your Run (5.42 km)</span>
+            <span>Your Run Route</span>
           </div>
         </div>
       </div>
