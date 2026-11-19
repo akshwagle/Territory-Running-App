@@ -3,7 +3,6 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-r
 import { useAuth } from './auth/context.jsx';
 import { parseAuthLink, watchNativeAuth } from './auth/deep-links.js';
 import { Notice } from './components/forms.jsx';
-import { friendlyMessage } from './auth/errors.js';
 import { SplashPage, WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage } from './pages/auth-pages.jsx';
 import { HomePage, SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
 
@@ -34,19 +33,6 @@ export function UpdateBanner({ api, versionCode, downloadUrl }) {
 function Protected({ children }) {
   const { state } = useAuth();
   return state.user ? children : <Navigate to="/login" replace />;
-}
-
-function VerificationBanner() {
-  const { auth } = useAuth();
-  const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [error, setError] = useState('');
-  async function resend() {
-    setBusy(true); setError(''); setMessage('');
-    try { const result = await auth.api.request('/api/auth/verify-email/request', { method: 'POST', body: {} }); setMessage(result.message); }
-    catch (failure) { setError(friendlyMessage(failure)); }
-    finally { setBusy(false); }
-  }
-  return <><InlineNotice error={Boolean(error)} action={busy ? 'Sending…' : 'Resend email'} onAction={() => { if (!busy) resend(); }}><span>Verify your email</span>{error && ` · ${error}`}</InlineNotice><Notice>{message}</Notice></>;
-
 }
 
 export function App(props) { return <UIProvider><AppContent {...props}/></UIProvider>; }
@@ -105,8 +91,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
         state.status === 'storageError' ? <section><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
           state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><SignOutControl /></section> :
             state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><InlineNotice>{state.message}</InlineNotice><Link className="button primary" to="/login">Go to login</Link></section> : <>
-            {['offline', 'unavailable'].includes(state.status) ? <InlineNotice className="connection-notice" error action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</InlineNotice> :
-              state.user && state.user.emailVerified !== true && location.pathname !== '/verify' && <VerificationBanner />}
+            {['offline', 'unavailable'].includes(state.status) && <InlineNotice className="connection-notice" error action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</InlineNotice>}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
             {location.pathname !== '/' && location.pathname !== '/welcome' && <PendingNotice/>}
 
