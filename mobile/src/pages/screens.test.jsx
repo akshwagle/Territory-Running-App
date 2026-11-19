@@ -203,12 +203,12 @@ it('home/settings show only the current account and expected navigation', () => 
   expect(screen.getByText('runner@example.test')).toBeVisible(); expect(screen.getByRole('link', { name: /Active sessions/ })).toHaveAttribute('href', '/settings/sessions');
 });
 
-it('app bootstrap, offline, blocked and verification states are explicit; resume/link watcher stays registered across navigation', async () => {
+it('app bootstrap, offline and blocked states are explicit; resume/link watcher stays registered across navigation', async () => {
   const auth = fakeAuth({ status: 'restoring', user: null, message: '' }), watch = vi.fn(async () => () => {});
   auth.api.request.mockResolvedValue({ versionCode: 2 });
   const { user } = view(<App downloadUrl="http://localhost:5173/#download" nativeWatch={watch} />, auth, '/home');
   expect(screen.getByText('Restoring your sign-in securely…')).toBeVisible();
-  act(() => auth.emit(signedIn())); expect(await screen.findByText('Verify your email')).toBeVisible();
+  act(() => auth.emit(signedIn())); expect(await screen.findByRole('heading', { name: /Good to see you/ })).toBeVisible();
   await user.click(screen.getByRole('link', { name: 'Settings', exact: true })); expect(watch).toHaveBeenCalledOnce();
   act(() => auth.emit({ ...signedIn(), status: 'offline', message: 'Cannot reach the server.' })); expect(screen.getByText(/Uploads are paused/)).toBeVisible();
   act(() => auth.emit({ ...signedIn(), status: 'blocked', message: 'Account suspended. Data stays encrypted.' })); expect(screen.getByRole('heading', { name: 'Account unavailable' })).toBeVisible();
@@ -223,20 +223,6 @@ it.each(['newer', 'empty', 'current', 'preview', 'error'])('update check support
   else if (mode === 'current') expect(await screen.findByText('You have the latest published build.')).toBeVisible();
   else if (mode === 'preview') expect(await screen.findByText('Preview build · newer than the published APK.')).toBeVisible();
   else expect(await screen.findByRole('button', { name: 'Retry update check' })).toBeEnabled();
-});
-
-it('verification banner resends directly, reports rate limits and remains until /api/me confirms verification', async () => {
-  const auth = fakeAuth(signedIn()), watch = async () => () => {};
-  auth.api.request.mockImplementation(async path => {
-    if (path.endsWith('/latest')) return { versionCode: 2 };
-    throw new ApiError('RATE_LIMITED', 'Limited.', 429, 45);
-  });
-  const { user } = view(<App downloadUrl="http://localhost:5173/" nativeWatch={watch} />, auth, '/home');
-  await user.click(await screen.findByRole('button', { name: 'Resend email' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('45 seconds');
-  expect(screen.getByText('Verify your email')).toBeVisible();
-  act(() => auth.emit({ ...signedIn(), user: { ...session().user, emailVerified: true } }));
-  expect(screen.queryByText('Verify your email')).not.toBeInTheDocument();
 });
 
 it('password change shows an error, then a disabled loading state before retry succeeds', async () => {

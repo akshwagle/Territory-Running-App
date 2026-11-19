@@ -11,6 +11,6 @@ export function Icon({ name, ...props }) {
 }
 export function BrandMark(props) {
   return <svg viewBox="-60 -60 120 120" aria-hidden="true" focusable="false" {...props}>
-    <g stroke="var(--color-paper)" strokeWidth="2"><path d="M0-27 23.383-13.5V13.5L0 27-23.383 13.5v-27Z" transform="translate(-26 22.5)" fill="var(--color-pine)"/><path d="M0-27 23.383-13.5V13.5L0 27-23.383 13.5v-27Z" transform="translate(26 22.5)" fill="var(--color-pine)"/><path d="M0-27 23.383-13.5V13.5L0 27-23.383 13.5v-27Z" transform="translate(0 -22.5)" fill="var(--color-clay)"/></g>
+    <g stroke="var(--bg)" strokeWidth="2"><path d="M0-27 23.383-13.5V13.5L0 27-23.383 13.5v-27Z" transform="translate(-26 22.5)" fill="var(--accent)"/><path d="M0-27 23.383-13.5V13.5L0 27-23.383 13.5v-27Z" transform="translate(26 22.5)" fill="var(--accent)"/><path d="M0-27 23.383-13.5V13.5L0 27-23.383 13.5v-27Z" transform="translate(0 -22.5)" fill="var(--danger)"/></g>
   </svg>;
 }
