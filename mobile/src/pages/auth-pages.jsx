@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../auth/context.jsx';
 import { friendlyMessage } from '../auth/errors.js';
@@ -7,6 +7,11 @@ import { BrandMark, Button, InlineNotice } from '../ui/index.jsx';
 import { PendingNotice } from '../ui/PendingNotice.jsx';
 import googleG from '../assets/google-g.png';
 import runnerHero from '../assets/runner-hero.jpg';
+import archA from '../assets/arch-a.jpg';
+import archB from '../assets/arch-b.jpg';
+import archC from '../assets/arch-c.jpg';
+import archD from '../assets/arch-d.jpg';
+import archE from '../assets/arch-e.jpg';
 
 /* ─── Splash / Onboarding page ─────────────────────────────────────── */
 export function SplashPage() {
@@ -84,14 +89,37 @@ export function GoogleButton({ link = false, onLinked = () => {}, onError }) {
   </div>;
 }
 
-let introPlayed = false;
+/* Onboarding hero: vertical arch panes behind a wireframe arch mesh. Each
+   photo pane holds a different athlete (credits: assets/ARCH_CREDITS.md); the
+   empty pane keeps the mesh readable between them. */
+const ARCH_PANES = [
+  { src: archA, height: '88%' },
+  { src: archB, height: '100%' },
+  { height: '58%' },
+  { src: archC, height: '94%' },
+  { src: archD, height: '80%' },
+  { src: archE, height: '100%' },
+];
+
+function ArchField() {
+  const arcs = [];
+  for (let row = 0; row < 3; row += 1) {
+    for (let col = 0; col < 6; col += 1) {
+      const radius = 30, cx = 52 + col * 66 + row * 24, top = 34 + row * 26, base = 300;
+      arcs.push(`M${cx - radius} ${base}V${top + radius}a${radius} ${radius} 0 0 1 ${radius * 2} 0V${base}`);
+    }
+  }
+  return <div className="welcome-arches" aria-hidden="true">
+    {ARCH_PANES.map((pane, index) => <span key={index} className={pane.src ? 'welcome-arch' : 'welcome-arch welcome-arch--empty'} style={{ height: pane.height }}>{pane.src && <img src={pane.src} alt=""/>}</span>)}
+    <svg className="welcome-contours" viewBox="0 0 440 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">{arcs.map((d, index) => <path key={index} d={d}/>)}</svg>
+  </div>;
+}
+
 export function WelcomePage({ notice = '' }) {
-  const [intro] = useState(() => !introPlayed), [error, setError] = useState('');
-  useEffect(() => { introPlayed = true; }, []);
-  const cells = [[254,38,0],[300,65,1],[254,92,2],[208,119,3],[300,119,4],[254,146,5],[300,173,6],[208,173,7]];
+  const [error, setError] = useState('');
   return <section className="welcome">
     <div className="welcome-hero"><div className="welcome-brand"><BrandMark width="44" height="44"/><span>TERRITORY<br/>RUN</span></div>
-      <svg className="welcome-field" viewBox="0 0 360 230" aria-hidden="true">{cells.map(([x,y,i]) => <path key={i} d="M0-25 21.65-12.5v25L0 25-21.65 12.5v-25Z" transform={`translate(${x} ${y})`} fill={i === 3 ? 'var(--color-clay)' : i % 3 === 0 ? 'none' : 'var(--color-pine)'} stroke="var(--color-paper)" strokeOpacity=".16" className={intro ? 'welcome-hex is-intro' : 'welcome-hex'} style={{animationDelay:`${i * 140}ms`}}/>)}</svg>
+      <ArchField/>
       <h1>Make your<br/>next run count.</h1>
     </div>
     <div className="welcome-actions"><InlineNotice error>{notice || error}</InlineNotice><PendingNotice suppressed={Boolean(notice || error)}/>

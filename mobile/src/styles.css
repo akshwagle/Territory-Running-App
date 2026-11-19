@@ -168,12 +168,16 @@ h1 { font-size: clamp(2.5rem, 10vw, 3.5rem); }
 .shell-welcome .ui-header-title { display: none; }
 .shell-welcome > main { padding: 0 0 var(--safe-bottom); }
 .shell-welcome .screen-edition { padding: 0 20px 12px; }
-.welcome-hero { position: relative; display: flex; flex-direction: column; justify-content: space-between; height: max(188px, calc(45dvh - var(--safe-top))); padding: 16px max(20px, var(--safe-right)) 24px max(20px, var(--safe-left)); background: var(--color-pine-deep); color: var(--color-paper); overflow: hidden; }
-.welcome-brand { display: flex; align-items: center; gap: 8px; position: relative; z-index: 1; }
-.welcome-brand span { font: 800 1.1rem/.88 var(--font-heading); letter-spacing: .05em; }
-.welcome-field { position: absolute; right: 0; bottom: -16px; height: 230px; width: 360px; max-width: 100%; }
-.welcome-hero h1 { position: relative; z-index: 1; margin: 16px 0 0; max-width: 75%; font-size: clamp(2.5rem, 11.5vw, 3.5rem); line-height: .94; text-transform: none; }
-.welcome-hex.is-intro { opacity: 0; animation: hex-fill var(--motion-medium) var(--ease-standard) forwards; }
+.welcome-hero { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; height: auto; min-height: max(292px, calc(54dvh - var(--safe-top))); padding: 16px max(20px, var(--safe-right)) 24px max(20px, var(--safe-left)); background: #08090a; color: #ffffff; overflow: hidden; }
+.welcome-brand { display: flex; align-items: center; gap: 10px; position: relative; z-index: 2; }
+.welcome-brand span { font: 800 1.15rem/.86 var(--font-heading); letter-spacing: .08em; color: #ffffff; }
+.welcome-arches { position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 5px; width: 100%; height: clamp(126px, 25dvh, 188px); margin-top: 8px; }
+.welcome-arch { position: relative; flex: 1 1 0; min-width: 0; max-width: 64px; border-radius: 999px 999px 0 0; overflow: hidden; background: #101214; border: 1px solid rgba(255,255,255,.09); border-bottom: 0; }
+.welcome-arch img { display: block; width: 100%; height: 100%; object-fit: cover; filter: saturate(.92) contrast(1.06); }
+.welcome-arch--empty { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.2); }
+.welcome-contours { position: absolute; left: -8%; bottom: 0; width: 116%; height: 136%; overflow: visible; pointer-events: none; opacity: .5; }
+.welcome-contours path { fill: none; stroke: rgba(255,255,255,.4); stroke-width: .7; vector-effect: non-scaling-stroke; }
+.welcome-hero h1 { position: relative; z-index: 2; margin: 12px 0 0; max-width: none; font-size: clamp(2.5rem, 11.5vw, 3.5rem); line-height: .94; text-transform: none; color: #ffffff; }
 .welcome-actions { padding: 20px max(20px, var(--safe-right)) 16px max(20px, var(--safe-left)); }
 .welcome-actions .stack { gap: 12px; }
 .welcome-actions .ui-notice:empty { display: none; }
@@ -186,7 +190,7 @@ h1 { font-size: clamp(2.5rem, 10vw, 3.5rem); }
 .google { transition: transform var(--motion-press) var(--ease-standard); }
 form { margin-block: 24px; }
 [data-keyboard-open] form .ui-button[type=submit] { position: sticky; bottom: 0; z-index: 2; }
-@media (prefers-reduced-motion: reduce) { .welcome-hex.is-intro { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .welcome-arch img { filter: none; } }
 
 /* Signed-in pages use ruled sections, with one route to each destination. */
 .account-summary { display: flex; gap: 16px; align-items: center; border-bottom: 1px solid var(--color-line); padding-block: 4px 20px; }
@@ -469,6 +473,15 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--color-pine)
     opacity: 1 !important;
   }
 }
+/* Onboarding colour theme: ink field with paper actions, monochrome. */
+.welcome { background: #08090a; }
+.welcome-actions { color: #eef0ec; }
+.welcome-actions .ui-button--primary { background: #f4f4ef; border-color: #f4f4ef; color: #08090a; }
+.welcome-actions .ui-button--primary:active:not(:disabled) { background: #ffffff; border-color: #ffffff; color: #08090a; }
+.welcome-actions .ui-button--secondary { background: transparent; border-color: rgba(255,255,255,.28); color: #f4f4ef; text-decoration: none; }
+.welcome-actions .ui-button--secondary:active:not(:disabled) { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.45); }
+.welcome-or { color: rgba(255,255,255,.5); }
+.welcome-or::before, .welcome-or::after { background: rgba(255,255,255,.16); }
 /* ─────────────────────────────────────────────────────────────────────────── */
 [data-keyboard-open] .ui-sheet .editor-actions { position: sticky; bottom: 0; z-index: 2; background: var(--color-paper); padding-block: 8px; }
 [data-keyboard-open] .ui-sheet .editor-actions .ui-button { position: static; }
