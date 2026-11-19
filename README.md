@@ -58,6 +58,19 @@ The environment variable names are:
 
 `VITE_API_URL` is an HTTP(S) origin, defaults to `http://localhost:4000`, and is embedded at build time. Rebuild after changing it. Do not put secrets in any `VITE_` variable. `CORS_ORIGINS` is a comma-separated exact allowlist; the example includes `http://localhost:5173`, `http://127.0.0.1:5173`, `https://localhost`, `http://localhost`, and `capacitor://localhost`. Requests from other origins receive 403. Non-browser requests without an Origin header are allowed.
 
+## One-command local setup
+
+A fresh clone needs a database, working credentials and migrations before the API will start. This helper does that in one step:
+
+```sh
+./scripts/setup-local.sh             # create role/databases, fill server/.env, migrate, seed
+./scripts/setup-local.sh --dry-run   # print the plan without changing anything
+```
+
+It creates the `territory`, `territory_test` and `territory_api_test` databases owned by a `territory_app` role, replaces only missing or placeholder values in the ignored `server/.env` (including two independent JWT secrets and a generated admin password), then runs `prisma migrate deploy` and the idempotent seed. It never drops a database, never overwrites a value that is already set, never prints an existing password and never edits a tracked file, so rerunning it is safe.
+
+Defaults are `PGHOST=127.0.0.1` and `PGPORT=5432`; the verified local cluster in `.local/` listens on `55432`, so use `PGPORT=55432 ./scripts/setup-local.sh` for it. `TERRITORY_DB_ROLE` overrides the role name. If your shell already exports `PORT`, dotenv will not override it; start the API as `PORT=4000 npm start` in that case.
+
 ## API
 
 Start PostgreSQL using the verified non-Docker instructions below, then from `server/`:
