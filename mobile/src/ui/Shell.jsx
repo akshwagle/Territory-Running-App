@@ -5,14 +5,16 @@ import { exitApp, parentRoute, ROOT_ROUTES, watchBack } from '../platform/naviga
 
 export const TABS = [
   { to: '/home', label: 'Home', icon: 'home' },
-  { to: '/you', label: 'You', icon: 'user' },
+  { to: '/workout', label: 'Workout', icon: 'run' },
+  { to: '/community', label: 'Community', icon: 'users' },
   { to: '/settings', label: 'Settings', icon: 'settings' },
+  { to: '/you', label: 'You', icon: 'user' },
 ];
-const TITLES = { '/': 'Territory Run', '/welcome': 'Territory Run', '/you': 'You', '/you/privacy': 'Privacy', '/you/consent': 'Consent',
+const TITLES = { '/': 'Territory Run', '/welcome': 'Territory Run', '/home': 'Territory Run', '/workout': 'Workout', '/community': 'Community', '/you': 'You', '/you/privacy': 'Privacy', '/you/consent': 'Consent',
   '/settings': 'Settings', '/settings/methods': 'Sign-in methods', '/settings/sessions': 'Active sessions',
   '/settings/password': 'Password', '/settings/export': 'Export data', '/settings/delete': 'Delete account',
   '/login': 'Log in', '/signup': 'Create account', '/forgot': 'Password help', '/reset': 'Reset password', '/verify': 'Email verification' };
-const CACHEABLE = new Set(['/home', '/you', '/you/privacy', '/you/consent', '/settings', '/settings/methods', '/settings/sessions', '/settings/export']);
+const CACHEABLE = new Set(['/home', '/workout', '/community', '/you', '/you/privacy', '/you/consent', '/settings', '/settings/methods', '/settings/sessions', '/settings/export']);
 
 export function Shell({ user, children, renderRoutes, footer, showFooter = true, nativeBack = watchBack, exit = exitApp }) {
   const location = useLocation(), navigate = useNavigate(), type = useNavigationType();
@@ -28,7 +30,8 @@ export function Shell({ user, children, renderRoutes, footer, showFooter = true,
   }
   const canCache = identity && CACHEABLE.has(location.pathname);
   if (canCache) cache.current.set(location.pathname, location);
-  const activeTab = location.pathname.startsWith('/you') ? '/you' : location.pathname.startsWith('/settings') || location.pathname === '/verify' ? '/settings' : '/home';
+  const activeTab = location.pathname.startsWith('/you') ? '/you' : location.pathname.startsWith('/settings') || location.pathname === '/verify' ? '/settings'
+    : location.pathname === '/workout' || location.pathname === '/community' ? location.pathname : '/home';
   const root = ROOT_ROUTES.has(location.pathname), backRef = useRef(null);
   backRef.current = (native = false) => {
     if (closeTopOverlay()) return;
@@ -36,7 +39,7 @@ export function Shell({ user, children, renderRoutes, footer, showFooter = true,
     const previous = history.current.at(-2);
     // Tabs are roots. After logout/deep links the old account's history must
     // never cause a Protected -> login redirect loop.
-    if (previous && (!identity || ['/home', '/you', '/settings'].some(prefix => previous.pathname.startsWith(prefix)))) navigate(-1);
+    if (previous && (!identity || ['/home', '/workout', '/community', '/you', '/settings'].some(prefix => previous.pathname.startsWith(prefix)))) navigate(-1);
     else navigate(parentRoute(location.pathname), { replace: true, state: { direction: 'back' } });
   };
   useEffect(() => {

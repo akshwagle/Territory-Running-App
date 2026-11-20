@@ -6,7 +6,8 @@ import { AuthContext } from '../auth/context.jsx';
 import { ApiError } from '../auth/errors.js';
 import { session } from '../auth/test-helpers.js';
 import { WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage, GoogleButton } from './auth-pages.jsx';
-import { HomePage, SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './settings-pages.jsx';
+import { SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './settings-pages.jsx';
+import { HomePage } from './feed-pages.jsx';
 import { App, UpdateBanner } from '../App.jsx';
 
 function fakeAuth(state = { status: 'signedOut', user: null, message: '' }) {
