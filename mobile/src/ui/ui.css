@@ -66,12 +66,12 @@
 .ui-section > h2 { font: 700 .66rem/1.4 var(--font-heading); letter-spacing: .18em; text-transform: uppercase; color: var(--text-3); margin: 14px 0 0; }
 
 /* ── Tab bar ─────────────────────────────────────────────────────────── */
-.ui-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; flex: 0 0 auto; align-items: center; gap: 6px;
+.ui-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; flex: 0 0 auto; align-items: center; gap: 2px;
   min-height: calc(66px + var(--safe-bottom));
   padding: 8px max(14px, var(--safe-right)) calc(8px + var(--safe-bottom)) max(14px, var(--safe-left));
   border-top: 1px solid var(--line); background: var(--bg-glass); backdrop-filter: blur(22px); }
-.ui-tabs > a { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; min-height: 50px; padding: 4px;
-  border-radius: var(--r-pill); color: var(--text-3); font: 700 .63rem/1 var(--font-heading); letter-spacing: .12em;
+.ui-tabs > a { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; min-height: 50px; padding: 4px 2px;
+  border-radius: var(--r-pill); color: var(--text-3); font: 700 .58rem/1 var(--font-heading); letter-spacing: .05em;
   text-transform: uppercase; text-decoration: none; }
 .ui-tab-icon { display: grid; place-items: center; padding: 0; border-radius: var(--r-pill); background: transparent; }
 .ui-tabs > a[aria-current=page] { color: var(--on-accent); font-weight: 700; background: var(--accent); box-shadow: 0 10px 24px -12px rgba(var(--accent-rgb), .85); }
