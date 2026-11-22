@@ -4,7 +4,10 @@ import { useAuth } from './auth/context.jsx';
 import { parseAuthLink, watchNativeAuth } from './auth/deep-links.js';
 import { Notice } from './components/forms.jsx';
 import { SplashPage, WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage } from './pages/auth-pages.jsx';
-import { HomePage, SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
+import { SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
+import { HomePage } from './pages/feed-pages.jsx';
+import { WorkoutPage } from './pages/workout-pages.jsx';
+import { CommunityPage } from './pages/community-pages.jsx';
 
 import { UIProvider, Skeleton, InlineNotice } from './ui/index.jsx';
 import { Shell } from './ui/Shell.jsx';
@@ -72,7 +75,10 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
     <Route path="/welcome" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage notice={state.authOutcome?.kind === 'error' ? state.authOutcome.message : linkError} />} />
     <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
     <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
-    <Route path="/home" element={<Protected><HomePage /></Protected>} /><Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
+    <Route path="/home" element={<Protected><HomePage /></Protected>} />
+    <Route path="/workout" element={<Protected><WorkoutPage /></Protected>} />
+    <Route path="/community" element={<Protected><CommunityPage /></Protected>} />
+    <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
     <Route path="/settings/methods" element={<Protected><MethodsPage /></Protected>} /><Route path="/settings/sessions" element={<Protected><SessionsPage /></Protected>} />
     <Route path="/you" element={<Protected><ProfilePage /></Protected>} /><Route path="/you/privacy" element={<Protected><PrivacyPage /></Protected>} />
     <Route path="/you/consent" element={<Protected><ConsentPage /></Protected>} /><Route path="/settings/export" element={<Protected><ExportPage /></Protected>} />
