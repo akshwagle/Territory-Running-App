@@ -5,7 +5,7 @@ import { friendlyMessage } from '../auth/errors.js';
 import { DISCARD_CONFIRMATION } from '../auth/pending-work.js';
 import { AuthForm, Notice, newPasswordField } from '../components/forms.jsx';
 import { GoogleButton } from './auth-pages.jsx';
-import { Avatar, Button, Dialog, EmptyState, ErrorState, ListRow, Section, Skeleton } from '../ui/index.jsx';
+import { Button, Dialog, EmptyState, ErrorState, ListRow, Section, Skeleton } from '../ui/index.jsx';
 
 export function useResource(load) {
   const [state, setState] = useState({ phase: 'loading', value: null, error: '' });
@@ -49,26 +49,6 @@ export function SignOutControl() {
   </div>;
 }
 
-export function HomePage() {
-  const { state } = useAuth();
-  return <section className="home-page">
-    <div className="home-top">
-      <div><p className="eyebrow">A little ground. A good run.</p>
-        <h1 className="home-greeting">Good to see you,<br/><bdi>{state.user.displayName}</bdi>.</h1></div>
-      <Link className="home-avatar" to="/you" aria-label="Open your profile"><Avatar id={state.user.avatarId || 0} color={state.user.avatarColor} size={40}/></Link>
-    </div>
-    <article className="home-hero">
-      <svg className="home-hexfield" viewBox="0 0 120 120" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" strokeWidth="1.3">
-        <path d="M60 8 92 26v36L60 80 28 62V26Z"/><path d="M60 34 76 43v18L60 70 44 61V43Z"/>
-        <path d="m28 62-14 8v20"/><path d="m92 62 14 8v20"/></g></svg>
-      <span className="home-pill">Recording soon</span>
-      <h2>Room to run</h2>
-      <p>You’re signed in and your ground is ready. Run recording and territory claiming arrive in the next build.</p>
-      <Link className="ui-button ui-button--primary" to="/you">Set up your profile</Link>
-    </article>
-    <div className="home-key"><span className="home-swatch" aria-hidden="true"/>Pine will mark your territory.</div>
-  </section>;
-}
 export function SettingsPage() {
   const { state } = useAuth();
   return <section><p className="eyebrow">Your account</p><h1>Settings</h1>
