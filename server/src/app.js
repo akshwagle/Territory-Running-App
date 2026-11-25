@@ -9,6 +9,7 @@ const path = require('node:path');
 const { createAuthRouter } = require('./auth/routes');
 const { requireAuth } = require('./auth/middleware');
 const { createProfileRouter } = require('./profile/routes');
+const { createRunRouter } = require('./runs/routes');
 const { createMailJobs, createMailer } = require('./auth/mailer');
 
 function errorBody(code, message) { return { error: { code, message } }; }
@@ -53,6 +54,9 @@ function createApp({ prisma, config, exportDir, downloadDir = path.resolve(__dir
   const profiles=createProfileRouter({prisma,config,clock,verifyGoogle,logger,exportDir,mailer:delivery});
   app.locals.profileJobs=profiles.jobs;
   app.use('/api',profiles.router);
+  const recording=createRunRouter({prisma,config,clock});
+  app.use('/api/runs',recording.router);
+  app.locals.runRetention=recording.retention;
 
   app.get('/api/health', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
