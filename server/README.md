@@ -539,3 +539,37 @@ and controls remain evidence; active segments are clipped to the finish boundary
 for authoritative time. Moving tail evidence rejects an early end. A user finish
 still cannot precede saved points or controls. History/detail include mockGps so
 a debug simulation is never presented as an ordinary outdoor run.
+
+## Step 06 territory claiming
+
+No schema change: only `runs`, `run_flags`, `run_hexes`, `hex_ownership` and `user_stats` are written.
+
+Finishing a run (`POST /api/runs/:id/finish`, or ending a stale run) now validates and claims inside the
+same transaction and account-work lock. The run ends as:
+
+| Status | When | Effect |
+|---|---|---|
+| `FLAGGED` | mock location, average speed above `max_speed_mps`, or 3+ impossible GPS jumps | `run_flags` rows (`MOCK_LOCATION`, `SPEED_LIMIT`, `GPS_JUMP`), nothing claimed, `user_stats` untouched |
+| `REJECTED` | under 100 m of accepted movement (`TOO_SHORT`) | nothing claimed, no flag, run can still be discarded |
+| `VALID` | otherwise | cells claimed, `user_stats` updated |
+
+Cells: trusted fixes (not network/mock/outlier, accuracy within `min_gps_accuracy_m`) become H3 res-11 cells.
+Between consecutive fixes in one segment (no pause, sequence gap or gap over 30 s, under 300 m apart) the H3
+grid path fills the cells in between. Cells in an active restricted zone are stored `RESTRICTED`, never owned,
+and add a `RESTRICTED_ZONE` flag for the zone (the run itself stays `VALID`).
+
+Claiming uses the documented conditional upsert on `hex_ownership` in batches of 2000, cells sorted by
+`h3_index`, after locking the existing rows in the same order. `cooldown_until <= now()` is required to
+take or refresh a cell. Outcomes in `run_hexes`: `CAPTURED` (new or taken from another owner, `prev_owner_id`
+set), `REFRESHED` (own cell after cooldown), `ON_COOLDOWN` (not changed, `prev_owner_id` is the holder).
+
+Tunables (`game_settings`): `claim_cooldown_minutes` (30), `max_speed_mps` (8.5), `min_gps_accuracy_m` (30).
+Constants in `src/territory/claim.js`: 100 m minimum, 3 jumps.
+
+`season_scores` is deliberately **not** written: it is a frozen end-of-season snapshot with a final rank, and a
+live write would go stale for every owner who loses a cell.
+
+Endpoints (all authenticated, owner-scoped or privacy-filtered):
+- `GET /api/runs/:id/claim` — `{status, claim:{claimed,captured,capturedFromOthers,refreshed,onCooldown,restricted,lost,heldNow}, reasons, flags}`. `lost` and `heldNow` are derived from current ownership; nothing is stored.
+- `GET /api/territory/me?limit&cursor` — own hexes (count derived), paged by `h3_index`.
+- `GET /api/territory/hexes?minLat&minLng&maxLat&maxLng` — hexes in a box up to 0.1 degrees wide (max 5000). Other owners appear as `Runner` with no id unless their profile is viewable (shared `canView`), and cells within an owner's `hide_radius_m` of their home hex are omitted for everyone else.
