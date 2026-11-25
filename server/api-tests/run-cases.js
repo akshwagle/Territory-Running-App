@@ -299,6 +299,17 @@ module.exports=({prisma,config})=>{
   assert.equal((await f.call(a,'get',`/api/territory/hexes?minLat=${route.lat}&maxLat=${route.lat+.5}&minLng=0&maxLng=1`)).status,400);
   assert.equal((await f.call(null,'get',`/api/territory/hexes?${box}`)).status,401);
  });
+ test('STEP10 finishing a run awards a badge once, reports it in the run result and notifies',async t=>{
+  const badge=await prisma.badge.create({data:{code:`t${randomUUID().slice(0,8)}`,name:'First valid run',criteria:'RUN_COUNT',threshold:1,description:'Complete one valid run.'}});
+  t.after(()=>prisma.badge.deleteMany({where:{id:badge.id}}));
+  const f=await fixture(t),a=await f.signup(),first=await record(f,a,origin());
+  assert.equal(first.done.status,'VALID');
+  const result=await claimOf(f,a,first.r);assert.deepEqual(result.badges.map(b=>b.name),['First valid run']);
+  assert.equal(await prisma.userBadge.count({where:{userId:a.user.id,badgeId:badge.id}}),1);
+  const notes=await prisma.notification.findMany({where:{userId:a.user.id,type:'BADGE_EARNED'}});assert.equal(notes.length,1);assert.ok(notes[0].title.includes('First valid run'));
+  const second=await record(f,a,origin());assert.equal(second.done.status,'VALID');
+  assert.deepEqual((await claimOf(f,a,second.r)).badges,[]);assert.equal(await prisma.notification.count({where:{userId:a.user.id,type:'BADGE_EARNED'}}),1);
+ });
  test('STEP06 cooldown protects a hex; after expiry another runner captures it and the previous owner sees it lost',async t=>{
   const f=await fixture(t),a=await f.signup(),b=await f.signup(),route=origin();
   const first=await record(f,a,route),held=await prisma.hexOwnership.findMany({where:{ownerId:a.user.id}});
@@ -311,6 +322,7 @@ module.exports=({prisma,config})=>{
   assert.equal(lateResult.claim.captured,held.length);assert.equal(lateResult.claim.capturedFromOthers,held.length);assert.equal(lateResult.claim.heldNow,held.length);
   assert.equal(await prisma.hexOwnership.count({where:{ownerId:a.user.id}}),0);assert.equal(await prisma.hexOwnership.count({where:{ownerId:b.user.id}}),held.length);
   const lostView=await claimOf(f,a,first.r);assert.equal(lostView.claim.claimed,held.length);assert.equal(lostView.claim.lost,held.length);assert.equal(lostView.claim.heldNow,0);
+  assert.deepEqual((await claimOf(f,a,first.r)).badges,[]);
   const aNotes=await prisma.notification.findMany({where:{userId:a.user.id},orderBy:{createdAt:'asc'}});
   assert.deepEqual(aNotes.map(n=>n.type),['RUN_VALIDATED','HEX_LOST']);assert.ok(aNotes[1].body.startsWith(`${held.length} of your cells`));
   assert.ok(!JSON.stringify(aNotes).includes(b.user.displayName),'capturer is never named');

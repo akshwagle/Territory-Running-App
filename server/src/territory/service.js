@@ -59,10 +59,11 @@ function createTerritoryService({prisma}){
     // "Lost": cells this run took that someone else holds now (derived, never stored).
     const [lost]=await tx.$queryRaw`SELECT count(*)::int AS n FROM run_hexes r JOIN hex_ownership h ON h.h3_index=r.h3_index WHERE r.run_id=${runId}::uuid AND r.outcome IN ('CAPTURED','REFRESHED') AND h.owner_id<>${user.id}::uuid`;
     const flags=await tx.runFlag.findMany({where:{runId},select:{reason:true,status:true},orderBy:{createdAt:'asc'}});
-    const claimed=count('CAPTURED')+count('REFRESHED');
+    const claimed=count('CAPTURED')+count('REFRESHED'),codes=Array.isArray(run.runSignals?.summary?.badges)?run.runSignals.summary.badges.filter(c=>typeof c==='string').slice(0,10):[];
     return {runId,status:run.status,distanceM:run.distanceM,claim:{claimed,captured:count('CAPTURED'),capturedFromOthers:fromOthers.n,refreshed:count('REFRESHED'),
       onCooldown:count('ON_COOLDOWN'),restricted:count('RESTRICTED'),lost:lost.n,heldNow:claimed-lost.n},
-      reasons:run.runSignals?.summary?.validation?.reasons||[],flags};
+      reasons:run.runSignals?.summary?.validation?.reasons||[],flags,
+      badges:codes.length?(await tx.badge.findMany({where:{code:{in:codes}},select:{code:true,name:true,description:true}})):[]};
   });
   return {mine,map,claim};
 }
