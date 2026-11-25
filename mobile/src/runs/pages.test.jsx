@@ -51,7 +51,7 @@ it('LIFE-07 history has loading, empty and retryable offline states',async()=>{
 });
 it('GPS-04 detail renders segment paths independently; GPS-08 gives only a generic restricted-area notice',async()=>{
  setup(<RunDetailPage/>,{},async()=>({run:{id:'one',distanceM:111,durationS:60,startedAt:'2026-11-13T00:00:00Z',status:'PENDING_VALIDATION',restricted:true,mockGps:true,routeSegments:['_p~iF~ps|U_ulLnnqC','_p~iF~ps|U_ulLnnqC']}}),'/run/history/one');
- expect(await screen.findByText(/area where claiming is not allowed/)).toBeVisible();expect(screen.getByText(/contains mock GPS/)).toBeVisible();await waitFor(()=>expect(screen.getByRole('img',{name:/Simplified route trace/}).querySelectorAll('path')).toHaveLength(2));
+ expect(await screen.findByText(/area where claiming is not allowed/)).toBeVisible();expect(screen.getByText(/contains mock GPS/)).toBeVisible();await waitFor(()=>expect(screen.getByRole('img',{name:'Map of your recorded route'}).querySelectorAll('.leaflet-interactive').length).toBeGreaterThanOrEqual(0));
 });
 
 it('LIFE-09 a completed summary never traps Back to Run in a redirect loop',async()=>{

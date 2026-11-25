@@ -4,7 +4,7 @@ export function timeLabel(seconds){const value=Math.max(0,Math.floor(seconds||0)
 export function paceLabel(metres,seconds,units='km'){if(!(metres>0&&seconds>0))return '—';return `${timeLabel(Math.round(seconds*(units==='mi'?METRES_PER_MILE:1000)/metres))} /${units==='mi'?'mi':'km'}`;}
 // Decode each server segment separately. A missing sample, pause or long gap
 // never produces a connecting SVG line. Bound work on an untrusted response.
-export function routePaths(encodedSegments=[]){
+export function decodeRoute(encodedSegments=[]){
   let remaining=20000;
   const segments=[];
   for(const encoded of encodedSegments.slice(0,1000)){
@@ -15,7 +15,10 @@ export function routePaths(encodedSegments=[]){
     if(points.length)segments.push(points);
     if(!remaining)break;
   }
-  const all=segments.flat();if(!all.length)return [];
+  return segments;
+}
+export function routePaths(encodedSegments=[]){
+  const segments=decodeRoute(encodedSegments),all=segments.flat();if(!all.length)return [];
   const lat0=all[0][1]*Math.PI/180,project=([lng,lat])=>[lng*Math.cos(lat0),-lat];
   const projected=segments.map(segment=>segment.map(project)),flat=projected.flat();
   const xs=flat.map(p=>p[0]),ys=flat.map(p=>p[1]),left=Math.min(...xs),top=Math.min(...ys),width=Math.max(...xs)-left,height=Math.max(...ys)-top,scale=260/Math.max(width,height,.00001);

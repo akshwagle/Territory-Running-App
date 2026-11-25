@@ -81,6 +81,7 @@ export function HomePage() {
       </div>
       <Link className="home-avatar" to="/you" aria-label="Open your profile"><Avatar id={state.user.avatarId || 0} color={state.user.avatarColor} size={40}/></Link>
     </div>
+    <Link className="outline-action map-entry" to="/map">Open territory map</Link>
     <GoalCard/>
     <div className="feed-heading">
       <h2>Your feed</h2><span className="small">Sample activities</span>
