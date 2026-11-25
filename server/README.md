@@ -573,3 +573,8 @@ Endpoints (all authenticated, owner-scoped or privacy-filtered):
 - `GET /api/runs/:id/claim` — `{status, claim:{claimed,captured,capturedFromOthers,refreshed,onCooldown,restricted,lost,heldNow}, reasons, flags}`. `lost` and `heldNow` are derived from current ownership; nothing is stored.
 - `GET /api/territory/me?limit&cursor` — own hexes (count derived), paged by `h3_index`.
 - `GET /api/territory/hexes?minLat&minLng&maxLat&maxLng` — hexes in a box up to 0.1 degrees wide (max 5000). Other owners appear as `Runner` with no id unless their profile is viewable (shared `canView`), and cells within an owner's `hide_radius_m` of their home hex are omitted for everyone else.
+
+### Community endpoints (all authenticated, `Cache-Control: no-store`)
+- `GET /api/community/leaderboard?metric=hexes|distance|runs&period=week|month|season|all&scope=global|following|team&limit&offset` — derived at read time (hexes from `hex_ownership`, distance/runs from VALID runs); only runners with `appear_on_leaderboards`; limit capped at 50. `season_scores` is never written live.
+- `GET /api/community/season`, `/feed`, `/search`, `/team-leaderboard`; `GET /api/me/followers|following`; `PUT|DELETE /api/users/:id/follow` (max 500 following, private profiles cannot be followed).
+- Teams: `GET /api/teams/me`, `/teams/me/members`; `POST /api/teams`, `/teams/join`, `/teams/leave`; `DELETE /api/teams/me/members/:id` (captain). Max 50 members, enforced under an advisory lock.

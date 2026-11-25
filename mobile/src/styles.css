@@ -431,3 +431,12 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
   .ui-dialog, .ui-sheet { padding-inline: 16px; }
 }
 .map-entry { display: grid; place-items: center; margin: 12px 0; text-decoration: none; }
+
+.person-list, .board-list { list-style: none; margin: 0 0 14px; padding: 0; }
+.person-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.person-name { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.board-rank { min-width: 2.2em; font-variant-numeric: tabular-nums; }
+.follow-btn, .person-row .ui-button { min-height: 40px; padding-inline: 14px; }
+.swatch { display: inline-block; width: 22px; height: 22px; border-radius: 50%; }
+.invite-code { letter-spacing: .12em; font-family: ui-monospace, monospace; }
+.form-error { color: #e5826b; }
