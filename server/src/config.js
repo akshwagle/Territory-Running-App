@@ -57,12 +57,15 @@ function readConfig(env = process.env) {
   if (!['true', 'false'].includes(verifiedFlag)) throw new Error('REQUIRE_VERIFIED_EMAIL_FOR_RUNS must be true or false.');
   const consentVersions = {};
   for (const [type,name] of Object.entries({LOCATION:'LOCATION_CONSENT_VERSION',TERMS:'TERMS_VERSION',PRIVACY:'PRIVACY_POLICY_VERSION'})) {
-    const version=env[name] ?? '2026-11-13';
+    const version=env[name] ?? (type==='LOCATION'?'2026-11-13-run-v1':'2026-11-13');
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(version)) throw new Error(`${name} must be a policy version of 1–32 characters.`);
     consentVersions[type]=version;
   }
   return {
     consentVersions,
+    minAppVersion:integer(env.MIN_APP_VERSION,6,'MIN_APP_VERSION',1,2100000000),
+    pointRetentionDays:integer(env.POINT_RETENTION_DAYS,365,'POINT_RETENTION_DAYS',1,3650),
+    runWriteLimit:integer(env.RUN_WRITE_LIMIT,1200,'RUN_WRITE_LIMIT',1,10000),
     profileWriteLimit:integer(env.PROFILE_WRITE_LIMIT,30,'PROFILE_WRITE_LIMIT',1,10000),
     exportRequestLimit:integer(env.EXPORT_REQUEST_LIMIT,3,'EXPORT_REQUEST_LIMIT',1,1000),
     host,
