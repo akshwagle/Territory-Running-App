@@ -45,7 +45,11 @@ function createTerritoryService({prisma}){
       hexes.push({h3:cell,owner:own?{kind:'me'}:{kind:'other',ownerId:visible?r.owner_id:null,displayName:visible?r.display_name:'Runner'},
         claimedAt:r.claimed_at,cooldownUntil:r.cooldown_until,onCooldown:+r.cooldown_until>now});
     }
-    return {hexes,truncated};
+    // Active restricted-zone cells in view: informational only, claiming there is refused.
+    const zoneRows=await tx.$queryRaw`
+      SELECT DISTINCT z.h3_index::text AS h3 FROM restricted_zone_hexes z JOIN restricted_zones rz ON rz.id=z.zone_id
+      WHERE rz.active AND (${Prisma.join(ranges.map(r=>Prisma.sql`(z.h3_index BETWEEN ${r.min.toString()}::bigint AND ${r.max.toString()}::bigint)`),' OR ')}) LIMIT ${MAX_MAP_CELLS}`;
+    return {hexes,truncated,restricted:zoneRows.map(r=>BigInt(r.h3).toString(16)).filter(c=>inBox(c,box))};
   });
   const claim=(req,runId)=>read(req,async(tx,user)=>{
     const run=await tx.run.findFirst({where:{id:runId,userId:user.id,deletedAt:null},select:{id:true,status:true,distanceM:true,runSignals:true}});

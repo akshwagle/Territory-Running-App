@@ -286,6 +286,19 @@ module.exports=({prisma,config})=>{
   assert.equal((await f.call(b,'get',`/api/territory/hexes?${box}`)).body.hexes.length,0);assert.equal((await f.call(a,'get',`/api/territory/hexes?${box}`)).body.hexes.length,owned.length);
   error(await f.call(b,'get',`/api/runs/${r.id}/claim`),404,'NOT_FOUND');
  });
+ test('STEP07 map returns active restricted cells in view, validates bounds, and requires auth',async t=>{
+  const f=await fixture(t),a=await f.signup(),route=origin(),cell=h3.latLngToCell(route.lat+.0005,route.lng+.0005,11);
+  const active=await prisma.restrictedZone.create({data:{name:`Zone ${randomUUID()}`,reason:'Fixture'}}),off=await prisma.restrictedZone.create({data:{name:`Zone ${randomUUID()}`,reason:'Fixture',active:false}});
+  t.after(async()=>{await prisma.restrictedZone.deleteMany({where:{id:{in:[active.id,off.id]}}});});
+  await prisma.restrictedZoneHex.create({data:{zoneId:active.id,h3Index:BigInt('0x'+cell)}});
+  const far=h3.latLngToCell(route.lat+.0007,route.lng+.0007,11);await prisma.restrictedZoneHex.create({data:{zoneId:off.id,h3Index:BigInt('0x'+far)}});
+  const box=`minLat=${route.lat}&maxLat=${route.lat+.006}&minLng=${route.lng-.003}&maxLng=${route.lng+.003}`;
+  const res=await f.call(a,'get',`/api/territory/hexes?${box}`);assert.equal(res.status,200,JSON.stringify(res.body));assert.deepEqual(res.body.restricted,[cell]);
+  const away=await f.call(a,'get',`/api/territory/hexes?minLat=${route.lat+.05}&maxLat=${route.lat+.06}&minLng=${route.lng}&maxLng=${route.lng+.01}`);assert.deepEqual(away.body.restricted,[]);
+  assert.equal((await f.call(a,'get','/api/territory/hexes?minLat=1&maxLat=0&minLng=0&maxLng=1')).status,400);
+  assert.equal((await f.call(a,'get',`/api/territory/hexes?minLat=${route.lat}&maxLat=${route.lat+.5}&minLng=0&maxLng=1`)).status,400);
+  assert.equal((await f.call(null,'get',`/api/territory/hexes?${box}`)).status,401);
+ });
  test('STEP06 cooldown protects a hex; after expiry another runner captures it and the previous owner sees it lost',async t=>{
   const f=await fixture(t),a=await f.signup(),b=await f.signup(),route=origin();
   const first=await record(f,a,route),held=await prisma.hexOwnership.findMany({where:{ownerId:a.user.id}});
