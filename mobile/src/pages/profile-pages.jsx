@@ -56,6 +56,17 @@ function ProfileForm({initial,options,regions,onSave}) {
   return <div className="profile-overview resource-content" aria-busy={busy}>
     <div className="profile-identity"><button type="button" className="profile-avatar" aria-label="Change hex avatar" disabled={busy} onClick={()=>open('avatar')}><Avatar id={draft.avatarId} color={draft.avatarColor} size={72}/><span>Change</span></button>
       <div><p className="eyebrow">Your profile</p><h1><bdi>{draft.displayName}</bdi></h1></div></div>
+    <div className="you-summary">
+      <dl className="you-stats"><div><dt>Activities</dt><dd>0</dd></div><div><dt>Distance</dt><dd>0 km</dd></div><div><dt>Territory</dt><dd>0 hexes</dd></div></dl>
+      <div className="you-chart">
+        <div className="you-chart-head"><strong>Last 12 weeks</strong><span>Fills in after your first run</span></div>
+        <svg viewBox="0 0 320 72" aria-hidden="true" focusable="false">
+          <g className="you-chart-grid"><path d="M0 14h320M0 37h320M0 60h320"/></g>
+          <path className="you-chart-line" d="M0 60h320"/>
+        </svg>
+        <p className="small">No runs recorded yet. Your weekly distance and territory appear here.</p>
+      </div>
+    </div>
     <Section title="About you"><ListRow label="Display name" value={draft.displayName} onClick={()=>open('displayName')} disabled={busy}/>
       <ListRow label="Bio" value={draft.bio?'Edit':'Add'} onClick={()=>open('bio')} disabled={busy}>{draft.bio&&<small className="row-support" dir="auto">{draft.bio}</small>}</ListRow>
       <ListRow label="Home region" value={region?region.name:'Not set'} onClick={()=>open('homeRegionId')} disabled={busy}/></Section>
