@@ -8,13 +8,14 @@ const {createConsentService,consentSummary,locationAcceptedAt}=require('../profi
 const {ownerOrCanView}=require('./access');
 const {haversine,sequenceGaps,summarize}=require('./math');
 const {id:uuid}=require('./validation');
+const {validateAndClaim}=require('../territory/claim');
 const fail=(status,code,message)=>{throw publicError(status,code,message);};
 const stable=value=>value instanceof Date?value.toISOString():Array.isArray(value)?value.map(stable):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,stable(value[key])])):value;
 const digest=value=>createHash('sha256').update(JSON.stringify(stable(value))??'null').digest('hex');
 function dto(row){return {id:row.id,clientRunId:row.clientRunId,startedAt:row.startedAt,endedAt:row.endedAt,distanceM:row.distanceM,durationS:row.durationS,
   mockGps:!!row.mockGps,status:row.status,state:row.status==='ACTIVE'?(row.runSignals.recordingState||'ACTIVE'):'DONE',createdAt:row.createdAt,
   paceSecondsPerKm:row.distanceM>0&&row.durationS!==null?Math.round(row.durationS*1000/row.distanceM):null,
-  informationalReviews:row.runSignals.summary?.reviews||[],restricted:!!row.runSignals.summary?.restricted,region:row.runSignals.summary?.region||null,
+  informationalReviews:row.runSignals.summary?.reviews||[],restricted:!!row.runSignals.summary?.restricted,validationReasons:row.runSignals.summary?.validation?.reasons||[],region:row.runSignals.summary?.region||null,
   sequenceGaps:row.runSignals.sequenceGaps||[],routeSegments:row.runSignals.summary?.routeSegments||[]};}
 function createRunService({prisma,config}){
   const consent=createConsentService({prisma,config});
@@ -153,7 +154,11 @@ function createRunService({prisma,config}){
     const movement=signals.pausedMovement||[];if(movement.length>=3||movement.reduce((sum,m)=>sum+m.distanceM,0)>1000)reviews.push({code:'PAUSED_MOVEMENT',severity:'SOFT'});
     signals.summary={acceptedPoints:summary.acceptedPoints,gaps:summary.gaps,outlierSeqs:summary.outlierSeqs,routeSegments:summary.routeSegments,...geo,reviews};
     signals.recordingState='DONE';
-    const finished=await tx.run.update({where:{id:row.id},data:{endedAt:input.endedAt,durationS:summary.durationS,distanceM:summary.distanceM,routePolyline:summary.polyline,status:'PENDING_VALIDATION',runSignals:signals}});
+    const closed=await tx.run.update({where:{id:row.id},data:{endedAt:input.endedAt,durationS:summary.durationS,distanceM:summary.distanceM,routePolyline:summary.polyline,status:'PENDING_VALIDATION',runSignals:signals}});
+    // Validation and territory claiming share the finish transaction and account lock.
+    const verdict=await validateAndClaim(tx,{run:closed,points:activePoints,summary,pointMeta:signals.pointMeta||{}});
+    signals.summary.validation={reasons:verdict.reasons};
+    const finished=await tx.run.update({where:{id:row.id},data:{status:verdict.status,runSignals:signals}});
     return {run:dto(finished)};
   }
   const finish=(req,id,input)=>transaction(req,async(tx,user,now)=>{const row=await owned(tx,user,id);installer(req,row);return complete(tx,row,input,now);});
