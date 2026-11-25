@@ -1,8 +1,9 @@
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 
-export const ROOT_ROUTES = new Set(['/', '/home', '/run', '/you', '/settings']);
+export const ROOT_ROUTES = new Set(['/', '/welcome', '/home', '/workout', '/community', '/you', '/settings']);
 export function parentRoute(path) {
+  if(path==='/run')return '/workout';
   if(path.startsWith('/run/'))return path==='/run/history'?'/run':path==='/run/summary'?'/run':'/run/history';
   if (path === '/you/privacy') return '/you';
   if (path === '/you/consent') return '/you/privacy';
