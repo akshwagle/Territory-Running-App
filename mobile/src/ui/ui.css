@@ -82,3 +82,11 @@
 .ui-switch:has(input:disabled) { opacity: .55; }
 
 .ui-screen:has(.route-page:not([hidden]) .ui-error, .route-page:not([hidden]) form .ui-notice--error) .connection-notice { display: none; }
+
+.ui-run-stats { margin: 28px 0; font-variant-numeric: tabular-nums; }
+.ui-run-stats > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; justify-content: space-between; padding-block: 12px; border-bottom: 1px solid var(--color-line); }
+.ui-run-stats dt { font-size: .875rem; color: var(--color-muted); }
+.ui-run-stats dd { margin: 0; font: 600 clamp(1.5rem, 7vw, 2.25rem)/1.2 var(--font-body); overflow-wrap: anywhere; }
+.ui-route-trace { margin: 24px 0; color: var(--color-pine); }
+.ui-route-trace svg { display: block; width: 100%; max-height: 300px; }
+.ui-route-trace figcaption { margin-top: 12px; color: var(--color-muted); }

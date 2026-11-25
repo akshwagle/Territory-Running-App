@@ -142,3 +142,9 @@ describe('API refresh and session boundaries', () => {
     expect(f.onAccountBlocked).not.toHaveBeenCalled(); expect(f.vault.snapshot().session.user.id).toBe('user-two');
   });
 });
+
+it('LIFE-06 run queries and retry requests retain version/install headers without permitting an external URL',async()=>{
+ const fetchImpl=vi.fn(async()=>response(200,{runs:[]})),{api}=await fixture(fetchImpl);api.setInstallId('11111111-1111-4111-8111-111111111111');
+ await api.request('/api/runs?limit=20&cursor=abc%2D123');expect(fetchImpl.mock.calls[0][1].headers).toMatchObject({'X-App-Version-Code':'6','X-Install-Id':'11111111-1111-4111-8111-111111111111'});
+ for(const path of ['https://evil.test/api/runs','//evil.test/api/runs','/api/runs#other','/api/runs?cursor=%xx'])await expect(api.request(path)).rejects.toThrow('Invalid API path');expect(fetchImpl).toHaveBeenCalledOnce();
+});
