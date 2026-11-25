@@ -21,6 +21,7 @@ export function WorkoutPage() {
       <Button onClick={() => sport.key === 'run' ? navigate('/run') : show?.(`${sport.label} recording starts in the next build.`)}><Icon name="play" width="18" height="18"/>Start</Button>
     </article>)}
     <button type="button" className="outline-action" onClick={() => navigate('/map')}>Territory map</button>
+    <button type="button" className="outline-action" onClick={() => navigate('/stats')}>Stats, records and badges</button>
     <button type="button" className="outline-action" onClick={() => navigate('/run/history')}>Run history</button>
     <button type="button" className="outline-action" onClick={() => show?.('Run and ride are the only sports for now.')}>More sports</button>
     <p className="workout-note">Recording needs location consent; you can change it any time in Profile → Privacy.</p>

@@ -440,3 +440,18 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .swatch { display: inline-block; width: 22px; height: 22px; border-radius: 50%; }
 .invite-code { letter-spacing: .12em; font-family: ui-monospace, monospace; }
 .form-error { color: #e5826b; }
+
+/* Stats, history filters, achievements */
+.history-filters { display: grid; gap: 4px; margin-bottom: 8px; }
+.history-filters .sport-chips, .sport-chips[role=tablist] { overflow-x: auto; }
+.stat-chart { margin: 12px 0; }
+.stat-chart svg { width: 100%; height: 140px; display: block; }
+.stat-bar { fill: var(--accent); }
+.stat-axis { stroke: var(--line-strong); stroke-width: 1; }
+.stat-labels { display: flex; font-size: 11px; color: var(--muted, #9aa39c); }
+.stat-labels span { flex: 1; text-align: center; overflow: hidden; white-space: nowrap; }
+.badge-row { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line-strong); opacity: .7; }
+.badge-row.earned { opacity: 1; }
+.badge-row p { margin: 2px 0 0; }
+.badge-progress { display: flex; align-items: center; gap: 12px; }
+.badge-progress progress { flex: 1; height: 8px; accent-color: var(--accent); }
