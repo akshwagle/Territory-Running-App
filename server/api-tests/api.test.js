@@ -135,7 +135,7 @@ test('request logs exclude query strings, credentials, headers and filenames', a
   await request(app).get('/api/health?token=never-log-this').set('Authorization', 'Bearer never-log-this');
   assert.ok(logs.length);
   assert.equal(logs.some((line) => line.includes('never-log-this')), false);
-  assert.ok(logs.every((line) => Object.keys(JSON.parse(line)).sort().join(',') === 'durationMs,method,route,status'));
+  assert.ok(logs.every((line) => Object.keys(JSON.parse(line)).sort().join(',') === 'durationMs,level,method,requestId,route,status,time'));
 });
 
 test('invalid startup environment and registration arguments fail clearly without echoing credentials', () => {
@@ -169,4 +169,47 @@ test('release registration copies exact bytes, hashes them and idempotently upse
   await registerRelease({ prisma, input: { ...input, versionName: '0.2.0', versionCode: 2 }, storageDir: storage });
   assert.equal(await prisma.appRelease.count({ where: { isActive: true } }), 2);
   await assert.rejects(() => registerRelease({ prisma, input: { ...input, versionCode: 3 }, storageDir: storage }), /different version code/);
+});
+
+test('live and ready probes are unauthenticated, unlimited and expose nothing', async () => {
+  const limited = createApp({ prisma, config: { ...config, rateLimitMax: 1 }, logger: () => {} });
+  for (let i = 0; i < 3; i += 1) {
+    const live = await request(limited).get('/api/live');
+    assert.equal(live.status, 200);
+    assert.deepEqual(live.body, { status: 'ok' });
+  }
+  const ready = await request(limited).get('/api/ready');
+  assert.equal(ready.status, 200);
+  assert.deepEqual(ready.body, { status: 'ready' });
+  assert.match(ready.headers['x-request-id'], /^[0-9a-f-]{36}$/);
+  const down = createApp({ prisma: { $queryRaw() { throw new Error('secret-db-detail'); } }, config, logger: () => {} });
+  const bad = await request(down).get('/api/ready');
+  assert.equal(bad.status, 503);
+  assert.equal(JSON.stringify(bad.body).includes('secret'), false);
+  limited.locals.setShuttingDown();
+  assert.equal((await request(limited).get('/api/ready')).status, 503);
+});
+
+test('unexpected errors log only the error class and request id', async () => {
+  const lines = [];
+  const failing = createApp({ prisma: { appRelease: { findFirst() { throw new TypeError('user@example.com leaked'); } } }, config, logger: (l) => lines.push(l) });
+  const response = await request(failing).get('/api/releases/latest');
+  standardError(response, 500, 'INTERNAL_ERROR');
+  assert.equal(lines.some((l) => l.includes('example.com') || l.includes('stack')), false);
+  assert.ok(lines.some((l) => JSON.parse(l).event === 'unhandled_error' && JSON.parse(l).errorName === 'TypeError'));
+});
+
+test('every non-public API route rejects anonymous callers', async () => {
+  const routes = [['get', '/api/me'], ['get', '/api/runs'], ['post', '/api/runs'], ['get', '/api/runs/00000000-0000-4000-8000-000000000000'],
+    ['post', '/api/runs/00000000-0000-4000-8000-000000000000/points'], ['delete', '/api/runs/00000000-0000-4000-8000-000000000000'],
+    ['get', '/api/territory/me'], ['get', '/api/territory/hexes'], ['get', '/api/me/profile'], ['patch', '/api/me/privacy'],
+    ['get', '/api/users/00000000-0000-4000-8000-000000000000/profile'], ['get', '/api/admin/users/00000000-0000-4000-8000-000000000000/name-history'],
+    ['post', '/api/me/export'], ['delete', '/api/me'], ['get', '/api/community/leaderboard'], ['get', '/api/community/feed'],
+    ['put', '/api/users/00000000-0000-4000-8000-000000000000/follow'], ['post', '/api/teams'], ['get', '/api/me/stats/overview'],
+    ['get', '/api/me/notifications'], ['post', '/api/me/notifications/read-all'], ['get', '/api/me/consents']];
+  for (const [method, url] of routes) {
+    const response = await request(app)[method](url);
+    assert.equal(response.status, 401, `${method} ${url}`);
+    assert.equal(response.body.error.code.length > 0, true);
+  }
 });

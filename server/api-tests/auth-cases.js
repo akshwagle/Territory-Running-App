@@ -320,7 +320,7 @@ module.exports = function authCases({ prisma, pool, config, isolated }) {
     assert.ok(logs.some((line) => JSON.parse(line).reason === 'password_mismatch'));
     for (const line of logs) {
       const entry = JSON.parse(line);
-      assert.ok(['durationMs,method,route,status', 'event,reason'].includes(Object.keys(entry).sort().join(',')));
+      assert.ok(['durationMs,level,method,requestId,route,status,time', 'event,reason'].includes(Object.keys(entry).sort().join(',')));
     }
   });
 };
