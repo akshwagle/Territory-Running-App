@@ -65,3 +65,22 @@ it('PRIV-03 opening consent closes the old permission sheet before navigating aw
 it('LIFE-04 storage failure blocks Resume and Finish until Retry commits the held fix',async()=>{
  const f=setup(<RunPage/>,{state:'PAUSED',storageFailed:true,rescueCount:1,message:'Storage failed. Recording stopped; a fix is held in memory.'});expect(screen.getByRole('button',{name:'Resume'})).toBeDisabled();expect(screen.getByRole('button',{name:'Finish run…'})).toBeDisabled();await f.user.click(screen.getByRole('button',{name:'Retry storage'}));expect(f.recorder.retryStorage).toHaveBeenCalledOnce();expect(f.recorder.finish).not.toHaveBeenCalled();expect(f.recorder.discard).not.toHaveBeenCalled();
 });
+
+const claimBody=(status,claim={},extra={})=>({runId:'one',status,distanceM:420,claim:{claimed:0,captured:0,capturedFromOthers:0,refreshed:0,onCooldown:0,restricted:0,lost:0,heldNow:0,...claim},reasons:[],flags:[],...extra});
+it('STEP06 summary shows hexes claimed, taken from others and lost for a validated run',async()=>{
+ const f=setup(<RunSummaryPage/>,{state:'IDLE',lastFinished:{run:{id:'one',distanceM:420,durationS:200,status:'VALID'}}},async path=>path.endsWith('/claim')?claimBody('VALID',{claimed:12,captured:12,capturedFromOthers:5,lost:2,heldNow:10,onCooldown:3}):{},'/run/summary');
+ expect(await screen.findByRole('heading',{name:'You claimed 12 hexes'})).toBeVisible();
+ const tile=name=>screen.getByText(name).closest('.claim-tile');
+ expect(tile('Claimed')).toHaveTextContent('12');expect(tile('Taken from others')).toHaveTextContent('5');expect(tile('Lost since')).toHaveTextContent('2');expect(tile('Held now')).toHaveTextContent('10');
+ expect(screen.getByText(/3 cells belong to a runner/)).toBeVisible();expect(screen.queryByText(/Territory is calculated after upload/)).toBeNull();
+ expect(f.auth.api.request).toHaveBeenCalledWith('/api/runs/one/claim');
+});
+it('STEP06 flagged and short runs explain why nothing was claimed, with no tiles',async()=>{
+ setup(<RunSummaryPage/>,{state:'IDLE',lastFinished:{run:{id:'one',distanceM:420,durationS:200,status:'FLAGGED'}}},async()=>claimBody('FLAGGED',{},{flags:[{reason:'MOCK_LOCATION',status:'OPEN'}]}),'/run/summary');
+ expect(await screen.findByRole('heading',{name:'Held for review'})).toBeVisible();expect(screen.getByText(/No territory was claimed. Mock location was detected/)).toBeVisible();expect(document.querySelector('.claim-grid')).toBeNull();
+});
+it('STEP06 a failed result load is retryable and a short run is explained',async()=>{
+ let fail=true;setup(<RunSummaryPage/>,{state:'IDLE',lastFinished:{run:{id:'one',distanceM:30,durationS:60,status:'REJECTED'}}},async()=>{if(fail)throw Error('Offline. Try again.');return claimBody('REJECTED',{},{reasons:['TOO_SHORT']});},'/run/summary');
+ const retry=await screen.findByRole('button',{name:'Retry'});fail=false;await userEvent.setup().click(retry);
+ expect(await screen.findByRole('heading',{name:'Too short to claim'})).toBeVisible();expect(screen.getByText(/about 100 m/)).toBeVisible();
+});
