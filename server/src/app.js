@@ -12,6 +12,7 @@ const { createProfileRouter } = require('./profile/routes');
 const { createRunRouter } = require('./runs/routes');
 const { createTerritoryRouter } = require('./territory/routes');
 const { createCommunityRouter } = require('./community/routes');
+const { createStatsRouter } = require('./stats/routes');
 const { createMailJobs, createMailer } = require('./auth/mailer');
 
 function errorBody(code, message) { return { error: { code, message } }; }
@@ -61,6 +62,7 @@ function createApp({ prisma, config, exportDir, downloadDir = path.resolve(__dir
   app.locals.runRetention=recording.retention;
   app.use('/api/territory',createTerritoryRouter({prisma,config,clock}).router);
   app.use('/api',createCommunityRouter({prisma,config,clock}).router);
+  app.use('/api',createStatsRouter({prisma,config,clock}).router);
 
   app.get('/api/health', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
