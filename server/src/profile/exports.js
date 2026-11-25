@@ -125,7 +125,7 @@ function createExportService({prisma,jobs,directory=path.resolve(__dirname,'../.
     await cleanup();
     for(const row of await prisma.dataExport.findMany({where:{status:'PENDING'},select:{id:true,userId:true}}))
       jobs.enqueue(row.userId,signal=>build(row.userId,row.id,signal));
-    const timer=setInterval(()=>cleanup().catch(()=>{}),3600000);timer.unref();return ()=>clearInterval(timer);
+    let running=false;const timer=setInterval(()=>{if(running)return;running=true;cleanup().catch(()=>{}).finally(()=>{running=false;});},3600000);timer.unref();return ()=>clearInterval(timer);
   }
   return {create,get,cleanup,start,removeFiles,directory};
 }
