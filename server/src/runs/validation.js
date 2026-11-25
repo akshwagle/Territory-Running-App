@@ -23,6 +23,9 @@ const control=z.strictObject({eventId:id,recordedAt:date,elapsedMs:finite.nonneg
   reason:z.enum(['USER','GPS_OFF','PERMISSION_LOST','NO_MOVEMENT','PROCESS_RECOVERY','SESSION_END','CONSENT_WITHDRAWN','LOW_STORAGE','GPS_ON','FOREGROUND_ONLY']).default('USER'),events});
 const signal=z.strictObject({eventId:id,events:z.array(event).min(1).max(1000)});
 const finish=z.strictObject({endedAt:date,events,reason:z.enum(['USER','STATIONARY','RECOVERY','LIMIT']).default('USER'),invalidDroppedTotal:z.number().int().min(0).max(100000).optional(),lastSeq:z.number().int().min(-1).max(2147483647).optional()});
-const list=z.strictObject({limit:z.coerce.number().int().min(1).max(100).default(20),cursor:z.string().max(256).optional(),active:z.enum(['true','false']).optional()});
+const list=z.strictObject({limit:z.coerce.number().int().min(1).max(100).default(20),cursor:z.string().max(256).optional(),active:z.enum(['true','false']).optional(),
+  from:z.iso.datetime({offset:true}).transform(v=>new Date(v)).optional(),to:z.iso.datetime({offset:true}).transform(v=>new Date(v)).optional(),
+  minDistanceM:z.coerce.number().int().min(0).max(1000000).optional(),maxDistanceM:z.coerce.number().int().min(0).max(1000000).optional(),
+  status:z.enum(['VALID','FLAGGED','REJECTED','PENDING','PENDING_VALIDATION','UPLOADING']).optional()}).refine(v=>!(v.from&&v.to&&v.from>v.to)&&!(v.minDistanceM!==undefined&&v.maxDistanceM!==undefined&&v.minDistanceM>v.maxDistanceM));
 const detail=z.strictObject({afterSeq:z.coerce.number().int().min(-1).max(2147483647).default(-1),pointLimit:z.coerce.number().int().min(1).max(2000).default(1000)});
 module.exports={id,position,device,event,point,create,batch,control,signal,finish,list,detail,params:z.strictObject({id}),empty:z.strictObject({})};
