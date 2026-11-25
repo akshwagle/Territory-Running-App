@@ -130,7 +130,7 @@ module.exports=({prisma,config})=>{
  });
  test('LIFE-09 finish twice returns the same immutable result; an empty/tiny run can be discarded without claiming',async t=>{
   const f=await fixture(t),a=await f.signup(),r=await f.start(a),endedAt=new Date().toISOString();
-  const first=await f.call(a,'post',`/api/runs/${r.id}/finish`,{endedAt});assert.equal(first.status,200);assert.equal(first.body.run.status,'PENDING_VALIDATION');assert.equal(first.body.run.distanceM,0);
+  const first=await f.call(a,'post',`/api/runs/${r.id}/finish`,{endedAt});assert.equal(first.status,200);assert.equal(first.body.run.status,'REJECTED');assert.equal(first.body.run.distanceM,0);
   const second=await f.call(a,'post',`/api/runs/${r.id}/finish`,{endedAt:new Date().toISOString()});assert.deepEqual(second.body,first.body);assert.equal(await prisma.runHex.count({where:{runId:r.id}}),0);assert.equal(await prisma.runFlag.count({where:{runId:r.id}}),0);
   assert.equal((await f.call(a,'delete',`/api/runs/${r.id}`,{})).status,204);assert.equal((await f.call(a,'delete',`/api/runs/${r.id}`,{})).status,204);error(await f.call(a,'get',`/api/runs/${r.id}`),404,'NOT_FOUND');
  });
@@ -154,7 +154,7 @@ module.exports=({prisma,config})=>{
   error(await f.upload(a,r,[f.point(r,100000,{recordedAt:new Date().toISOString(),elapsedMs:240000})]),409,'RUN_POINT_LIMIT');
   await prisma.run.update({where:{id:r.id},data:{deletedAt:new Date()}});const ultra=await f.start(a),old=new Date(Date.now()-9*3600000),stored=await prisma.run.findUnique({where:{id:ultra.id}});
   await prisma.run.update({where:{id:ultra.id},data:{startedAt:old,runSignals:{...stored.runSignals,segments:[{id:ultra.clientRunId,startedAt:old.toISOString(),endedAt:null}]}}});
-  const finished=await f.call(a,'post',`/api/runs/${ultra.id}/finish`,{endedAt:new Date().toISOString()});assert.equal(finished.status,200);assert.equal(finished.body.run.status,'PENDING_VALIDATION');assert.ok(finished.body.run.informationalReviews.some(x=>x.code==='LONG_RUN'&&x.severity==='INFO'));
+  const finished=await f.call(a,'post',`/api/runs/${ultra.id}/finish`,{endedAt:new Date().toISOString()});assert.equal(finished.status,200);assert.equal(finished.body.run.status,'REJECTED');assert.ok(finished.body.run.informationalReviews.some(x=>x.code==='LONG_RUN'&&x.severity==='INFO'));
   const tooLong=await f.start(a),before=new Date(Date.now()-86401000),row=await prisma.run.findUnique({where:{id:tooLong.id}});await prisma.run.update({where:{id:tooLong.id},data:{startedAt:before,runSignals:{...row.runSignals,segments:[{id:tooLong.clientRunId,startedAt:before.toISOString(),endedAt:null}]}}});error(await f.call(a,'post',`/api/runs/${tooLong.id}/finish`,{endedAt:new Date().toISOString()}),400,'RUN_TOO_LONG');
  });
  test('GPS-08 restricted cells are annotated without claims and the nearest region is attached',async t=>{
@@ -182,7 +182,7 @@ module.exports=({prisma,config})=>{
  });
  test('LIFE-11 raw-point retention purges auxiliary coordinates at expiry, keeps active runs and summaries, and is idempotent',async t=>{
   const f=await fixture(t),a=await f.signup(),r=await f.start(a);await f.upload(a,r,[f.point(r,0)]);await f.call(a,'post',`/api/runs/${r.id}/finish`,{endedAt:new Date().toISOString()});const active=await f.start(a);await f.upload(a,active,[f.point(active,0)]);
-  const service=createRunRetention({prisma,config:f.settings,clock:()=>new Date(Date.now()+366*86400000)});await service.cleanup();await service.cleanup();assert.equal(await prisma.runPoint.count({where:{runId:r.id}}),0);assert.equal(await prisma.runPoint.count({where:{runId:active.id}}),1);const retained=await prisma.run.findUnique({where:{id:r.id}});assert.equal(retained.status,'PENDING_VALIDATION');assert.ok(retained.runSignals.rawPointsPurgedAt);assert.deepEqual(retained.runSignals.pointMeta,{});
+  const service=createRunRetention({prisma,config:f.settings,clock:()=>new Date(Date.now()+366*86400000)});await service.cleanup();await service.cleanup();assert.equal(await prisma.runPoint.count({where:{runId:r.id}}),0);assert.equal(await prisma.runPoint.count({where:{runId:active.id}}),1);const retained=await prisma.run.findUnique({where:{id:r.id}});assert.equal(retained.status,'REJECTED');assert.ok(retained.runSignals.rawPointsPurgedAt);assert.deepEqual(retained.runSignals.pointMeta,{});
  });
  test('LIFE-06 history and point pagination are stable, owner-only, and omit soft-deleted runs',async t=>{
   const f=await fixture(t),a=await f.signup(),r=await f.start(a);await f.upload(a,r,[f.point(r,0),f.point(r,1),f.point(r,2)]);await f.call(a,'post',`/api/runs/${r.id}/finish`,{endedAt:new Date().toISOString()});const second=await f.start(a);
@@ -194,7 +194,7 @@ module.exports=({prisma,config})=>{
   const f=await fixture(t),a=await f.signup(),r=await f.start(a),event={id:randomUUID(),type:'CLOCK_JUMP',recordedAt:r.startedAt,elapsedMs:0,data:{clockDeltaMs:180000}},points=[f.point(r,0)];
   const data={events:[event],invalidDropped:25,stepDelta:null};assert.equal((await f.upload(a,r,points,data)).status,200);assert.equal((await f.upload(a,r,points,data)).status,200);
   const row=await prisma.run.findUnique({where:{id:r.id}});assert.equal(row.runSignals.events.length,1);assert.equal(row.runSignals.events[0].type,'CLOCK_JUMP');assert.equal(Object.values(row.runSignals.batches)[0].batteryLevel,80);
-  const result=await f.call(a,'post',`/api/runs/${r.id}/finish`,{endedAt:new Date().toISOString()});assert.equal(result.status,200);assert.equal(result.body.run.status,'PENDING_VALIDATION');assert.ok(result.body.run.informationalReviews.some(x=>x.code==='INVALID_POINT_RATIO'&&x.severity==='SOFT'));assert.equal(await prisma.runFlag.count({where:{runId:r.id}}),0);
+  const result=await f.call(a,'post',`/api/runs/${r.id}/finish`,{endedAt:new Date().toISOString()});assert.equal(result.status,200);assert.equal(result.body.run.status,'REJECTED');assert.ok(result.body.run.informationalReviews.some(x=>x.code==='INVALID_POINT_RATIO'&&x.severity==='SOFT'));assert.equal(await prisma.runFlag.count({where:{runId:r.id}}),0);
  });
  test('LIFE-11 a full 500-point batch is stored atomically with its auxiliary signals',async t=>{
   const f=await fixture(t),a=await f.signup(),r=await f.start(a),points=Array.from({length:500},(_,seq)=>f.point(r,seq,{recordedAt:new Date(+new Date(r.startedAt)+seq*400).toISOString(),deviceTimestamp:new Date(+new Date(r.startedAt)+seq*400).toISOString(),elapsedMs:seq*400}));
@@ -247,5 +247,108 @@ module.exports=({prisma,config})=>{
  test('LIFE-09 a run with captured territory cannot be soft-deleted',async t=>{
   const f=await fixture(t),a=await f.signup(),r=await f.start(a);await f.call(a,'post',`/api/runs/${r.id}/finish`,{endedAt:new Date().toISOString()});
   await prisma.runHex.create({data:{runId:r.id,h3Index:900000006n,outcome:'CAPTURED'}});error(await f.call(a,'delete',`/api/runs/${r.id}`,{}),409,'RUN_ALREADY_CLAIMED');assert.equal((await prisma.run.findUnique({where:{id:r.id}})).deletedAt,null);
+ });
+
+ // ---- Step 06: validation, territory claiming and read APIs -------------------
+ const {claimBatch}=require('../src/territory/claim');
+ const {toIndex}=require('../src/territory/cells');
+ const cellsOf=rows=>rows.map(r=>r.h3Index.toString());
+ function origin(){return {lat:10+Math.random()*40,lng:-120+Math.random()*60};}
+ // 200 one-second fixes heading north at about 2.2 m/s, about 440 m in total.
+ function walk(f,r,{lat,lng},{step=.00002,count=200,overrides={}}={}){return Array.from({length:count},(_,seq)=>f.point(r,seq,{lat:lat+seq*step,lng,...overrides}));}
+ async function record(f,a,route,options){
+  const r=await f.start(a),points=walk(f,r,route,options);
+  for(let i=0;i<points.length;i+=100)assert.equal((await f.upload(a,r,points.slice(i,i+100))).status,200);
+  const end=new Date(+new Date(r.startedAt)+210000).toISOString(),done=await f.call(a,'post',`/api/runs/${r.id}/finish`,{endedAt:end,lastSeq:points.length-1});
+  assert.equal(done.status,200,JSON.stringify(done.body));return {r,done:done.body.run};
+ }
+ const claimOf=async(f,a,r)=>{const res=await f.call(a,'get',`/api/runs/${r.id}/claim`);assert.equal(res.status,200,JSON.stringify(res.body));return res.body;};
+ test('STEP06 a valid run claims every crossed cell once; ownership, history, stats and read APIs agree',async t=>{
+  const f=await fixture(t),a=await f.signup(),b=await f.signup(),route=origin();
+  const {r,done}=await record(f,a,route);assert.equal(done.status,'VALID');assert.ok(done.distanceM>=300);
+  const result=await claimOf(f,a,r),owned=await prisma.hexOwnership.findMany({where:{ownerId:a.user.id}}),history=await prisma.runHex.findMany({where:{runId:r.id}});
+  assert.ok(result.claim.claimed>=6,JSON.stringify(result.claim));assert.equal(result.claim.claimed,owned.length);assert.equal(history.length,owned.length);
+  assert.deepEqual(cellsOf(history).sort(),cellsOf(owned).sort());assert.ok(history.every(h=>h.outcome==='CAPTURED'&&h.prevOwnerId===null));
+  assert.deepEqual({fromOthers:result.claim.capturedFromOthers,lost:result.claim.lost,held:result.claim.heldNow},{fromOthers:0,lost:0,held:owned.length});
+  // Consecutive cells are contiguous: the grid path fills gaps between fixes.
+  const cells=history.map(h=>h.h3Index.toString(16));for(const c of cells.slice(0,5))assert.ok(h3.gridDisk(c,2).some(n=>n!==c&&cells.includes(n)));
+  const stats=await prisma.userStat.findUnique({where:{userId:a.user.id}});assert.equal(stats.totalRuns,1);assert.equal(stats.totalDistM,BigInt(done.distanceM));assert.equal(stats.streakDays,1);
+  const mine=await f.call(a,'get','/api/territory/me?limit=5');assert.equal(mine.body.count,owned.length);assert.equal(mine.body.hexes.length,5);assert.ok(mine.body.nextCursor);assert.equal(mine.body.hexes[0].onCooldown,true);
+  const next=await f.call(a,'get',`/api/territory/me?limit=200&cursor=${mine.body.nextCursor}`);assert.equal(next.status,200,JSON.stringify(next.body));assert.equal(next.body.hexes.length,owned.length-5);
+  const box=`minLat=${route.lat-.001}&maxLat=${route.lat+.006}&minLng=${route.lng-.003}&maxLng=${route.lng+.003}`;
+  const own=await f.call(a,'get',`/api/territory/hexes?${box}`);assert.equal(own.status,200,JSON.stringify(own.body));assert.equal(own.body.hexes.length,owned.length);assert.ok(own.body.hexes.every(x=>x.owner.kind==='me'));
+  const other=await f.call(b,'get',`/api/territory/hexes?${box}`);assert.equal(other.status,200,JSON.stringify(other.body));assert.equal(other.body.hexes.length,owned.length);
+  assert.ok(other.body.hexes.every(x=>x.owner.kind==='other'&&x.owner.ownerId===null&&x.owner.displayName==='Runner'),'private profiles stay anonymous on the map');
+  await prisma.userPrivacySetting.upsert({where:{userId:a.user.id},create:{userId:a.user.id,profileVisibility:'PUBLIC'},update:{profileVisibility:'PUBLIC'}});
+  const publicView=await f.call(b,'get',`/api/territory/hexes?${box}`);assert.ok(publicView.body.hexes.every(x=>x.owner.ownerId===a.user.id&&x.owner.displayName===a.user.displayName));
+  // Home-hex privacy hides the owner's territory from others but never from the owner.
+  await prisma.userPrivacySetting.update({where:{userId:a.user.id},data:{homeHex:history[0].h3Index,hideRadiusM:100000}});
+  assert.equal((await f.call(b,'get',`/api/territory/hexes?${box}`)).body.hexes.length,0);assert.equal((await f.call(a,'get',`/api/territory/hexes?${box}`)).body.hexes.length,owned.length);
+  error(await f.call(b,'get',`/api/runs/${r.id}/claim`),404,'NOT_FOUND');
+ });
+ test('STEP06 cooldown protects a hex; after expiry another runner captures it and the previous owner sees it lost',async t=>{
+  const f=await fixture(t),a=await f.signup(),b=await f.signup(),route=origin();
+  const first=await record(f,a,route),held=await prisma.hexOwnership.findMany({where:{ownerId:a.user.id}});
+  const early=await record(f,b,route),earlyResult=await claimOf(f,b,early.r);
+  assert.equal(early.done.status,'VALID');assert.equal(earlyResult.claim.claimed,0);assert.equal(earlyResult.claim.onCooldown,held.length);
+  assert.equal(await prisma.hexOwnership.count({where:{ownerId:b.user.id}}),0);assert.equal(await prisma.hexOwnership.count({where:{ownerId:a.user.id}}),held.length);
+  assert.ok((await prisma.runHex.findMany({where:{runId:early.r.id}})).every(h=>h.outcome==='ON_COOLDOWN'&&h.prevOwnerId===a.user.id));
+  await prisma.$executeRaw`UPDATE hex_ownership SET cooldown_until=now()-interval '1 minute' WHERE owner_id=${a.user.id}::uuid`;
+  const late=await record(f,b,route),lateResult=await claimOf(f,b,late.r);
+  assert.equal(lateResult.claim.captured,held.length);assert.equal(lateResult.claim.capturedFromOthers,held.length);assert.equal(lateResult.claim.heldNow,held.length);
+  assert.equal(await prisma.hexOwnership.count({where:{ownerId:a.user.id}}),0);assert.equal(await prisma.hexOwnership.count({where:{ownerId:b.user.id}}),held.length);
+  const lostView=await claimOf(f,a,first.r);assert.equal(lostView.claim.claimed,held.length);assert.equal(lostView.claim.lost,held.length);assert.equal(lostView.claim.heldNow,0);
+  assert.equal((await f.call(a,'get','/api/territory/me')).body.count,0);
+  // The same runner running over their own expired cells refreshes them.
+  await prisma.$executeRaw`UPDATE hex_ownership SET cooldown_until=now()-interval '1 minute' WHERE owner_id=${b.user.id}::uuid`;
+  const again=await record(f,b,route),refreshed=await claimOf(f,b,again.r);assert.equal(refreshed.claim.refreshed,held.length);assert.equal(refreshed.claim.captured,0);
+  assert.equal((await prisma.userStat.findUnique({where:{userId:b.user.id}})).totalRuns,3);
+ });
+ test('STEP06 mock-location and too-fast runs claim nothing, create run_flags and do not count toward stats',async t=>{
+  const f=await fixture(t),a=await f.signup(),b=await f.signup();
+  const mock=await record(f,a,origin(),{overrides:{isMock:true,provider:'gps'}});assert.equal(mock.done.status,'FLAGGED');
+  assert.deepEqual((await prisma.runFlag.findMany({where:{runId:mock.r.id}})).map(x=>[x.reason,x.status]),[['MOCK_LOCATION','OPEN']]);
+  const fast=await record(f,b,origin(),{step:.0002});assert.equal(fast.done.status,'FLAGGED');
+  assert.ok((await prisma.runFlag.findMany({where:{runId:fast.r.id}})).some(x=>x.reason==='SPEED_LIMIT'));
+  for(const [user,run] of [[a,mock.r],[b,fast.r]]){
+   assert.equal(await prisma.hexOwnership.count({where:{ownerId:user.user.id}}),0);assert.equal(await prisma.runHex.count({where:{runId:run.id}}),0);assert.equal(await prisma.userStat.count({where:{userId:user.user.id}}),0);
+   const result=await claimOf(f,user,run);assert.equal(result.status,'FLAGGED');assert.equal(result.claim.claimed,0);assert.ok(result.flags.length>=1);
+  }
+ });
+ test('STEP06 restricted-zone cells are recorded RESTRICTED and never owned; short runs are rejected without flags',async t=>{
+  const f=await fixture(t),a=await f.signup(),route=origin(),zone=await prisma.restrictedZone.create({data:{name:`Zone ${randomUUID()}`,reason:'test'}});
+  t.after(()=>prisma.restrictedZone.delete({where:{id:zone.id}}));
+  const middle=h3.latLngToCell(route.lat+100*.00002,route.lng,11);await prisma.restrictedZoneHex.create({data:{zoneId:zone.id,h3Index:toIndex(middle)}});
+  const {r,done}=await record(f,a,route);assert.equal(done.status,'VALID');const result=await claimOf(f,a,r);
+  assert.equal(result.claim.restricted,1);assert.equal(await prisma.hexOwnership.count({where:{h3Index:toIndex(middle)}}),0);
+  assert.equal((await prisma.runHex.findUnique({where:{runId_h3Index:{runId:r.id,h3Index:toIndex(middle)}}})).outcome,'RESTRICTED');
+  assert.deepEqual((await prisma.runFlag.findMany({where:{runId:r.id}})).map(x=>[x.reason,x.zoneId]),[['RESTRICTED_ZONE',zone.id]]);
+  const brief=await record(f,a,origin(),{count:20});assert.equal(brief.done.status,'REJECTED');assert.deepEqual((await claimOf(f,a,brief.r)).reasons,['TOO_SHORT']);assert.equal(await prisma.runFlag.count({where:{runId:brief.r.id}}),0);
+ });
+ test('STEP06 two runs claiming the same hexes at the same moment end with exactly one owner per hex',async t=>{
+  const f=await fixture(t),a=await f.signup(),b=await f.signup(),ra=await f.start(a);
+  const rb=await f.start(b),route=origin(),cells=Array.from({length:40},(_,i)=>toIndex(h3.latLngToCell(route.lat+i*.0001,route.lng,11)));
+  const indices=[...new Set(cells)].sort((x,y)=>x<y?-1:x>y?1:0);
+  // Both contenders submit the same sorted list, as the finish path does, so lock order matches.
+  let release;const gate=new Promise(resolve=>{release=resolve;});
+  const contend=(user,run,list)=>prisma.$transaction(async tx=>{await gate;return claimBatch(tx,{runId:run.id,userId:user.user.id,cooldownMinutes:30,indices:list});},{timeout:30000,maxWait:30000});
+  const pending=[contend(a,ra,indices),contend(b,rb,indices)];release();const [first,second]=await Promise.all(pending);
+  const rows=await prisma.$queryRaw`SELECT h3_index::text AS h3, count(*)::int AS n FROM hex_ownership WHERE h3_index = ANY(${indices.map(String)}::bigint[]) GROUP BY h3_index`;
+  assert.equal(rows.length,indices.length);assert.ok(rows.every(r=>r.n===1));
+  const owners=await prisma.hexOwnership.findMany({where:{h3Index:{in:indices}}});
+  for(const id of indices.map(String)){
+   const outcomes=[first.get(id).outcome,second.get(id).outcome].sort();assert.deepEqual(outcomes,['CAPTURED','ON_COOLDOWN'],id);
+   const winner=first.get(id).outcome==='CAPTURED'?a.user.id:b.user.id;assert.equal(owners.find(o=>o.h3Index===BigInt(id)).ownerId,winner);
+  }
+ });
+ test('STEP06 territory endpoints authenticate and validate bounds, paging and unknown fields',async t=>{
+  const f=await fixture(t),a=await f.signup();
+  for(const url of ['/api/territory/me','/api/territory/hexes?minLat=1&minLng=1&maxLat=1.01&maxLng=1.01',`/api/runs/${randomUUID()}/claim`])assert.equal((await f.call(null,'get',url)).status,401);
+  error(await f.call(a,'get','/api/territory/hexes?minLat=1&minLng=1&maxLat=2&maxLng=2'),400,'INVALID_BOUNDS');
+  error(await f.call(a,'get','/api/territory/hexes?minLat=2&minLng=1&maxLat=1&maxLng=1.01'),400,'INVALID_BOUNDS');
+  error(await f.call(a,'get','/api/territory/hexes?minLat=x&minLng=1&maxLat=1&maxLng=1.01'),400,'INVALID_INPUT');
+  error(await f.call(a,'get','/api/territory/me?limit=0'),400,'INVALID_INPUT');error(await f.call(a,'get','/api/territory/me?extra=1'),400,'INVALID_INPUT');error(await f.call(a,'get','/api/territory/me?cursor=nope'),400,'INVALID_CURSOR');
+  error(await f.call(a,'get',`/api/runs/${randomUUID()}/claim`),404,'NOT_FOUND');
+  assert.deepEqual((await f.call(a,'get','/api/territory/me')).body,{count:0,hexes:[],nextCursor:null});
  });
 };
