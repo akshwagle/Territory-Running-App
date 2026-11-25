@@ -14,7 +14,7 @@ function createRunRetention({prisma,config,clock=()=>new Date()}){
       });cursor=candidates.at(-1).id;
     }
   }
-  async function start(){await cleanup();const timer=setInterval(()=>cleanup().catch(()=>{}),3600000);timer.unref();return()=>clearInterval(timer);}
+  async function start(){await cleanup();let running=false;const timer=setInterval(()=>{if(running)return;running=true;cleanup().catch(()=>{}).finally(()=>{running=false;});},3600000);timer.unref();return()=>clearInterval(timer);}
   return {cleanup,start};
 }
 module.exports={createRunRetention};
