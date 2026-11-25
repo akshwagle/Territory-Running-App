@@ -6,6 +6,7 @@ import {Notice} from '../components/forms.jsx';
 import {useResource} from './settings-pages.jsx';
 import {createConsentControls,discardSaved} from '../profile/consent-controls.js';
 import {DISCARD_CONFIRMATION} from '../auth/pending-work.js';
+import {MyBadges} from '../notifications/MyBadges.jsx';
 import {Avatar,Button,Chip,Dialog,ErrorState,InlineNotice,ListRow,Section,Sheet,Skeleton,Switch,TextField} from '../ui/index.jsx';
 
 export function SettingsFrame({title,children}) {
@@ -90,7 +91,7 @@ function ProfileForm({initial,options,regions,onSave}) {
 export function ProfilePage() {
   const {auth}=useAuth(),load=useCallback(()=>auth.api.request('/api/me/profile'),[auth]),data=useResource(load);
   const save=async body=>{await auth.api.request('/api/me/profile',{method:'PATCH',body});await auth.loadMe();};
-  return <section><ResourceState data={data} label="your profile"/>{data.phase==='ready'&&<ProfileForm initial={data.value.profile} options={data.value.options} regions={data.value.regions} onSave={save}/>}</section>;
+  return <section><ResourceState data={data} label="your profile"/>{data.phase==='ready'&&<ProfileForm initial={data.value.profile} options={data.value.options} regions={data.value.regions} onSave={save}/>}{data.phase==='ready'&&<MyBadges/>}</section>;
 }
 const VISIBILITY=[['PRIVATE','Only me','Your name and profile stay private.'],['FOLLOWERS','My followers','Only people who follow you can view your profile.'],['PUBLIC','Everyone','Anyone can view your profile.']];
 function PrivacyForm({initial,save}) {

@@ -455,3 +455,19 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .badge-row p { margin: 2px 0 0; }
 .badge-progress { display: flex; align-items: center; gap: 12px; }
 .badge-progress progress { flex: 1; height: 8px; accent-color: var(--accent); }
+
+/* Notification centre and tab badge */
+.notice-list { list-style: none; margin: 0; padding: 0; }
+.notice-item { border-bottom: 1px solid var(--line-strong); }
+.notice-item button { display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: 56px; padding: 12px 0; text-align: left; background: none; border: 0; color: inherit; font: inherit; }
+.notice-dot { flex: 0 0 auto; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: transparent; }
+.notice-item.unread .notice-dot { background: var(--accent); }
+.notice-text { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.notice-item:not(.unread) strong { font-weight: 500; }
+.ui-tab-icon { position: relative; }
+.tab-badge { position: absolute; top: -4px; right: -8px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 700; line-height: 16px; text-align: center; box-shadow: 0 0 0 2px var(--bg); }
+.home-bell { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--fill-3); color: inherit; }
+.feed-top-actions { display: flex; align-items: center; gap: 10px; }
+.profile-badges { margin-top: 16px; }
+.badge-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.badge-chips li { padding: 6px 12px; border: 1px solid var(--accent); border-radius: var(--r-pill); font-size: 14px; }

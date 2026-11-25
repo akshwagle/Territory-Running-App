@@ -9,6 +9,7 @@ import { HomePage } from './pages/feed-pages.jsx';
 import { WorkoutPage } from './pages/workout-pages.jsx';
 import { CommunityPage } from './pages/community-pages.jsx';
 
+import { UnreadProvider } from './notifications/unread.jsx';
 import { UIProvider, Skeleton, InlineNotice } from './ui/index.jsx';
 import { Shell } from './ui/Shell.jsx';
 import { PendingNotice } from './ui/PendingNotice.jsx';
@@ -17,6 +18,7 @@ const RunPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunPage}))
 const RunSummaryPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunSummaryPage})));
 const RunHistoryPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunHistoryPage})));
 const RunDetailPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunDetailPage})));
+const NotificationsPage=lazy(()=>import('./notifications/pages.jsx').then(m=>({default:m.NotificationsPage})));
 const StatsPage=lazy(()=>import('./stats/pages.jsx').then(m=>({default:m.StatsPage})));
 const TerritoryMapPage=lazy(()=>import('./map/TerritoryMapPage.jsx').then(m=>({default:m.TerritoryMapPage})));
 const ProfilePage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.ProfilePage })));
@@ -82,6 +84,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
     <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
     <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
     <Route path="/run" element={<Protected><RunPage/></Protected>}/><Route path="/run/summary" element={<Protected><RunSummaryPage/></Protected>}/><Route path="/run/history" element={<Protected><RunHistoryPage/></Protected>}/><Route path="/run/history/:id" element={<Protected><RunDetailPage/></Protected>}/>
+    <Route path="/notifications" element={<Protected><NotificationsPage/></Protected>}/>
     <Route path="/stats" element={<Protected><StatsPage/></Protected>}/>
     <Route path="/map" element={<Protected><TerritoryMapPage/></Protected>}/>
     <Route path="/home" element={<Protected><HomePage /></Protected>} />
@@ -97,7 +100,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
   </Routes></Suspense>;
   const ready = !['restoring', 'storageError', 'blocked'].includes(state.status) &&
     !(state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname));
-  return <Shell user={state.user} renderRoutes={ready ? pageRoutes : () => null}
+  return <UnreadProvider api={auth.api} userId={state.user?.id}><Shell user={state.user} renderRoutes={ready ? pageRoutes : () => null}
     showFooter={!state.user && location.pathname !== '/' || location.pathname === '/settings'}
     footer={<><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
       {ready && location.pathname !== '/' && location.pathname !== '/welcome' && state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome?.kind !== 'progress' && state.authOutcome && <Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice>}
@@ -112,5 +115,5 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
 
 
           </>}
-  </Shell>;
+  </Shell></UnreadProvider>;
 }

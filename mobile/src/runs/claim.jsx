@@ -17,6 +17,7 @@ export function ClaimResult({runId}){
   {claimed&&<dl className="claim-grid">{claimTiles(result.claim).map(tile=><div key={tile.key} className={`claim-tile claim-tile--${tile.key}`}><dt>{tile.label}</dt><dd>{tile.value}</dd></div>)}</dl>}
   {claimed&&result.claim.onCooldown>0&&<p className="small">{result.claim.onCooldown} cells belong to a runner whose cooldown has not ended.</p>}
   {claimed&&result.claim.restricted>0&&<p className="small">{result.claim.restricted} cells were in areas where claiming is not allowed.</p>}
+  {claimed&&result.badges?.length>0&&<div className="run-badges"><h3>Badge earned</h3><ul className="badge-chips">{result.badges.map(b=>(<li key={b.code} title={b.description||undefined}>{b.name}</li>))}</ul></div>}
   {!claimed&&flagText(result)&&<InlineNotice>{flagText(result)}</InlineNotice>}
  </section>;
 }

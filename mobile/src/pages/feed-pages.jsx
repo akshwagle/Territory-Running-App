@@ -3,6 +3,8 @@ import { Link } from 'react-router';
 import { useAuth } from '../auth/context.jsx';
 import { Avatar, Button, EmptyState, ErrorState, Skeleton } from '../ui/index.jsx';
 import { distanceLabel, paceLabel, timeLabel } from '../runs/format.js';
+import { Icon } from '../ui/icons.jsx';
+import { useUnread } from '../notifications/unread.jsx';
 import { useResource } from './settings-pages.jsx';
 
 const whenLabel = iso => new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -41,14 +43,17 @@ function Feed() {
 }
 
 export function HomePage() {
-  const { state } = useAuth();
+  const { state } = useAuth(), unread = useUnread().count;
   return <section className="feed-page">
     <div className="feed-top">
       <div>
         <p className="eyebrow">A little ground. A good run.</p>
         <h1 className="feed-greeting">Good to see you,<br/><bdi>{state.user.displayName}</bdi>.</h1>
       </div>
-      <Link className="home-avatar" to="/you" aria-label="Open your profile"><Avatar id={state.user.avatarId || 0} color={state.user.avatarColor} size={40}/></Link>
+      <div className="feed-top-actions">
+        <Link className="home-bell" to="/notifications" aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}><Icon name="bell"/>{unread > 0 && <span className="tab-badge" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}</Link>
+        <Link className="home-avatar" to="/you" aria-label="Open your profile"><Avatar id={state.user.avatarId || 0} color={state.user.avatarColor} size={40}/></Link>
+      </div>
     </div>
     <Link className="outline-action map-entry" to="/map">Open territory map</Link>
     <div className="feed-heading"><h2>Your feed</h2></div>
