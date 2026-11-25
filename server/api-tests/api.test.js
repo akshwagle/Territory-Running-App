@@ -153,6 +153,7 @@ require('./profile-cases')({ prisma, pool, config });
 require('./run-cases')({prisma,pool,config});
 require('./community-cases')({prisma,config});
 require('./stats-cases')({prisma,config});
+require('./notification-cases')({prisma,config});
 
 test('release registration copies exact bytes, hashes them and idempotently upserts without deactivating older releases', async () => {
   const source = path.join(directory, 'test-source.apk');
