@@ -17,6 +17,7 @@ const RunPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunPage}))
 const RunSummaryPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunSummaryPage})));
 const RunHistoryPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunHistoryPage})));
 const RunDetailPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunDetailPage})));
+const TerritoryMapPage=lazy(()=>import('./map/TerritoryMapPage.jsx').then(m=>({default:m.TerritoryMapPage})));
 const ProfilePage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.ProfilePage })));
 const PrivacyPage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.PrivacyPage })));
 const ConsentPage = lazy(() => import('./pages/data-pages.jsx').then(m => ({ default: m.ConsentPage })));
@@ -80,6 +81,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
     <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
     <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
     <Route path="/run" element={<Protected><RunPage/></Protected>}/><Route path="/run/summary" element={<Protected><RunSummaryPage/></Protected>}/><Route path="/run/history" element={<Protected><RunHistoryPage/></Protected>}/><Route path="/run/history/:id" element={<Protected><RunDetailPage/></Protected>}/>
+    <Route path="/map" element={<Protected><TerritoryMapPage/></Protected>}/>
     <Route path="/home" element={<Protected><HomePage /></Protected>} />
     <Route path="/workout" element={<Protected><WorkoutPage /></Protected>} />
     <Route path="/community" element={<Protected><CommunityPage /></Protected>} />

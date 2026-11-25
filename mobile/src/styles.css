@@ -430,3 +430,4 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
   h1 { font-size: 2.5rem; }
   .ui-dialog, .ui-sheet { padding-inline: 16px; }
 }
+.map-entry { display: grid; place-items: center; margin: 12px 0; text-decoration: none; }

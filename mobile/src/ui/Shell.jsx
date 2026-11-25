@@ -10,7 +10,7 @@ export const TABS = [
   { to: '/settings', label: 'Settings', icon: 'settings' },
   { to: '/you', label: 'You', icon: 'user' },
 ];
-const TITLES = { '/': 'Territory Run', '/welcome': 'Territory Run', '/home': 'Territory Run', '/workout': 'Workout', '/community': 'Community', '/run': 'Run', '/run/history': 'Run history', '/run/summary': 'Run summary', '/you': 'You', '/you/privacy': 'Privacy', '/you/consent': 'Consent',
+const TITLES = { '/': 'Territory Run', '/welcome': 'Territory Run', '/home': 'Territory Run', '/workout': 'Workout', '/community': 'Community', '/run': 'Run', '/map': 'Territory map', '/run/history': 'Run history', '/run/summary': 'Run summary', '/you': 'You', '/you/privacy': 'Privacy', '/you/consent': 'Consent',
   '/settings': 'Settings', '/settings/methods': 'Sign-in methods', '/settings/sessions': 'Active sessions',
   '/settings/password': 'Password', '/settings/export': 'Export data', '/settings/delete': 'Delete account',
   '/login': 'Log in', '/signup': 'Create account', '/forgot': 'Password help', '/reset': 'Reset password', '/verify': 'Email verification' };
