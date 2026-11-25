@@ -18,7 +18,8 @@ export async function watchPlatform({ platform = Capacitor.getPlatform(), bars =
   function hidden() { delete doc.documentElement.dataset.keyboardOpen; }
   const focus = () => { if ('keyboardOpen' in doc.documentElement.dataset) schedule(revealField); };
   try {
-    await bars.setStyle({ style: SystemBarsStyle.Light });
+    const light = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches;
+    await bars.setStyle({ style: light ? SystemBarsStyle.Default : SystemBarsStyle.Light });
     handles.push(await keyboard.addListener('keyboardDidShow', shown));
     handles.push(await keyboard.addListener('keyboardDidHide', hidden));
     doc.addEventListener('focusin', focus);
