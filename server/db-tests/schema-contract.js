@@ -19,8 +19,8 @@ const columns = {
   seasons: 'id:u name:v60 starts_at:t ends_at:t status:SeasonStatus',
   season_scores: 'season_id:u user_id:u hexes_held:i distance_m:b final_rank:i',
   user_stats: 'user_id:u total_runs:i total_dist_m:b streak_days:i best_streak:i last_run_on:d? updated_at:t',
-  runs: 'id:u user_id:u client_run_id:u started_at:t ended_at:t distance_m:i duration_s:i route_polyline:x h3_resolution:s status:RunStatus mock_gps:o app_version:v20 created_at:t',
-  run_points: 'id:b run_id:u seq:i lat:f lng:f recorded_at:t accuracy_m:r speed_mps:r?',
+  runs: 'id:u user_id:u client_run_id:u started_at:t ended_at:t? distance_m:i duration_s:i? route_polyline:x h3_resolution:s status:RunStatus mock_gps:o app_version:v20 created_at:t run_signals:j deleted_at:t?',
+  run_points: 'id:b run_id:u seq:i lat:f lng:f recorded_at:t accuracy_m:r speed_mps:r? provider:v16 is_mock:o?',
   run_flags: 'id:u run_id:u zone_id:u? reason:FlagReason details:x? status:FlagStatus reporter_id:u? resolver_id:u? created_at:t resolved_at:t?',
   hex_ownership: 'h3_index:b owner_id:u run_id:u claimed_at:t cooldown_until:t',
   run_hexes: 'run_id:u h3_index:b outcome:HexOutcome prev_owner_id:u? created_at:t',
@@ -36,7 +36,7 @@ const columns = {
   app_releases: 'id:u version_code:i version_name:v20 apk_url:x sha256:v64 changelog:x? is_active:o published_at:t',
 };
 
-const types = { u: 'uuid', x: 'text', y: 'bytea', t: 'timestamp(6) with time zone', b: 'bigint', i: 'integer', s: 'smallint', d: 'date', o: 'boolean', f: 'double precision', r: 'real' };
+const types = { j: 'jsonb', u: 'uuid', x: 'text', y: 'bytea', t: 'timestamp(6) with time zone', b: 'bigint', i: 'integer', s: 'smallint', d: 'date', o: 'boolean', f: 'double precision', r: 'real' };
 function expectedColumns() {
   return Object.entries(columns).flatMap(([table, fields]) => fields.split(' ').map((field) => {
     const [column, spec] = field.split(':');
@@ -57,7 +57,7 @@ const enums = {
   TeamRole: ['CAPTAIN', 'MEMBER'],
   SeasonStatus: ['UPCOMING', 'ACTIVE', 'ENDED'],
   BadgeCriteria: ['TOTAL_DISTANCE', 'HEX_COUNT', 'STREAK_DAYS', 'RUN_COUNT'],
-  RunStatus: ['UPLOADING', 'PENDING', 'VALID', 'FLAGGED', 'REJECTED'],
+  RunStatus: ['UPLOADING', 'PENDING', 'VALID', 'FLAGGED', 'REJECTED', 'ACTIVE', 'PENDING_VALIDATION'],
   HexOutcome: ['CAPTURED', 'REFRESHED', 'ON_COOLDOWN', 'RESTRICTED'],
   FlagReason: ['SPEED_LIMIT', 'GPS_JUMP', 'VEHICLE_PATTERN', 'MOCK_LOCATION', 'RESTRICTED_ZONE', 'USER_REPORT'],
   FlagStatus: ['OPEN', 'DISMISSED', 'CONFIRMED'],

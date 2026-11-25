@@ -37,7 +37,7 @@ before(async () => {
   await pool.query(fs.readFileSync(path.join(serverRoot, 'prisma/migrations/20261112000000_auth_foundation/migration.sql'), 'utf8'));
   runPrisma(['migrate', 'resolve', '--applied', '20261112000000_auth_foundation'], config.connectionString);
   authCount = (await pool.query("SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema='public' AND table_name<>'_prisma_migrations'")).rows[0].n;
-  runPrisma(['migrate', 'deploy'], config.connectionString);
+  console.log(runPrisma(['migrate', 'deploy'], config.connectionString));
 });
 after(async () => { await pool.end(); });
 
@@ -52,7 +52,7 @@ test('Phase 1 has 26 tables; auth has 27; reviewed profile/privacy migration has
   t.diagnostic(`Verified application table count: Phase 1 = ${phase1Count}; auth = ${authCount}; profile/privacy = ${rows.length}`);
   assert.deepEqual(rows.map((row) => row.table_name), Object.keys(contract.columns).sort());
   const { rows: migrations } = await pool.query('SELECT migration_name, finished_at, rolled_back_at FROM _prisma_migrations');
-  assert.equal(migrations.length, 3);
+  assert.equal(migrations.length, 5);
   assert.ok(migrations.every((row) => row.finished_at && row.rolled_back_at === null));
   // A second deploy must be a no-op.
   runPrisma(['migrate', 'deploy'], config.connectionString);
@@ -183,6 +183,7 @@ test('UUID defaults, timestamp defaults, identity columns and all explicit defau
     'run_flags.status': `'OPEN'::"FlagStatus"`, 'user_privacy_settings.hide_route': 'true',
     'user_privacy_settings.hide_radius_m': '200', 'user_stats.total_runs': '0', 'user_stats.total_dist_m': '0',
     'user_stats.streak_days': '0', 'user_stats.best_streak': '0', 'runs.route_polyline': `''::text`,
+    'runs.run_signals': "'{}'::jsonb", 'run_points.provider': "'unknown'::character varying",
     'runs.h3_resolution': '11', 'runs.mock_gps': 'false', 'restricted_zones.active': 'true',
     'devices.platform': `'ANDROID'::character varying`, 'app_releases.is_active': 'true',
   });
@@ -193,7 +194,7 @@ test('UUID defaults, timestamp defaults, identity columns and all explicit defau
   }
 });
 
-test('all primary/unique keys, ordinary indexes and three partial unique indexes match the spec', async () => {
+test('all primary/unique keys, ordinary indexes and four partial unique indexes match the spec', async () => {
   const { rows } = await pool.query(`
     SELECT c.relname AS table, i.indisprimary AS primary, i.indisunique AS unique,
            pg_get_expr(i.indpred, i.indrelid) AS predicate,
@@ -214,6 +215,7 @@ test('all primary/unique keys, ordinary indexes and three partial unique indexes
     table: row.table, unique: row.unique, columns: row.columns, predicate: row.predicate,
   })).sort((a, b) => a.table.localeCompare(b.table)), [
     { table: 'data_exports', unique: true, columns: ['user_id'], predicate: `(status = ANY (ARRAY['PENDING'::"ExportStatus", 'READY'::"ExportStatus"]))` },
+    { table: 'runs', unique: true, columns: ['user_id'], predicate: `((status = 'ACTIVE'::"RunStatus") AND (deleted_at IS NULL))` },
     { table: 'seasons', unique: true, columns: ['status'], predicate: `(status = 'ACTIVE'::"SeasonStatus")` },
     { table: 'team_members', unique: true, columns: ['team_id'], predicate: `(role = 'CAPTAIN'::"TeamRole")` },
   ]);
@@ -228,6 +230,9 @@ test('all primary/unique keys, ordinary indexes and three partial unique indexes
     'users_email_lowercase_check', 'follows_no_self_follow_check', 'badges_threshold_positive_check',
     'seasons_time_order_check', 'runs_time_order_check', 'runs_distance_nonnegative_check',
     'runs_duration_positive_check', 'run_flags_reporter_reason_check',
+    'runs_recording_state_check', 'runs_max_length_check', 'runs_signals_object_check',
+    'run_points_provider_check', 'run_points_seq_nonnegative_check', 'run_points_coordinates_check',
+    'run_points_accuracy_check', 'run_points_speed_check',
     'auth_tokens_refresh_family_check', 'auth_tokens_rotation_state_check', 'auth_tokens_grace_state_check',
   ].sort());
   assert.ok(checks.every((row) => row.convalidated));
@@ -248,7 +253,7 @@ test('all foreign keys and delete actions match, with no foreign keys on deliber
 
 test('populated test database guard refuses reuse without changing any data', async () => {
   await assert.rejects(() => verifyEmptyDatabase(pool, config.database), /test database must be empty/);
-  assert.equal((await pool.query('SELECT migration_name FROM _prisma_migrations')).rowCount, 3);
+  assert.equal((await pool.query('SELECT migration_name FROM _prisma_migrations')).rowCount, 5);
 });
 
 test('duplicate run upload and duplicate point chunk are rejected; other users may reuse a client ID', async () => {
@@ -542,3 +547,5 @@ test('seed runs twice idempotently: scrypt admin/identity, correct defaults/badg
 });
 
 require('./profile-privacy-cases')({ pool });
+
+require('./run-recording-cases')({pool});
