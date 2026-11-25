@@ -161,6 +161,7 @@ function createRunService({prisma,config}){
     signals.summary.validation={reasons:verdict.reasons};
     const finished=await tx.run.update({where:{id:row.id},data:{status:verdict.status,runSignals:signals}});
     const newBadges=await runCompleted(tx,finished,verdict,summary.distanceM);
+    if(newBadges.length){signals.summary.badges=newBadges.map(b=>b.code);await tx.run.update({where:{id:row.id},data:{runSignals:signals}});}
     return newBadges.length?{run:dto(finished),newBadges}:{run:dto(finished)};
   }
   const finish=(req,id,input)=>transaction(req,async(tx,user,now)=>{const row=await owned(tx,user,id);installer(req,row);return complete(tx,row,input,now);});
