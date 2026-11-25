@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const crypto = require('node:crypto');
 const helmet = require('helmet');
 const cors = require('cors');
 const { rateLimit } = require('express-rate-limit');
@@ -22,6 +23,10 @@ function notFound(res) { return res.status(404).json(errorBody('NOT_FOUND', 'The
 function createApp({ prisma, config, exportDir, downloadDir = path.resolve(__dirname, '../storage/apk'), logger = console.info, clock = () => new Date(), mailer, verifyGoogle }) {
   const app = express();
   app.disable('x-powered-by');
+  app.set('trust proxy', config.trustProxy ?? 0);
+  let shuttingDown = false;
+  app.locals.setShuttingDown = () => { shuttingDown = true; };
+  app.use((req, res, next) => { req.id = crypto.randomUUID(); res.set('X-Request-Id', req.id); next(); });
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use((_req, res, next) => { res.set('Date', clock().toUTCString()); next(); });
   app.use((req, res, next) => {
@@ -30,7 +35,7 @@ function createApp({ prisma, config, exportDir, downloadDir = path.resolve(__dir
       // Only fixed route labels: never log URLs, query strings, headers, bodies,
       // cookies, IPs, database errors or user-supplied filenames.
       const route = req.route?.path ?? 'unmatched';
-      logger(JSON.stringify({ method: req.method, route, status: res.statusCode, durationMs: Math.round(performance.now() - start) }));
+      logger(JSON.stringify({ level: res.statusCode >= 500 ? 'error' : 'info', time: new Date().toISOString(), requestId: req.id, method: req.method, route, status: res.statusCode, durationMs: Math.round(performance.now() - start) }));
     });
     next();
   });
@@ -43,6 +48,14 @@ function createApp({ prisma, config, exportDir, downloadDir = path.resolve(__dir
     exposedHeaders: ['Date'],
   }));
 
+  // Orchestrator probes: no auth, no data, exempt from the API rate limit.
+  app.get('/api/live', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ status: 'ok' }); });
+  app.get('/api/ready', async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (shuttingDown) return res.status(503).json({ status: 'shutting_down' });
+    try { await prisma.$queryRaw`SELECT 1`; return res.json({ status: 'ready' }); }
+    catch { return res.status(503).json({ status: 'not_ready' }); }
+  });
   app.use('/api', rateLimit({
     windowMs: config.rateLimitWindowMs, limit: config.rateLimitMax,
     standardHeaders: 'draft-8', legacyHeaders: false,
@@ -120,6 +133,8 @@ function createApp({ prisma, config, exportDir, downloadDir = path.resolve(__dir
       return res.status(415).json(errorBody('UNSUPPORTED_ENCODING', 'Use an uncompressed UTF-8 JSON body.'));
     }
     if (req.originalUrl.startsWith('/downloads') && (error instanceof URIError || [400, 403, 404].includes(error.status))) return notFound(res);
+    // Class name and request id only: never the message, stack, SQL or user data.
+    logger(JSON.stringify({ level: 'error', time: new Date().toISOString(), requestId: req.id, event: 'unhandled_error', errorName: String(error?.name ?? 'Error').slice(0, 60), errorCode: typeof error?.code === 'string' ? error.code.slice(0, 40) : undefined }));
     return res.status(500).json(errorBody('INTERNAL_ERROR', 'The request could not be completed.'));
   });
   return app;
