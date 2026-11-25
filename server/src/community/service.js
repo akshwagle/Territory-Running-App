@@ -3,6 +3,7 @@ const crypto=require('node:crypto');
 const {Prisma}=require('@prisma/client');
 const {currentAccount,publicError}=require('../profile/common');
 const {canView,leaderboardIdentity}=require('../profile/privacy');
+const {notify}=require('../notifications/service');
 
 const MAX_TEAM_MEMBERS=50,MAX_FOLLOWING=500,MAX_PAGE=50;
 const CODE_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -141,6 +142,11 @@ function createCommunityService({prisma,clock=()=>new Date()}){
     if(await tx.follow.findUnique({where:{followerId_followeeId:{followerId:user.id,followeeId:id}}}))return {following:true};
     if(await tx.follow.count({where:{followerId:user.id}})>=MAX_FOLLOWING)fail(409,'FOLLOW_LIMIT','You follow the maximum number of runners.');
     await tx.follow.create({data:{followerId:user.id,followeeId:id}});
+    // Private runners are not named to the person they follow.
+    const vis=(await tx.userPrivacySetting.findUnique({where:{userId:user.id},select:{profileVisibility:true}}))?.profileVisibility||'PRIVATE';
+    const who=vis==='PRIVATE'?'A runner':user.displayName;
+    if(!await tx.notification.findFirst({where:{userId:id,type:'SYSTEM',title:'New follower',body:`${who} started following you.`,readAt:null}}))
+      await notify(tx,id,{type:'SYSTEM',title:'New follower',body:`${who} started following you.`});
     return {following:true};
   });
   const unfollow=(req,id)=>read(req,async(tx,user)=>{
@@ -210,6 +216,8 @@ function createCommunityService({prisma,clock=()=>new Date()}){
     if(count>=MAX_TEAM_MEMBERS)fail(409,'TEAM_FULL','This team is full.');
     try{await tx.teamMember.create({data:{userId:user.id,teamId:team.id,role:'MEMBER'}});}
     catch(e){if(e.code==='P2002')fail(409,'ALREADY_IN_TEAM','Leave your current team first.');throw e;}
+    const cap=await tx.teamMember.findFirst({where:{teamId:team.id,role:'CAPTAIN'},select:{userId:true}});
+    if(cap&&cap.userId!==user.id)await notify(tx,cap.userId,{type:'SYSTEM',title:'New team member',body:`${user.displayName} joined ${team.name}.`});
     return {team:teamDto(team,'MEMBER',count+1,true)};
   },{timeout:20000});
   const leaveTeam=req=>prisma.$transaction(async tx=>{
@@ -222,7 +230,8 @@ function createCommunityService({prisma,clock=()=>new Date()}){
     await tx.teamMember.delete({where:{userId:user.id}});
     const next=await tx.teamMember.findFirst({where:{teamId:m.teamId},orderBy:[{joinedAt:'asc'},{userId:'asc'}]});
     if(!next)await tx.team.delete({where:{id:m.teamId}});
-    else if(m.role==='CAPTAIN')await tx.teamMember.update({where:{userId:next.userId},data:{role:'CAPTAIN'}});
+    else if(m.role==='CAPTAIN'){await tx.teamMember.update({where:{userId:next.userId},data:{role:'CAPTAIN'}});await notify(tx,next.userId,{type:'SYSTEM',title:'You are now team captain',body:`${user.displayName} left and you now lead the team.`});}
+    else{const cap=await tx.teamMember.findFirst({where:{teamId:m.teamId,role:'CAPTAIN'},select:{userId:true}});if(cap)await notify(tx,cap.userId,{type:'SYSTEM',title:'Team member left',body:`${user.displayName} left your team.`});}
     return {left:true};
   },{timeout:20000});
   const removeMember=(req,id)=>prisma.$transaction(async tx=>{
@@ -233,6 +242,7 @@ function createCommunityService({prisma,clock=()=>new Date()}){
     if(id===user.id)fail(400,'INVALID_TARGET','Use leave team instead.');
     const r=await tx.teamMember.deleteMany({where:{userId:id,teamId:me.teamId}});
     if(!r.count)fail(404,'NOT_FOUND','That member was not found.');
+    await notify(tx,id,{type:'SYSTEM',title:'Removed from team',body:'The team captain removed you from the team.'});
     return {removed:true};
   },{timeout:20000});
   const members=req=>read(req,async(tx,user)=>{

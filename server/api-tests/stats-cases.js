@@ -61,7 +61,7 @@ module.exports=({prisma,config})=>{
  test('STAT-04 achievements show derived progress against seeded badges',async t=>{
   const f=await fixture(t),a=await f.signup();await f.run(a,{distanceM:6000});
   const badge=await prisma.badge.create({data:{code:`t${randomUUID().slice(0,8)}`,name:'Test',criteria:'RUN_COUNT',threshold:1}});
-  const hard=await prisma.badge.create({data:{code:`t${randomUUID().slice(0,8)}`,name:'Hard',criteria:'TOTAL_DISTANCE',threshold:1000}});
+  const hard=await prisma.badge.create({data:{code:`t${randomUUID().slice(0,8)}`,name:'Hard',criteria:'TOTAL_DISTANCE',threshold:1000000}});
   t.after(()=>prisma.badge.deleteMany({where:{id:{in:[badge.id,hard.id]}}}));
   const res=await f.call(a,'/api/me/stats/achievements');assert.equal(res.status,200);
   const easy=res.body.badges.find(x=>x.id===badge.id),big=res.body.badges.find(x=>x.id===hard.id);

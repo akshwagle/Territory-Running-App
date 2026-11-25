@@ -9,6 +9,7 @@ const {ownerOrCanView}=require('./access');
 const {haversine,sequenceGaps,summarize}=require('./math');
 const {id:uuid}=require('./validation');
 const {validateAndClaim}=require('../territory/claim');
+const {runCompleted}=require('../notifications/service');
 const fail=(status,code,message)=>{throw publicError(status,code,message);};
 const stable=value=>value instanceof Date?value.toISOString():Array.isArray(value)?value.map(stable):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,stable(value[key])])):value;
 const digest=value=>createHash('sha256').update(JSON.stringify(stable(value))??'null').digest('hex');
@@ -159,7 +160,8 @@ function createRunService({prisma,config}){
     const verdict=await validateAndClaim(tx,{run:closed,points:activePoints,summary,pointMeta:signals.pointMeta||{}});
     signals.summary.validation={reasons:verdict.reasons};
     const finished=await tx.run.update({where:{id:row.id},data:{status:verdict.status,runSignals:signals}});
-    return {run:dto(finished)};
+    const newBadges=await runCompleted(tx,finished,verdict,summary.distanceM);
+    return newBadges.length?{run:dto(finished),newBadges}:{run:dto(finished)};
   }
   const finish=(req,id,input)=>transaction(req,async(tx,user,now)=>{const row=await owned(tx,user,id);installer(req,row);return complete(tx,row,input,now);});
   async function endStale(req,id){return transaction(req,async(tx,user,now)=>{

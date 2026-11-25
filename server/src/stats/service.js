@@ -3,6 +3,7 @@ const {Prisma}=require('@prisma/client');
 const {currentAccount,lockAccountWork,publicError}=require('../profile/common');
 const {databaseNow}=require('../auth/session-core');
 const {computeSplits}=require('./splits');
+const {progressValues,UNITS}=require('../notifications/badges');
 const DAY=86400000,MAX_SPLIT_POINTS=60000;
 const num=v=>v===null||v===undefined?0:Number(v);
 const RANGES={week:{bucket:'day',count:7},month:{bucket:'day',count:30},year:{bucket:'month',count:12}};
@@ -42,14 +43,11 @@ function createStatsService({prisma}){
       mostCellsInRun:hex?{runId:hex.id,startedAt:hex.started_at,cells:hex.n}:null,bestStreakDays:stat?.bestStreak||0};
   });}
   async function achievements(req){return transaction(req,async(tx,user)=>{
-    const [badges,earned,[tot],[cells],stat]=await Promise.all([tx.badge.findMany({orderBy:[{criteria:'asc'},{threshold:'asc'}]}),tx.userBadge.findMany({where:{userId:user.id}}),
-      tx.$queryRaw`SELECT COUNT(*)::int AS runs,COALESCE(SUM(distance_m),0)::bigint AS dist FROM runs WHERE user_id=${user.id}::uuid AND ${completed}`,
-      tx.$queryRaw`SELECT COUNT(*)::int AS n FROM hex_ownership WHERE owner_id=${user.id}::uuid`,tx.userStat.findUnique({where:{userId:user.id}})]);
+    const [badges,earned,value]=await Promise.all([tx.badge.findMany({orderBy:[{criteria:'asc'},{threshold:'asc'}]}),tx.userBadge.findMany({where:{userId:user.id}}),progressValues(tx,user.id)]);
     const awarded=new Map(earned.map(e=>[e.badgeId,e.awardedAt]));
-    const value={TOTAL_DISTANCE:Math.floor(num(tot.dist)/1000),HEX_COUNT:cells.n,STREAK_DAYS:Math.max(stat?.bestStreak||0,stat?.streakDays||0),RUN_COUNT:tot.runs};
-    const unit={TOTAL_DISTANCE:'km',HEX_COUNT:'cells',STREAK_DAYS:'days',RUN_COUNT:'runs'};
-    return {badges:badges.map(b=>{const progress=value[b.criteria];return {id:b.id,code:b.code,name:b.name,description:b.description,criteria:b.criteria,unit:unit[b.criteria],threshold:b.threshold,
-      progress:Math.min(progress,b.threshold),earned:progress>=b.threshold||awarded.has(b.id),awardedAt:awarded.get(b.id)||null};})};
+    // Distance thresholds are stored in metres; the API reports kilometres.
+    return {badges:badges.map(b=>{const km=b.criteria==='TOTAL_DISTANCE',div=km?1000:1,progress=Math.floor(value[b.criteria]/div),threshold=Math.floor(b.threshold/div);return {id:b.id,code:b.code,name:b.name,description:b.description,criteria:b.criteria,unit:UNITS[b.criteria],threshold,
+      progress:Math.min(progress,threshold),earned:value[b.criteria]>=b.threshold||awarded.has(b.id),awardedAt:awarded.get(b.id)||null};})};
   });}
   async function splits(req,id,{unit}){return transaction(req,async(tx,user)=>{
     const run=await tx.run.findFirst({where:{id,userId:user.id,deletedAt:null},select:{id:true,status:true}});

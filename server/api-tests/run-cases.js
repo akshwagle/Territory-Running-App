@@ -311,6 +311,10 @@ module.exports=({prisma,config})=>{
   assert.equal(lateResult.claim.captured,held.length);assert.equal(lateResult.claim.capturedFromOthers,held.length);assert.equal(lateResult.claim.heldNow,held.length);
   assert.equal(await prisma.hexOwnership.count({where:{ownerId:a.user.id}}),0);assert.equal(await prisma.hexOwnership.count({where:{ownerId:b.user.id}}),held.length);
   const lostView=await claimOf(f,a,first.r);assert.equal(lostView.claim.claimed,held.length);assert.equal(lostView.claim.lost,held.length);assert.equal(lostView.claim.heldNow,0);
+  const aNotes=await prisma.notification.findMany({where:{userId:a.user.id},orderBy:{createdAt:'asc'}});
+  assert.deepEqual(aNotes.map(n=>n.type),['RUN_VALIDATED','HEX_LOST']);assert.ok(aNotes[1].body.startsWith(`${held.length} of your cells`));
+  assert.ok(!JSON.stringify(aNotes).includes(b.user.displayName),'capturer is never named');
+  assert.equal(await prisma.notification.count({where:{userId:b.user.id,type:'HEX_LOST'}}),0);
   assert.equal((await f.call(a,'get','/api/territory/me')).body.count,0);
   // The same runner running over their own expired cells refreshes them.
   await prisma.$executeRaw`UPDATE hex_ownership SET cooldown_until=now()-interval '1 minute' WHERE owner_id=${b.user.id}::uuid`;
