@@ -1,0 +1,47 @@
+# Example only. Copy to docker-compose.production.yml, then:
+#   docker compose -f docker-compose.production.yml --env-file server/.env.production up -d --build
+# Put a TLS-terminating reverse proxy (Caddy, nginx, a cloud load balancer) in front of
+# "api"; the API must be reachable by the phone only over HTTPS. Prefer a managed
+# PostgreSQL and delete the "postgres" service if you use one.
+services:
+  migrate:
+    build: ./server
+    command: ["npx", "prisma", "migrate", "deploy"]
+    env_file: server/.env.production
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+  api:
+    build: ./server
+    env_file: server/.env.production
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      TRUST_PROXY: "1"
+    ports:
+      - "127.0.0.1:4000:4000"   # the proxy connects here; do not publish publicly
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    volumes:
+      - apk_storage:/app/storage/apk
+    read_only: true
+    tmpfs: ["/tmp"]
+    stop_grace_period: 20s
+    restart: unless-stopped
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in server/.env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in server/.env.production}
+      POSTGRES_DB: ${POSTGRES_DB:?set in server/.env.production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+volumes:
+  apk_storage:
+  postgres_data:
