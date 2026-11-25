@@ -11,7 +11,7 @@ export function WorkoutPage() {
   const show = useToast(), navigate = useNavigate(), [detail, setDetail] = useState(null);
   return <section className="workout-page">
     <h1>Workout</h1>
-    <p className="page-lead">Choose a sport to start. Run recording is live; ride recording and territory claiming arrive in a later build.</p>
+    <p className="page-lead">Choose a sport to start. Run recording and territory claiming are live; ride recording arrives in a later build.</p>
     {SPORTS.map(sport => <article className="sport-card" key={sport.key}>
       <div className="sport-head">
         <span className="sport-icon" aria-hidden="true"><Icon name={sport.icon}/></span>
@@ -25,7 +25,7 @@ export function WorkoutPage() {
     <p className="workout-note">Recording needs location consent; you can change it any time in Profile → Privacy.</p>
     {detail && <Sheet title={`${detail.label} recording`} onClose={() => setDetail(null)}>
       <p>{detail.copy}</p>
-      <p className="small">{detail.key === 'run' ? 'Runs record GPS on this phone and upload when finished. Territory claiming is not added yet.' : 'Ride recording is not available yet.'}</p>
+      <p className="small">{detail.key === 'run' ? 'Runs record GPS on this phone and upload when finished. Cells you cross become your territory once the run is validated.' : 'Ride recording is not available yet.'}</p>
       <div className="editor-actions"><Button onClick={() => setDetail(null)}>Close</Button></div>
     </Sheet>}
   </section>;
