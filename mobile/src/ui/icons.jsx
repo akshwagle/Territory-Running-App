@@ -17,6 +17,7 @@ const paths = {
   users: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-6 9v-1a6 6 0 0 1 12 0v1M17 6a3 3 0 0 1 0 6m1 3a5 5 0 0 1 4 5v1',
   flame: 'M12 21c4 0 6-2.6 6-6 0-4-4-4-4-9-2 2-3 4-3 6-1-1-2-2-2-4-2 3-3 5-3 7 0 3.4 2 6 6 6Z',
   chart: 'M4 20V10m5 10V5m5 15v-7m5 7V8',
+  bell: 'M6 17V11a6 6 0 0 1 12 0v6l2 2H4l2-2Zm4 4h4',
 };
 export function Icon({ name, ...props }) {
   return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true" focusable="false" {...props}><path d={paths[name] || paths.chevron} /></svg>;

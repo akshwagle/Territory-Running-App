@@ -45,7 +45,7 @@ it('closing an editor keeps unsaved native autofill in memory and does not submi
   screen.getByLabelText('Bio',{exact:true}).value='Draft from keyboard';await user.click(screen.getByRole('button',{name:'Close',exact:true}));
   expect(screen.getByText('Draft from keyboard')).toBeVisible();expect(screen.getByText('Unsaved changes')).toBeVisible();
   await user.click(screen.getByRole('button',{name:/^Bio/}));expect(screen.getByLabelText('Bio',{exact:true})).toHaveValue('Draft from keyboard');
-  expect(auth.api.request).toHaveBeenCalledTimes(1);
+  expect(auth.api.request.mock.calls.filter(([url,o])=>url==='/api/me/profile'&&o?.method==='PATCH')).toHaveLength(0);
 });
 it.each([ProfilePage,PrivacyPage,ConsentPage,DeletePage])('%s shows offline error and retry instead of blank content',async Page=>{
   const {auth,user}=setup(Page,async()=>{throw new ApiError('NETWORK_UNAVAILABLE','Cannot reach the server.');});

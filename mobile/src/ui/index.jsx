@@ -104,7 +104,7 @@ export function Screen({ title, onBack, children, bottom, className = '', scroll
     <main id="main" ref={scrollRef} onScroll={event => { setScrolled(event.currentTarget.scrollTop > 0); onScroll?.(event); }}>{children}</main>{bottom}
   </div>;
 }
-export function TabBar({ tabs, active, onSelect }) { return <nav className="ui-tabs" aria-label="Main navigation">{tabs.map(tab => <Link key={tab.to} to={tab.to} onClick={event => onSelect?.(event, tab)} aria-current={active === tab.to ? 'page' : undefined}><span className="ui-tab-icon"><Icon name={tab.icon}/></span><span>{tab.label}</span></Link>)}</nav>; }
+export function TabBar({ tabs, active, onSelect }) { return <nav className="ui-tabs" aria-label="Main navigation">{tabs.map(tab => <Link key={tab.to} to={tab.to} onClick={event => onSelect?.(event, tab)} aria-current={active === tab.to ? 'page' : undefined}><span className="ui-tab-icon"><Icon name={tab.icon}/>{tab.badge>0&&<span className="tab-badge" role="status" aria-label={`${tab.badge} unread notifications`}>{tab.badge>9?'9+':tab.badge}</span>}</span><span>{tab.label}</span></Link>)}</nav>; }
 
 // Flat, tabular figures for live recording and finished summaries.
 export function RunStats({time,distance,pace}){return <dl className="ui-run-stats"><div><dt>Time</dt><dd>{time}</dd></div><div><dt>Distance</dt><dd>{distance}</dd></div><div><dt>Pace</dt><dd>{pace}</dd></div></dl>;}

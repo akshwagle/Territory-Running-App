@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 
 export const ROOT_ROUTES = new Set(['/', '/welcome', '/home', '/workout', '/community', '/you', '/settings']);
 export function parentRoute(path) {
-  if(path==='/map')return '/home';
+  if(path==='/map'||path==='/notifications')return '/home';
   if(path==='/run')return '/workout';
   if(path.startsWith('/run/'))return path==='/run/history'?'/run':path==='/run/summary'?'/run':'/run/history';
   if (path === '/you/privacy') return '/you';
