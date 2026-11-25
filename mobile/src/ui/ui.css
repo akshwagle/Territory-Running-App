@@ -153,3 +153,15 @@
 .ui-route-trace { margin: 24px 0; color: var(--color-pine); }
 .ui-route-trace svg { display: block; width: 100%; max-height: 300px; }
 .ui-route-trace figcaption { margin-top: 12px; color: var(--color-muted); }
+
+/* Territory result on the run summary and run detail screens. */
+.claim-result { margin: 24px 0; }
+.claim-result h2 { margin: 0 0 12px; font-size: 1.25rem; }
+.claim-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.claim-tile { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 4px; min-height: 88px; padding: 16px;
+  border: 1px solid var(--color-line); border-radius: 16px; background: linear-gradient(160deg, rgba(var(--accent-rgb), .09), rgba(255, 255, 255, .015) 62%); }
+.claim-tile dt { font-size: .875rem; color: var(--color-muted); }
+.claim-tile dd { margin: 0; font: 600 clamp(1.75rem, 9vw, 2.5rem)/1.1 var(--font-body); font-variant-numeric: tabular-nums; }
+.claim-tile--claimed dd, .claim-tile--held dd { color: var(--accent); }
+@media (max-width: 340px) { .claim-grid { grid-template-columns: minmax(0, 1fr); } }
+.claim-tile--lost dd { color: var(--danger-text); }

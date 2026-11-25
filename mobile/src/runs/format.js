@@ -21,3 +21,21 @@ export function routePaths(encodedSegments=[]){
   const xs=flat.map(p=>p[0]),ys=flat.map(p=>p[1]),left=Math.min(...xs),top=Math.min(...ys),width=Math.max(...xs)-left,height=Math.max(...ys)-top,scale=260/Math.max(width,height,.00001);
   return projected.map(points=>points.map(([x,y],i)=>`${i?'L':'M'}${(20+(260-width*scale)/2+(x-left)*scale).toFixed(2)},${(20+(260-height*scale)/2+(y-top)*scale).toFixed(2)}`).join(' '));
 }
+const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
+export function claimTiles(claim={}){
+ return [{key:'claimed',label:'Claimed',value:claim.claimed||0},{key:'captured',label:'Taken from others',value:claim.capturedFromOthers||0},
+  {key:'lost',label:'Lost since',value:claim.lost||0},{key:'held',label:'Held now',value:claim.heldNow||0}];
+}
+export function verdictText(result){
+ if(result.status==='VALID')return result.claim.claimed?`You claimed ${plural(result.claim.claimed,'hex','hexes')}`:'No new territory this time';
+ if(result.status==='FLAGGED')return 'Held for review';
+ if(result.status==='REJECTED')return 'Too short to claim';
+ return 'Checking this run';
+}
+const REASONS={MOCK_LOCATION:'Mock location was detected.',SPEED_LIMIT:'The pace was faster than a run.',GPS_JUMP:'The GPS trace jumped between places.',TOO_SHORT:'Runs need about 100 m of movement to claim territory.'};
+export function flagText(result){
+ const codes=[...new Set([...(result.reasons||[]),...(result.flags||[]).map(f=>f.reason)])],text=codes.map(code=>REASONS[code]).filter(Boolean);
+ if(result.status==='FLAGGED')return `No territory was claimed. ${text.join(' ')}`.trim();
+ return text.join(' ');
+}
+export function statusLabel(status){return {VALID:'Validated',FLAGGED:'Held for review',REJECTED:'Not counted',PENDING_VALIDATION:'Pending validation',ACTIVE:'Active'}[status]||String(status||'').toLowerCase();}
