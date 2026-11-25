@@ -420,3 +420,122 @@ node server/scripts/profile-proof.js
 The curl helper uses a finite temporary listener and removes its test account
 and private artifacts. Automated Google and mail verifiers stay mocked. Start
 or stop the actual development services only in the owner's Terminal.
+
+
+## Step 05 run recording — API implemented, mobile pending
+
+The recording migrations/endpoints passed the disposable-database gate and the
+owner-run curl proof. After the second go, both migrations were applied to
+development on 2026-11-14, following a verified nonempty backup at
+.local/backups/before-run-recording.dump. All 30 tables and existing rows were
+preserved (3 accounts, 0 runs, 0 points). Restart only the old API with the updated
+source; PostgreSQL is already running. The native recorder and phone proofs remain
+pending. Details are in ../docs/PHASE4_RUN_RECORDING_REVIEW.md.
+
+| Endpoint | Contract |
+| --- | --- |
+| POST /api/runs | {clientRunId, startedAt, device}; online acknowledgement, idempotent per account/client ID; 201 new, 200 retry |
+| POST /api/runs/:id/points | {batchKey, points, batteryLevel, stepDelta, invalidDropped?, events?}; atomic, max 500; phone will send <=200 |
+| POST /api/runs/:id/pause or /resume | {eventId, recordedAt, elapsedMs, position?, reason?, events?}; idempotent control and separate segments |
+| POST /api/runs/:id/finish | {endedAt, lastSeq?, events?}; immutable PENDING_VALIDATION result; server distance/time |
+| POST /api/runs/:id/end-stale | {}; owner may end a recording after ten minutes without fresh points; ends at last recorded activity |
+| GET /api/runs | Owner-only keyset history; limit 1–100, optional cursor and active=true/false |
+| GET /api/runs/:id | Owner-only detail; afterSeq (default -1), pointLimit 1–2000 (default 1000); nextPointSeq |
+| DELETE /api/runs/:id | Idempotent soft deletion before any recorded capture; captured runs return 409 |
+
+All reads are authenticated and owner-only, even if a profile is PUBLIC or the
+caller is an administrator. The owner-or-canView helper requires explicit shared
+scope for future sharing routes, plus route-sharing permission where appropriate.
+Foreign/missing run IDs return the same 404. Unknown/unsafe payload fields fail
+validation; errors retain {error:{code,message}}. Logs use route templates only.
+
+Recording writes require X-App-Version-Code >= MIN_APP_VERSION (default 6).
+Create may use device.versionCode when the header is absent. Live recording
+mutations also require X-Install-Id to match the creating install UUID; another
+installation must use the stale-run endpoint. Install IDs are compatibility and
+accidental cross-device guards, not hardware attestation or an authentication
+secret. Authentication and account ownership remain mandatory.
+
+New runs require an online acknowledgement before GPS collection. A disconnected
+phone never creates a provisional run. After acknowledgement, local encrypted
+recording/controls/finish can queue until connected. The database partial unique
+index and account-work transaction lock enforce one live run, including pauses.
+A discarded recording releases its slot. A replay cannot reactivate it.
+
+The create clock must be within five minutes behind server time and not ahead;
+the phone must calibrate against server Date/serverTime. Normalized point times
+must be within the run window, not future, increasing by sequence, and <=24h from
+start. Original device wall time and monotonic elapsed signals are retained to
+support CLOCK_JUMP review; they do not overwrite server-normalized timestamps.
+
+Batch keys are run UUID + ':' + first sequence. Store each payload until its
+acknowledgement so retries remain identical. Reordered point arrays canonicalize
+by sequence; a reused key with changed content returns IDEMPOTENCY_CONFLICT.
+Overlapping exact points are ignored; conflicting stored seq values return
+POINT_CONFLICT. Gaps are accepted, recorded and healed by later batches. A high
+highestSeq is **not** acknowledgement of earlier missing batches; the phone must
+acknowledge the specific batch only. Batches and controls use one transaction
+under the account-work, account and run locks. Counts come from SQL, not columns.
+
+Current consent is checked using step 04's existing helper. Earlier valid points
+can upload after withdrawal using the existing historical LOCATION helper and
+the current run's consent snapshot; points after withdrawal fail CONSENT_REQUIRED.
+The response's recordingAllowed tells the phone to stop if current notices no
+longer permit recording. Version changes require acceptance before the next run.
+The default LOCATION_CONSENT_VERSION becomes 2026-11-13-run-v1 because retention
+copy now specifies POINT_RETENTION_DAYS (default 365), replacing the earlier
+promise of purging immediately after validation. Update the private env only
+with the approved development deployment, then reaccept the revised notice.
+
+The server retains raw points, drops accuracy >50m from distance, applies the
+25m/15s initial-fix rule, ignores jitter below max(8m, accuracies), and excludes
+implausible >100m jumps above 8.5m/s from distance. It never joins pauses, missing
+sequences or gaps >30s, including prolonged inaccurate-fix intervals. New
+route_polyline values are JSON {version:1,segments:[encodedPolyline,...]} in the
+existing TEXT column, so a single polyline cannot silently join interruptions.
+Detail/history expose those segment polylines through routeSegments. Legacy
+summaries remain readable; no old rows or status values are rewritten.
+
+H3 is server-only and annotates restricted cells/nearest known region. It does
+not write run_hexes, ownership or claims. Network-provider points are excluded
+from claim annotations. If there are no geocoded region cells, region is null;
+recording remains valid rather than inventing a nearest region. Run-signals
+reviews (over 8h INFO, invalid ratio >20% SOFT, paused movement >=3 incidents or
+>1km SOFT) are evidence for step 06, never automatic rejection here.
+
+POINT_RETENTION_DAYS=365 controls hourly cleanup. Expired raw points and auxiliary
+per-point/batch/paused-position metadata are removed transactionally; summaries
+and simplified segment traces remain. Live recordings are excluded. Account
+deletion marks live recordings aborted and then cascades them in the same locked
+transaction; concurrent ingest/finish/export cannot publish after deletion.
+In-memory job cancellation follows commit so rollback cannot cancel valid work.
+Exports include only the owner's run summaries, points, provider/mock and signals.
+
+Run metadata uses the approved single JSONB column; large runs can incur JSONB
+rewrite cost. History deliberately extracts only summary JSON in SQL rather than
+loading all point metadata into Node. Restricted-cell queries are chunked below
+PostgreSQL's bind-parameter limit. There is no claim/validation worker in this step.
+
+Finite Terminal curl proof (API test DB only, no development listener changes):
+
+```sh
+node server/scripts/run-recording-proof.js
+```
+
+SQL, all touched objects, package review and the staged proof record are in
+[the proposal](../docs/PHASE4_RUN_RECORDING_PROPOSAL.md). Mobile recording,
+native durability/notification proof, indoor simulation and the owner's outdoor
+test are still pending; this test gate is not completion of the whole step.
+
+
+Run interruption events may also be sent without a point using
+`POST /api/runs/:id/signals {eventId, events}` (1–1000 events), authenticated,
+owner/install checked, write limited and idempotent. This keeps event chunks
+bounded without changing an immutable point batch key. `finish` accepts a
+`reason` of USER, STATIONARY, RECOVERY or LIMIT and optional total invalid-drop
+count. STATIONARY may end before an observed stationary tail: accurate tail
+points must remain within 15 m of the last pre-end accurate fix. Raw tail points
+and controls remain evidence; active segments are clipped to the finish boundary
+for authoritative time. Moving tail evidence rejects an early end. A user finish
+still cannot precede saved points or controls. History/detail include mockGps so
+a debug simulation is never presented as an ordinary outdoor run.

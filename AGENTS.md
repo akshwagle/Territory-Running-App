@@ -11,8 +11,8 @@ anti-cheat flags, notifications, privacy controls and administration.
 - Backend: Node.js 22.12+ and Express 5 (plain JavaScript).
 - Database: PostgreSQL 16, Prisma 6 (exact version in server/package.json).
 - Mobile: Capacitor wraps the React app into an Android APK downloaded from the website.
-- Phase 3 and Phase 4 step 03 are merged; step 04 profile/privacy is implemented and phone-verified on feat/profile-privacy, awaiting PR review.
-- Step 03: native Google and email phone checks passed; recording/uploads and cross-device ACTIVE-run rules are deferred to step 05.
+- Phase 3 and Phase 4 steps 03, 04 and UI foundation are merged. Step 05 run recording is in progress on feat/run-recording; phone recording proofs are pending.
+- Step 05: approved ACTIVE/PENDING_VALIDATION enum additions, runs run_signals/deleted_at/nullable active end+duration and run_points provider/is_mock are applied with backup; still 30 tables. No claiming yet.
 - No login, runner features, UI redesign, hosting or deployment in Phase 2.
 
 ## Project layout
