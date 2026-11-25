@@ -13,6 +13,7 @@ import { UnreadProvider } from './notifications/unread.jsx';
 import { UIProvider, Skeleton, InlineNotice } from './ui/index.jsx';
 import { Shell } from './ui/Shell.jsx';
 import { PendingNotice } from './ui/PendingNotice.jsx';
+import { FirstRunIntro } from './ui/FirstRunIntro.jsx';
 import { firstScreenReady } from './platform/splash.js';
 const RunPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunPage})));
 const RunSummaryPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunSummaryPage})));
@@ -112,6 +113,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
             {['offline', 'unavailable'].includes(state.status) && <InlineNotice className="connection-notice" error action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</InlineNotice>}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
             {location.pathname !== '/' && location.pathname !== '/welcome' && <PendingNotice/>}
+            {location.pathname === '/home' && <FirstRunIntro/>}
 
 
           </>}
