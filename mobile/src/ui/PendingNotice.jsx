@@ -14,5 +14,5 @@ export function PendingNotice({ suppressed = false }) {
   if (failure) return <InlineNotice error action="Retry" onAction={() => setAttempt(n => n + 1)}>Couldn’t check saved data. Keep the app installed and try again.</InlineNotice>;
   if (!count || dismissed) return null;
   return <><InlineNotice action="Details" onAction={() => setDetails(true)} onDismiss={() => setDismissed(true)}>Unsent data is encrypted on this phone.</InlineNotice>
-    {details && <Sheet title="Your unsent data" onClose={() => setDetails(false)}><p>{count} saved {count === 1 ? 'item is' : 'items are'} still encrypted on this phone. Sign in to the account that saved them to continue. Signing out does not erase them.</p><p>Uploads arrive with run recording. Keep the app installed to retain this data.</p><Button onClick={() => { setDetails(false); setDismissed(true); }}>Got it</Button></Sheet>}</>;
+    {details && <Sheet title="Your unsent data" onClose={() => setDetails(false)}><p>{count} saved {count === 1 ? 'item is' : 'items are'} still encrypted on this phone. Sign in to the account that saved them to continue. Signing out does not erase them.</p><p>Open Run after signing in to its account to finish or resume. Reconnect to sync; keep the app installed to retain this data.</p><Button onClick={() => { setDetails(false); setDismissed(true); }}>Got it</Button></Sheet>}</>;
 }

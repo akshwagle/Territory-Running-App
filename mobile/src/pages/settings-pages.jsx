@@ -53,7 +53,7 @@ export function HomePage() {
   const { state } = useAuth();
   return <section className="home-page"><p className="eyebrow">A little ground. A good run.</p>
     <h1>Good to see you,<br/><bdi>{state.user.displayName}</bdi>.</h1>
-    <EmptyState title="Room to run">You’re signed in. Run recording will arrive in a later build.</EmptyState>
+    <EmptyState title="Room to run">Choose Run to record your next walk or run. Your route stays private. Territory capture arrives after validation is added.</EmptyState>
     <div className="home-key"><span className="home-swatch"/>Pine will mark your territory.</div>
   </section>;
 }

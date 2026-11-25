@@ -5,10 +5,11 @@ import { exitApp, parentRoute, ROOT_ROUTES, watchBack } from '../platform/naviga
 
 export const TABS = [
   { to: '/home', label: 'Home', icon: 'home' },
+  { to: '/run', label: 'Run', icon: 'run' },
   { to: '/you', label: 'You', icon: 'user' },
   { to: '/settings', label: 'Settings', icon: 'settings' },
 ];
-const TITLES = { '/home': 'Territory Run', '/you': 'You', '/you/privacy': 'Privacy', '/you/consent': 'Consent',
+const TITLES = { '/run':'Run', '/run/history':'Run history', '/run/summary':'Run summary', '/home': 'Territory Run', '/you': 'You', '/you/privacy': 'Privacy', '/you/consent': 'Consent',
   '/settings': 'Settings', '/settings/methods': 'Sign-in methods', '/settings/sessions': 'Active sessions',
   '/settings/password': 'Password', '/settings/export': 'Export data', '/settings/delete': 'Delete account',
   '/login': 'Log in', '/signup': 'Create account', '/forgot': 'Password help', '/reset': 'Reset password', '/verify': 'Email verification' };
@@ -28,7 +29,7 @@ export function Shell({ user, children, renderRoutes, footer, showFooter = true,
   }
   const canCache = identity && CACHEABLE.has(location.pathname);
   if (canCache) cache.current.set(location.pathname, location);
-  const activeTab = location.pathname.startsWith('/you') ? '/you' : location.pathname.startsWith('/settings') || location.pathname === '/verify' ? '/settings' : '/home';
+  const activeTab = location.pathname.startsWith('/run') ? '/run' : location.pathname.startsWith('/you') ? '/you' : location.pathname.startsWith('/settings') || location.pathname === '/verify' ? '/settings' : '/home';
   const root = ROOT_ROUTES.has(location.pathname), backRef = useRef(null);
   backRef.current = (native = false) => {
     if (closeTopOverlay()) return;
@@ -36,7 +37,7 @@ export function Shell({ user, children, renderRoutes, footer, showFooter = true,
     const previous = history.current.at(-2);
     // Tabs are roots. After logout/deep links the old account's history must
     // never cause a Protected -> login redirect loop.
-    if (previous && (!identity || ['/home', '/you', '/settings'].some(prefix => previous.pathname.startsWith(prefix)))) navigate(-1);
+    if (previous && (!identity || ['/home', '/run', '/you', '/settings'].some(prefix => previous.pathname.startsWith(prefix)))) navigate(-1);
     else navigate(parentRoute(location.pathname), { replace: true, state: { direction: 'back' } });
   };
   useEffect(() => {

@@ -11,6 +11,11 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <service android:name="com.equimaps.capacitor_background_geolocation.BackgroundGeolocationService"
+            android:exported="false" tools:replace="android:exported" />
+        <receiver android:name="com.equimaps.capacitor_background_geolocation.RunActionReceiver"
+            android:exported="false" />
+
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
@@ -47,6 +52,11 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
     </application>
+
+    <!-- Foreground/background location and optional step signal are explained
+         separately in the app before any system permission request. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <!-- Permissions -->
 

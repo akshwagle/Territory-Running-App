@@ -35,17 +35,17 @@ export function createPendingJournal(storage) {
 // Each source owns its acknowledgement/deletion policy and its encrypted data.
 export function createPendingWork(journal) {
   const sources = new Map();
-  let owner = null;
+  let owner = null, paused = true;
   const work = {
     register(name, source) {
       if (sources.has(name)) throw Error('Pending source already registered.');
       sources.set(name, source);
-      if (owner) source.resume?.(owner); else source.pause?.();
+      if (owner) source.resume?.(owner); else source.pause?.('initializing');
       return () => sources.delete(name);
     },
-    pause() { owner = null; for (const source of sources.values()) source.pause?.(); },
-    resume(ownerId) { if (owner !== ownerId) work.pause(); owner = ownerId; for (const source of sources.values()) source.resume?.(ownerId); },
-    isPaused: () => owner === null,
+    pause(reason = 'session-ended') { paused = true; if(reason!=='connection')owner = null; for (const source of sources.values()) source.pause?.(reason); },
+    resume(ownerId) { if (owner !== ownerId) work.pause(); owner = ownerId; paused = false; for (const source of sources.values()) source.resume?.(ownerId); },
+    isPaused: () => paused,
     async stopRecording(ownerId,reason) {
       for(const source of sources.values())await source.stopRecording?.(ownerId,reason);
     },
@@ -59,9 +59,9 @@ export function createPendingWork(journal) {
         await source.upload(ownerId);
       }
     },
-    async discard(ownerId, confirmation) {
+    async discard(ownerId, confirmation, options = {}) {
       if (!ownerId || confirmation !== DISCARD_CONFIRMATION) throw new ApiError('CONFIRM_DISCARD', 'Confirm again before discarding saved data.');
-      for (const source of sources.values()) await source.discard(ownerId, confirmation);
+      for (const source of sources.values()) await source.discard(ownerId, confirmation, options);
     },
   };
   work.register('encrypted-journal', { count: async id => (await journal.list(id)).length, countAll: journal.countAll, discard: journal.discard });

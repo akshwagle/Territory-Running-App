@@ -17,6 +17,6 @@ export default defineConfig(({ mode }) => {
       const notices = ['./THIRD_PARTY_NOTICES.md', './src/assets/google/THIRD_PARTY_NOTICES.md']
         .map(file => readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n\n');
       this.emitFile({ type: 'asset', fileName: 'THIRD_PARTY_NOTICES.txt', source: notices });
-    } }], define: { __APP_VERSION__: JSON.stringify(version.versionName), __APP_VERSION_CODE__: JSON.stringify(version.versionCode) },
+    } }], define: { __RUN_DEBUG__:JSON.stringify(process.env.TERRITORY_DEBUG_BUILD==='true'), __APP_VERSION__: JSON.stringify(version.versionName), __APP_VERSION_CODE__: JSON.stringify(version.versionCode) },
     test: { environment: 'jsdom', setupFiles: ['./src/test-setup.js'] } };
 });

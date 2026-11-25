@@ -105,3 +105,7 @@ export function Screen({ title, onBack, children, bottom, className = '', scroll
   </div>;
 }
 export function TabBar({ tabs, active, onSelect }) { return <nav className="ui-tabs" aria-label="Main navigation">{tabs.map(tab => <Link key={tab.to} to={tab.to} onClick={event => onSelect?.(event, tab)} aria-current={active === tab.to ? 'page' : undefined}><span className="ui-tab-icon"><Icon name={tab.icon}/></span><span>{tab.label}</span></Link>)}</nav>; }
+
+// Flat, tabular figures for live recording and finished summaries.
+export function RunStats({time,distance,pace}){return <dl className="ui-run-stats"><div><dt>Time</dt><dd>{time}</dd></div><div><dt>Distance</dt><dd>{distance}</dd></div><div><dt>Pace</dt><dd>{pace}</dd></div></dl>;}
+export function RouteTrace({paths=[]}){return paths.length?<figure className="ui-route-trace"><svg viewBox="0 0 300 300" role="img" aria-label="Simplified route trace. Gaps and pauses are separate lines.">{paths.map((d,i)=><path key={i} d={d} fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke"/>)}</svg><figcaption className="small">Route trace · no map or gap interpolation.</figcaption></figure>:<EmptyState title="No route trace">A route needs accepted GPS points. Stationary and treadmill runs record time, with no distance or territory.</EmptyState>;}
