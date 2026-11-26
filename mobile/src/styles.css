@@ -347,7 +347,7 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
   background: var(--media-surface); border: 1px solid var(--accent-ring); border-radius: 6px; }
 .splash-brand-text { display: flex; flex-direction: column; line-height: .92; }
 .splash-brand-title { font-family: var(--font-heading); font-size: .82rem; font-weight: 700; letter-spacing: .08em; color: var(--on-media); }
-.splash-brand-sub { font-family: var(--font-heading); font-size: .58rem; font-weight: 700; letter-spacing: .2em; color: var(--accent); }
+.splash-brand-sub { font-family: var(--font-heading); font-size: .75rem; font-weight: 700; letter-spacing: .2em; color: var(--accent); }
 .splash-content { position: relative; z-index: 2; display: flex; flex-direction: column; margin-top: auto;
   animation: splash-fade-up .7s .12s var(--ease-enter, cubic-bezier(.05,.7,.1,1)) both; }
 .splash-headline { font-family: var(--font-heading); font-size: clamp(2.4rem, 11vw, 3.4rem); font-weight: 700; line-height: 1.04;
