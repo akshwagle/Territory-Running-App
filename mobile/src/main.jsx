@@ -12,11 +12,14 @@ import { createPendingJournal, createPendingWork } from './auth/pending-work.js'
 import { platformStorage } from './auth/platform-storage.js';
 import { exportShare } from './profile/export-share.js';
 import './styles.css';
-import { watchPlatform } from './platform/android.js';
+import { watchPlatform, syncSystemBars } from './platform/android.js';
+import { applyTheme, watchTheme } from './platform/theme.js';
 import {createRunAdapter,createNativeFetch} from './runs/native-adapter.js';
 import {createRecordingController} from './runs/controller.js';
 import {RunContext} from './runs/context.jsx';
 
+// index.html already set data-theme; re-apply and follow phone changes while the choice is System.
+applyTheme(); watchTheme(syncSystemBars);
 // The native keyboard/system bars own window resizing; CSS only consumes insets.
 watchPlatform().catch(() => { /* Native defaults remain usable if a listener fails. */ });
 

@@ -34,4 +34,4 @@
 .route-map { height: 240px; margin: var(--sp-6) 0; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line); position: relative; }
 .route-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.8) contrast(.9) saturate(.6); }
 .route-map .leaflet-control-attribution { background: var(--map-attribution-bg); color: var(--text-2); font-size: 12px; }
-@media (prefers-color-scheme: light) { .map-canvas .leaflet-tile-pane, .route-map .leaflet-tile-pane { filter: none; } }
+:root[data-theme="light"] .map-canvas .leaflet-tile-pane, :root[data-theme="light"] .route-map .leaflet-tile-pane { filter: none; }

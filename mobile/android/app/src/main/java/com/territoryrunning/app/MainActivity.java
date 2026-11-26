@@ -18,9 +18,11 @@ public class MainActivity extends BridgeActivity {
         // AndroidX's automatic style adds a scrim on API 26-28. Request
         // transparent light bars explicitly. API 24-25 cannot render dark
         // navigation icons, so only those versions retain a deep-pine fallback.
+        // auto() follows the phone's night mode; the web layer re-styles the bars
+        // when the in-app Theme setting overrides it.
         EdgeToEdge.enable(this,
-            SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
-            SystemBarStyle.light(Color.TRANSPARENT, 0xFF14392C));
+            SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
+            SystemBarStyle.auto(Color.TRANSPARENT, 0xFF14392C));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             getWindow().setNavigationBarContrastEnforced(false);
         }
@@ -29,6 +31,11 @@ public class MainActivity extends BridgeActivity {
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             getBridge().getWebView().getSettings().setForceDark(WebSettings.FORCE_DARK_OFF);
         }
+        // Opt out of Android's automatic inversion (our themes are hand-made) and
+        // paint the WebView with the matching window colour until the page loads.
+        boolean night = (getResources().getConfiguration().uiMode
+            & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        getBridge().getWebView().setBackgroundColor(night ? 0xFF12110F : 0xFFF3EEE4);
         // The local Capacitor page uses HTTPS. Only debug builds may call an
         // HTTP development API on the Mac's LAN address.
         if (BuildConfig.DEBUG) {

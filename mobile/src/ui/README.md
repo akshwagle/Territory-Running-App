@@ -10,7 +10,7 @@ in `docs/ai/08-tasks.md`.
 ## Tokens ("Clay & Pine")
 
 All tokens are declared once in `src/styles.css` (`:root`, dark default; light
-via `prefers-color-scheme` overrides of the same names). Components in `ui.css`
+via `:root[data-theme="light"]` overrides of the same names). Components in `ui.css`
 only read them; never hardcode colour or spacing in a component.
 
 | Group | Tokens |
