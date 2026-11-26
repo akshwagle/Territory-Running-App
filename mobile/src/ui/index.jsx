@@ -75,7 +75,7 @@ export function Card({ to, onClick, as: Tag = 'article', className = '', childre
 export function StatGrid({ children, className = '', ...props }) { return <dl className={`ui-stat-grid ${className}`} {...props}>{children}</dl>; }
 export function StatTile({ label, value, unit, delta, tone, count = false, className = '' }) {
   return <div className={`ui-stat ${tone ? `ui-stat--${tone}` : ''} ${className}`}><dt>{label}</dt>
-    <dd><span className="ui-stat-value">{count && Number.isInteger(value) ? <CountUp value={value}/> : value}</span>{unit && <span className="ui-stat-unit">{unit}</span>}{delta && <span className="ui-delta">{delta}</span>}</dd></div>;
+    <dd><span className="ui-stat-value">{count && Number.isInteger(value) ? <CountUp value={value}/> : value}</span>{unit && <> <span className="ui-stat-unit">{unit}</span></>}{delta && <> <span className="ui-delta">{delta}</span></>}</dd></div>;
 }
 // Banner: calm sticky strip for offline, syncing and limited-GPS states. tone: info | offline | syncing | warn | error.
 export function Banner({ children, tone = 'info', action, onAction, onDismiss, className = '' }) {
@@ -89,7 +89,12 @@ export function ListRow({ to, label, subtitle, value, icon, leading, trailing, c
   const content = <>{leading || (icon && <Icon name={icon}/>)}<span className="ui-row-label">{label}{subtitle && <span className="ui-row-sub">{subtitle}</span>}{children}</span>{value && <span className="ui-row-value" dir="auto">{value}</span>}{trailing}{chevron && <Icon name="chevron"/>}</>;
   return to ? <Link className="ui-row" to={to} {...props}>{content}</Link> : <button type="button" className="ui-row" {...props}>{content}</button>;
 }
-export function Section({ title, className = '', children }) { return <section className={`ui-section ${className}`.trim()}>{title && <h2>{title}</h2>}{children}</section>; }
+// Section: a titled group. Default = grouped list surface (rows inside a card, small label above).
+// plain = open content block with a headline title (no surface). aside = short text at the right of the title.
+export function Section({ title, aside, plain = false, className = '', children }) {
+  return <section className={`ui-section ${plain ? 'ui-section--plain' : ''} ${className}`.replace(/\s+/g, ' ').trim()}>
+    {title && <h2 className="ui-section-title">{title}{aside && <span>{aside}</span>}</h2>}<div className="ui-section-body">{children}</div></section>;
+}
 function Modal({ title, children, onClose, sheet = false }) {
   const titleId = useId(), panel = useRef(null), closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -146,8 +151,9 @@ export function InlineNotice({ children, error = false, action, onAction, onDism
 export function Skeleton({ label = 'Loading…', lines = 3, shape = 'lines' }) {
   return <div className={`ui-skeleton ui-skeleton--${shape}`} role="status"><span className="sr-only">{label}</span>{Array.from({ length: shape === 'card' ? 1 : lines }, (_, i) => shape === 'row' ? <span key={i} className="ui-skeleton-row" aria-hidden="true"><span/><span/></span> : <span key={i} aria-hidden="true"/>)}</div>;
 }
-export function EmptyState({ title, children, action }) { return <div className="ui-empty"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><path d="M32 3 57 18v28L32 61 7 46V18Z" fill="none" stroke="currentColor"/><path d="M32 18v28m-12-7 24-14" stroke="currentColor"/></svg>{title && <h2>{title}</h2>}<p>{children}</p>{action}</div>; }
-export function ErrorState({ children, onRetry, label = 'Retry', title }) { return <div className="ui-error">{title && <h2>{title}</h2>}<InlineNotice error>{children}</InlineNotice>{onRetry && <Button variant="secondary" onClick={onRetry}>{label}</Button>}</div>; }
+// compact = inline empty line inside another surface (no icon, no card).
+export function EmptyState({ title, children, action, compact = false }) { return <div className={`ui-empty${compact ? ' ui-empty--compact' : ''}`}>{!compact && <svg viewBox="0 0 64 64" width="44" height="44" aria-hidden="true" strokeWidth="2.5"><path d="M32 3 57 18v28L32 61 7 46V18Z" fill="none" stroke="currentColor"/><path d="M32 18v28m-12-7 24-14" stroke="currentColor"/></svg>}{title && <h2>{title}</h2>}<p>{children}</p>{action}</div>; }
+export function ErrorState({ children, onRetry, label = 'Retry', title }) { return <div className="ui-error">{title && <h2>{title}</h2>}<InlineNotice error>{children}</InlineNotice>{onRetry && <Button variant="secondary" size="sm" onClick={onRetry}>{label}</Button>}</div>; }
 export function Avatar({ id = 0, color = '#1F5A46', size = 48 }) {
   return <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" className="ui-avatar"><path d="M24 2 43 13v22L24 46 5 35V13Z" fill={color}/><g transform={`rotate(${(id % 6) * 60} 24 24)`} fill="none" stroke="#F3EEE4" strokeWidth="3">{id < 6 ? <path d="M13 31 24 13l11 18M18 24h12"/> : <><path d="m13 17 11 17 11-17M17 24h14"/><path d="M24 10v5"/></>}</g></svg>;
 }
@@ -163,6 +169,7 @@ export function Screen({ title, onBack, children, bottom, className = '', scroll
 }
 export function TabBar({ tabs, active, onSelect }) { return <nav className="ui-tabs" aria-label="Main navigation">{tabs.map(tab => <Link key={tab.to} to={tab.to} onClick={event => onSelect?.(event, tab)} aria-current={active === tab.to ? 'page' : undefined}><span className="ui-tab-icon"><Icon name={tab.icon}/>{tab.badge>0&&<span className="tab-badge" role="status" aria-label={`${tab.badge} unread notifications`}>{tab.badge>9?'9+':tab.badge}</span>}</span><span>{tab.label}</span></Link>)}</nav>; }
 
-// Flat, tabular figures for live recording and finished summaries.
-export function RunStats({time,distance,pace}){return <dl className="ui-run-stats"><div><dt>Distance</dt><dd>{distance}</dd></div><div><dt>Time</dt><dd>{time}</dd></div><div><dt>Pace</dt><dd>{pace}</dd></div></dl>;}
-export function RouteTrace({paths=[]}){return paths.length?<figure className="ui-route-trace"><svg viewBox="0 0 300 300" role="img" aria-label="Simplified route trace. Gaps and pauses are separate lines.">{paths.map((d,i)=><path key={i} d={d} fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke"/>)}</svg><figcaption className="small">Route trace · no map or gap interpolation.</figcaption></figure>:<EmptyState title="No route trace">A route needs accepted GPS points. Stationary and treadmill runs record time, with no distance or territory.</EmptyState>;}
+// Run figures. variant "live" = giant distance then time and pace; "compact" = three equal columns (summary, detail).
+export function RunStats({ time, distance, pace, variant = 'live' }) {
+  return <dl className={`ui-run-stats${variant === 'compact' ? ' ui-run-stats--compact' : ''}`}><div><dt>Distance</dt><dd>{distance}</dd></div><div><dt>Time</dt><dd>{time}</dd></div><div><dt>Pace</dt><dd>{pace}</dd></div></dl>;
+}
