@@ -71,7 +71,19 @@ export function TerritoryMapPage({ geolocation = typeof navigator !== 'undefined
     map.on('moveend', schedule);
     const onNet = () => { setOnline(navigator.onLine !== false); if (navigator.onLine !== false) refs.current.refresh(true); };
     window.addEventListener('online', onNet); window.addEventListener('offline', onNet);
-    return () => { clearTimeout(timer); window.removeEventListener('online', onNet); window.removeEventListener('offline', onNet); refs.current = {}; map.remove(); };
+    // Leaflet measures its box once. Re-measure after layout, the screen transition, rotation, keyboard and theme changes.
+    const fit = () => { if (refs.current.map === map) map.invalidateSize({ pan: false }); };
+    const fitTimers = [requestAnimationFrame(fit), setTimeout(fit, 120), setTimeout(fit, 450)];
+    const watcher = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
+    watcher?.observe(box.current);
+    window.addEventListener('resize', fit); window.addEventListener('orientationchange', fit);
+    window.visualViewport?.addEventListener('resize', fit);
+    return () => {
+      clearTimeout(timer); window.removeEventListener('online', onNet); window.removeEventListener('offline', onNet);
+      window.removeEventListener('resize', fit); window.removeEventListener('orientationchange', fit); window.visualViewport?.removeEventListener('resize', fit);
+      watcher?.disconnect(); cancelAnimationFrame(fitTimers[0]); fitTimers.slice(1).forEach(clearTimeout);
+      refs.current = {}; map.remove();
+    };
   }, [debounceMs]);
 
   const watchId = useRef(null), centred = useRef(false);
