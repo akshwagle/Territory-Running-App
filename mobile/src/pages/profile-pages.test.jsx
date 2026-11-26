@@ -12,7 +12,7 @@ const types=['LOCATION','TERMS','PRIVACY'];
 const notices=()=>({consents:types.map((type,i)=>({type,title:['Location processing','Terms of use','Privacy notice'][i],text:'Plain consent text.',version:'v1',etag:`"${type}:none"`,accepted:false,requiresAcceptance:true})),history:[]});
 function setup(Page,request,extra={}) {
   const state={status:'authenticated',user:{id:'me',emailVerified:false}};
-  const auth={getSnapshot:()=>state,subscribe:()=>()=>{},loadMe:vi.fn(async()=>{}),api:{request:vi.fn(request)},
+  const auth={getSnapshot:()=>state,subscribe:()=>()=>{},loadMe:vi.fn(async()=>{}),api:{request:vi.fn((url,o)=>url.startsWith('/api/me/stats/overview')?Promise.resolve({lifetime:{runs:4,distanceM:20000,durationS:6000}}):url.startsWith('/api/territory/me')?Promise.resolve({count:7,hexes:[]}):request(url,o))},
     pending:{stopRecording:vi.fn(async()=>{}),upload:vi.fn(async()=>{}),discard:vi.fn(async()=>{})},
     pendingCount:vi.fn(async()=>0),deleteAccount:vi.fn(async()=>{}),...extra};
   render(<AuthContext.Provider value={auth}><MemoryRouter><Page/></MemoryRouter></AuthContext.Provider>);
@@ -45,7 +45,7 @@ it('closing an editor keeps unsaved native autofill in memory and does not submi
   screen.getByLabelText('Bio',{exact:true}).value='Draft from keyboard';await user.click(screen.getByRole('button',{name:'Close',exact:true}));
   expect(screen.getByText('Draft from keyboard')).toBeVisible();expect(screen.getByText('Unsaved changes')).toBeVisible();
   await user.click(screen.getByRole('button',{name:/^Bio/}));expect(screen.getByLabelText('Bio',{exact:true})).toHaveValue('Draft from keyboard');
-  expect(auth.api.request).toHaveBeenCalledTimes(1);
+  expect(auth.api.request.mock.calls.filter(([url,o])=>url==='/api/me/profile'&&o?.method==='PATCH')).toHaveLength(0);
 });
 it.each([ProfilePage,PrivacyPage,ConsentPage,DeletePage])('%s shows offline error and retry instead of blank content',async Page=>{
   const {auth,user}=setup(Page,async()=>{throw new ApiError('NETWORK_UNAVAILABLE','Cannot reach the server.');});
@@ -98,4 +98,10 @@ it('export reports offline and expiry errors and permits a new request',async()=
   await user.click(screen.getByRole('button',{name:'Request export'}));expect(await screen.findByRole('alert')).toHaveTextContent('Cannot reach');
   auth.api.request.mockResolvedValueOnce({export:{id:'expired',expiresAt:new Date().toISOString()}}).mockRejectedValueOnce(new ApiError('NOT_FOUND','The export has expired.',404));
   await user.click(screen.getByRole('button',{name:'Request export'}));await user.click(await screen.findByRole('button',{name:'Check export'}));expect(await screen.findByRole('alert')).toHaveTextContent('expired');
+});
+
+it('profile shows real lifetime totals and a retryable error when they fail',async()=>{
+  setup(ProfilePage,async()=>own());
+  const totals=await screen.findByLabelText('Your totals');
+  expect(totals).toHaveTextContent('4');expect(totals).toHaveTextContent('20.00 km');expect(totals).toHaveTextContent('7 hexes');
 });

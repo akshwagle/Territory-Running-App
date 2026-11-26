@@ -4,7 +4,7 @@ const { databaseNow } = require('../auth/session-core');
 
 const TYPES=['LOCATION','TERMS','PRIVACY'];
 const TEXT={
-  LOCATION:{title:'Location processing',text:'During a recorded run we collect GPS points, times, accuracy and speed to draw your route, validate the run and claim territory. Raw points are removed after validation; run summaries and simplified routes remain until you delete them or your account. You can withdraw location consent in Privacy. Recording stops on this phone when you withdraw; you choose what happens to saved points.'},
+  LOCATION:{title:'Location processing',text:'During a recorded run we collect GPS points, times, accuracy and speed to draw your route, validate the run and claim territory. Raw points are kept for the configured retention period shown here; run summaries and simplified routes remain until you delete them or your account. You can withdraw location consent in Privacy. Recording stops on this phone when you withdraw; you choose what happens to saved points.'},
   TERMS:{title:'Terms of use',text:'Record your own runs, respect other people and restricted places, and use the game safely. Runs with manipulated location data may be rejected. You control your account and can export or delete your live data in Settings.'},
   PRIVACY:{title:'Privacy notice',text:'We store your account, consent choices and recorded activity to run the game. Profile visibility, leaderboards and route sharing are your choices. Your export contains your own data. Account deletion removes live personal data; audit actions remain with your identity redacted. You can change these choices in Settings.'},
 };
@@ -29,7 +29,8 @@ function createConsentService({prisma,config}) {
   const rows=tx=>userId=>tx.userConsent.findMany({where:{userId},orderBy:{id:'desc'}});
   async function get(req) {
     const history=await rows(prisma)(req.authUser.id);
-    return {consents:consentSummary(history,versions),history:history.map(recordDto)};
+    const consents=consentSummary(history,versions).map(row=>row.type==='LOCATION'?{...row,text:row.text.replace('the configured retention period shown here',`${config.pointRetentionDays} days`)}:row);
+    return {consents,history:history.map(recordDto)};
   }
   async function post(req,input) {
     await prisma.$transaction(async tx=>{

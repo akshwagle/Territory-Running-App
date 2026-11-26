@@ -51,7 +51,7 @@ test('verified-email run policy follows environment defaults and production SMTP
   const env={DATABASE_URL:'postgresql://test:placeholder@localhost/separate_test',CORS_ORIGINS:'http://localhost:5173',
     JWT_ACCESS_SECRET:'test-access-secret-only-01234567890123456789',REFRESH_TOKEN_DERIVATION_SECRET:'test-derivation-secret-only-98765432109876543210'};
   assert.equal(readConfig(env).requireVerifiedEmailForRuns,false);
-  const production={...env,NODE_ENV:'production',WEB_BASE_URL:'https://example.test',MAIL_TRANSPORT:'smtp',
+  const production={...env,NODE_ENV:'production',HOST:'0.0.0.0',CORS_ORIGINS:'https://localhost,capacitor://localhost',WEB_BASE_URL:'https://example.test',MAIL_TRANSPORT:'smtp',
     SMTP_HOST:'smtp.example.test',SMTP_PORT:'587',SMTP_USER:'test-user',SMTP_PASSWORD:'test-only-password',SMTP_FROM:'mail@example.test'};
   assert.equal(readConfig(production).requireVerifiedEmailForRuns,true);
   assert.equal(readConfig({...production,REQUIRE_VERIFIED_EMAIL_FOR_RUNS:'false'}).requireVerifiedEmailForRuns,false);

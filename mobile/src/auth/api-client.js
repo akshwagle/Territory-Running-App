@@ -4,13 +4,13 @@ export function createApiClient({ origin, vault, fetchImpl = globalThis.fetch, t
   onSessionLost = () => {}, onAccountBlocked = () => {}, onReauthenticationRequired = () => {} }) {
   const url = new URL(origin);
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw Error('Invalid API origin.');
-  let refreshing = null;
+  let refreshing = null, installId = null, clockOffset = 0;
   const isCurrent = expected => {
     const live = vault.snapshot().session;
     return Boolean(live && expected && live.user.id === expected.user.id && live.accessToken === expected.accessToken);
   };
   async function send(path, { method = 'GET', body, accessToken, signal, ifMatch } = {}) {
-    if (!/^\/api\/[a-zA-Z0-9/_-]+$/.test(path)) throw Error('Invalid API path.');
+    if (typeof path !== 'string' || !/^\/api\/[a-zA-Z0-9/_-]+(?:\?[A-Za-z0-9%=&._:-]*)?$/.test(path) || /%(?![a-fA-F0-9]{2})/.test(path)) throw Error('Invalid API path.');
     const controller = new AbortController();
     const abort = () => controller.abort();
     if (signal?.aborted) controller.abort();
@@ -19,11 +19,15 @@ export function createApiClient({ origin, vault, fetchImpl = globalThis.fetch, t
     try {
       const response = await fetchImpl(`${url.origin}${path}`, {
         method, signal: controller.signal, credentials: 'omit', cache: 'no-store', redirect: 'error',
-        headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        headers: { Accept: 'application/json',
+          'X-App-Version-Code':String(typeof __APP_VERSION_CODE__==='number'?__APP_VERSION_CODE__:6),
+          ...(installId?{'X-Install-Id':installId}:{}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
           ...(ifMatch ? { 'If-Match':ifMatch } : {}),
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
+      const date = Date.parse(response.headers?.get?.('Date') || '');
+      if (Number.isFinite(date)) clockOffset = date - Date.now();
       const payload = response.status === 204 ? null : await response.json().catch(() => null);
       if (controller.signal.aborted) throw new ApiError('REQUEST_TIMEOUT', 'The request took too long. Check your connection and try again.');
       if (!response.ok) {
@@ -86,5 +90,5 @@ export function createApiClient({ origin, vault, fetchImpl = globalThis.fetch, t
       }
     }
   }
-  return { request, refresh };
+  return { request, refresh, setInstallId(value) { if (value!==null&&!/^[0-9a-f-]{36}$/i.test(value)) throw Error('Invalid install ID.');installId=value; },serverNow:()=>new Date(Date.now()+clockOffset) };
 }

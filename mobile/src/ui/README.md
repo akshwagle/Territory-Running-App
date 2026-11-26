@@ -1,43 +1,47 @@
 # Territory Run UI foundation
 
-Android / React / Capacitor 8.6.0. One auth controller, encrypted vault and API
-client remain authoritative. This library adds no endpoints, permissions,
-recording features, schema or runtime framework. The three current destinations
-are Home, You (profile → privacy → consent), and Settings (sign-in and data).
-The tabs are the `TABS` configuration in Shell.jsx. Old profile/privacy URLs
-redirect to You; no second profile icon or Settings shortcut duplicates the tabs.
+Android / React / Capacitor. The auth controller, encrypted vault and API client
+stay authoritative; this library adds no endpoints, permissions, recording
+features or schema. Design intent lives in `docs/ai/05-ui-ux-design.md` and
+motion/performance in `docs/ai/06-animation-and-performance.md`; this file
+records what the code actually does. Component upgrades are tracked as T02-T03
+in `docs/ai/08-tasks.md`.
 
-## Tokens and typography
+## Tokens ("Clay & Pine")
 
-Colours mirror `web/src/styles/tokens.css` exactly: paper #F3EEE4, paper-2
-#E9E2D3, line #D5CCB8, ink #1F2421, muted #5A5F58, pine #1F5A46,
-pine-deep #14392C, clay #B8452A. No shared token changed.
+All tokens are declared once in `src/styles.css` (`:root`, dark default; light
+via `prefers-color-scheme` overrides of the same names). Components in `ui.css`
+only read them; never hardcode colour or spacing in a component.
 
-| Scale | Values | Use |
-| --- | --- | --- |
-| Space | 4, 8, 12, 16, 20, 24, 32, 40, 48 px | 4px rhythm; platform insets are additional |
-| Note / body / lead | .875 / 1 / 1.25 rem | Barlow 400/600 |
-| Title / hero | 2.5 / 3.5 rem, fluid on phones | Barlow Condensed 800; uppercase except the landing headline |
-| Targets | 48px minimum; primary buttons 52px | Heights may grow when labels wrap |
-| Corners | 2px | No pills, gradients, shadows or glow |
+| Group | Tokens |
+| --- | --- |
+| Surface | `--bg` #12110F / #F3EEE4, `--surface-raised-2` (cards) #1A1816 / #FBF8F1, `--surface-raised` (sheets) #22201D / #FFFFFF, `--line`, `--line-strong`, `--fill-1..5`, `--scrim` |
+| Ink | `--text`, `--text-2`, `--text-3` (warm off-white / charcoal) |
+| Accent | pine `--accent` #6FB59A / #1F5A46, `--accent-bright`, `--accent-dim`, `--accent-ring`, `--on-accent`. Only the primary action, active tab, key live metrics and "my territory" |
+| Signal | ochre `--warn`; clay `--danger`, `--danger-text`, `--danger-dim` |
+| Map | `--map-mine` (pine), `--map-other` (slate), `--map-cooldown` (ochre), `--map-restricted` (clay), `--map-me-dot`, `--map-bg`; JS reads them through `mapColor()` in `src/map/hexes.js` |
+| Media | `--media-*`, `--on-media*`: always-dark welcome/splash photography in both themes |
+| Spacing | `--sp-1..12` on a 4 px grid (4, 8, 12, 16, 20, 24, 32, 40, 48) |
+| Radius | `--r-md` 16, `--r-lg` 22, `--r-xl` 28, `--r-pill` |
+| Type | `--fs-display/title/headline/body/small/caption` with `--lh-*` (48, 28, 20, 16, 14, 12 px) |
+| Motion | `motion.css`: `--motion-*` durations, `--ease-standard/enter/exit` |
 
-OS font scaling is preserved. On the real phone at 320 CSS px, Android
-font_scale=1.3 increased body text from 16 to 20.8 CSS px and field labels
-from 14 to 18.2px. Non-Latin text
-uses the system fallback. Names use automatic bidi direction; email/name values
-wrap. This is English UI with bidi-safe content, not an RTL translation.
+Flat fills only: no gradients, glow or neon; elevation comes from borders and
+surface tint, with shadow only on sheets, dialogs and toasts. Semantic colour is
+always paired with an icon or text. Google's sign-in button keeps Google's own
+white theme (`--google-*`), unaltered G and Google Sans label subset
+(`src/assets/google/`).
 
-Only Google's button label uses Google Sans Medium. The official font is
-Version 14.000;[08f2ac800], statically instantiated at 500 and subset with
-preinstalled fontTools 4.62.1 to `Continue with Google` / `Opening Google…`.
-The 4,132-byte WOFF and full SIL OFL 1.1 text are together in
-`../assets/google/`. The exact pinned official source URL is recorded there in
-THIRD_PARTY_NOTICES.md. The build also bundles its full licence with the
-app in THIRD_PARTY_NOTICES.txt. No font package or external runtime font request is used.
-The official multicolour G is unmodified; its supplied gradient is a Google
-brand asset, while Territory Run's own artwork and surfaces use flat fills.
-The button uses Google's white theme, #747775 stroke, #1F1F1F text, 20px G,
-10px logo-to-label gap and at least 12px horizontal padding; it is 52px tall.
+Run `npm run check:contrast` after changing any colour: it checks text pairs at
+4.5:1 and map/UI pairs at 3:1 on both themes.
+
+## Typography
+
+Barlow (400, 600; body) and Barlow Condensed (600, 700; headings and big stat
+numbers), bundled from `@fontsource` in `src/main.jsx`, latin subset, only the
+weights used. There is no runtime font request; system fonts are the fallback.
+Use `font-variant-numeric: tabular-nums` for numbers. Never go below 12 px
+(`--fs-caption`); layouts must survive OS font scale 1.3.
 
 ## Components and states
 
@@ -47,32 +51,34 @@ hidden from accessibility; every icon-only control has a text name.
 
 | Component | Example | States / contract |
 | --- | --- | --- |
-| Button | `<Button onClick={save}>Save</Button>` | primary (default), secondary, quiet, destructive; disabled, loading; `type="submit"` for form actions; `to` for links |
-| TextField | `<TextField label="Email" name="email" type="email"/>` | label, help, inline error, focus, password eye, live new-password length hint; native uncontrolled values; reset restores masking |
+| Button | `<Button onClick={save}>Save</Button>` | primary (default), secondary, ghost (alias quiet), destructive; `size="sm"` (44 px), `block`; disabled (+ `reason` text), loading keeps width; `type="submit"`; `to` for links |
+| TextField | `<TextField label="Email" name="email" type="email"/>` | label, help, inline error (`error` prop, or `validate(value)` on blur), `clearable` 44 px clear button, focus, password eye, live new-password length hint; native uncontrolled values; reset restores masking |
 | Switch | `<Switch label="Share route shapes" name="shareRouteShapes"/>` | native checkbox with switch role; checked, unchecked, focus, disabled; works with FormData |
-| Chip | `<Chip selected>Clay</Chip>` | pressed selection, focus, disabled; not a rounded badge |
-| ListRow | `<ListRow to="/you/privacy" label="Privacy" value="Only me"/>` | link/button, optional value/icon, chevron, immediate pressed colour |
-| Section | `<Section title="Your data">…</Section>` | ruled, labelled group; no card grid |
-| Sheet | `<Sheet title="Choose your hex" onClose={close}>…</Sheet>` | scrim, 220ms entrance, close button, Escape/system back, focus trap/restore; no drag gesture |
+| Segmented | `<Segmented label="Period" options={['Week','Month']} value={v} onChange={set}/>` | single choice, pressed = accent-dim + ring, 44 px, strings or `{value,label}` |
+| Card | `<Card onClick={open}>…</Card>` | raised surface, r-lg, 16 px padding; `to`/`onClick` makes it a pressable link/button |
+| StatGrid / StatTile | `<StatGrid><StatTile label="Distance" value="5.2" unit="km" delta="+0.4" tone="accent"/></StatGrid>` | caption label, tabular number, unit, delta chip; one column under 340 px |
+| Banner | `<Banner tone="offline" action="Retry" onAction={r}>…</Banner>` | sticky calm strip; tones info/offline/syncing/warn/error (error = alert) |
+| Chip | `<Chip selected>Clay</Chip>` | pressed selection, focus, disabled; pill, 44 px high |
+| ListRow | `<ListRow to="/you/privacy" label="Privacy" subtitle="…" value="Only me"/>` | 56 px+, link/button, `icon`/`leading` node, `subtitle`, `value`/`trailing`, chevron unless `chevron={false}` |
+| Section | `<Section title="Your data">…</Section>` | labelled group on a raised surface |
+| Sheet | `<Sheet title="Choose your hex" onClose={close}>…</Sheet>` | scrim, 220ms entrance, close button, Escape/system back, focus trap/restore; grabber with drag-to-dismiss (transform only, closes past 96 px), max 85% height |
 | Dialog | `<Dialog title="Discard?" onClose={close}>…</Dialog>` | accessible title and modal role; explicit destructive confirmation; same focus/back rules |
 | Toast | `<Success>Profile saved.</Success>` | one app-level message, replacement rather than stacking, dismiss, 4s lifetime; no success banner |
 | InlineNotice | `<InlineNotice error action="Retry" onAction={retry}>Offline.</InlineNotice>` | one compact message, optional action/dismiss; wraps important text instead of truncating; no thick border |
-| Skeleton | `<Skeleton label="Loading profile…"/>` | flat paper-2 bars, accessible loading label, no shimmer or infinite spinner |
+| Skeleton | `<Skeleton shape="row" lines={3} label="Loading…"/>` | shapes lines/row/card; flat surface bars, accessible loading label (shimmer arrives with T03) |
 | EmptyState | `<EmptyState title="Room to run">…</EmptyState>` | purposeful empty hex, honest copy, optional relevant action |
-| ErrorState | `<ErrorState onRetry={reload}>Cannot connect.</ErrorState>` | plain failure plus Retry; existing screens retain “Try again” wording |
+| ErrorState | `<ErrorState title="Stats unavailable" onRetry={reload}>Cannot connect.</ErrorState>` | optional title, plain failure, Retry when `onRetry` given; existing screens retain “Try again” wording |
 | Avatar | `<Avatar id={2} color="#1F5A46"/>` | generated hex, decorative; picker buttons provide the name and pressed state |
 | Screen | `<Screen title="Privacy" onBack={back} bottom={tabs}>…</Screen>` | fixed header, own scroll area, scroll hairline, safe insets, optional bottom content |
 | TabBar | `<TabBar tabs={TABS} active="/you"/>` | three labelled 48px+ destinations; current filled indicator, persistent while scrolling |
 | Icon | `<Icon name="back"/>` | back, chevron, close, check, eye, eye-off, settings, home, user, warning; own code SVGs |
 
-Button press is an immediate colour change plus .98 scale over 90ms. All motion
-values live in motion.css: 100/200/300ms; standard (.2,0,0,1), enter
-(.05,.7,.1,1), exit (.3,0,.8,.15). Forward/back content moves 12px over 200ms;
-tab switches hide the outgoing page immediately and fade only the incoming page
-over 150ms; sheets enter over 220ms; loaded content fades over 150ms.
-Reduced motion removes animations, transitions and press scaling. No haptics,
-looping decoration, confetti, animated skeleton or layout-property animation.
-Landing hex fills run once, roughly 1.2s, and then stay still.
+Motion tokens and keyframes live in `motion.css` (100/200/300 ms; standard
+`(.2,0,0,1)`, enter `(.05,.7,.1,1)`, exit `(.3,0,.8,.15)`). Press is a colour
+change plus .98 scale; forward/back content moves 12 px over 200 ms; tab switches
+fade the incoming page only (150 ms); sheets enter over 220 ms. Under
+`prefers-reduced-motion` all animation, transition and press scaling are removed.
+The fuller catalogue (shimmer, count-up, hold-to-finish) is task T03.
 
 ## Platform and state ownership
 
@@ -107,78 +113,10 @@ Landing hex fills run once, roughly 1.2s, and then stay still.
   guards. Loading uses skeletons; failures keep entered values and offer retry.
   No controller, token store, Google adapter or authorization layer is duplicated.
 
-## Design principles
-
-These are lessons applied to Territory Run, not borrowed layouts or assets.
-
-- [Pratt's Strava critique](https://ixd.prattsi.org/2026/02/design-critique-strava-ios-app-3/): clear destination ownership, relevant primary actions, explicit privacy. Profile/privacy live under You, without a duplicate header shortcut.
-- [the5krunner](https://the5krunner.com/2025/07/16/strava-app-redesign/) and [BikeRadar](https://www.bikeradar.com/news/strava-redesigned-record-feature): stable map/metric placement informs later recording work. This step adds no map, recording button or invented statistics.
-- [ScreensDesign onboarding](https://screensdesign.com/articles/fitness-app-onboarding-examples/) and [running screens](https://screensdesign.com/articles/running-app-screen-design-examples/): sparse hierarchy, one state-relevant action, understandable conservative privacy choices; no social or upsell prompts.
-- [Android system bars](https://developer.android.com/design/ui/mobile/guides/foundations/system-bars) and [edge to edge](https://developer.android.com/develop/ui/views/layout/edge-to-edge-manually): edge backgrounds, inset controls, persistent bottom navigation, native back and real-device checks.
-- [Capacitor SystemBars](https://capacitorjs.com/docs/apis/system-bars) and [keyboard](https://capacitorjs.com/docs/apis/keyboard): use the installed core inset owner and avoid conflicting full-screen resize behavior.
-- [Capgo's React/Capacitor guide](https://capgo.app/blog/create-react-mobile-apps-with-capacitor/): separate persistent chrome from scrolling content. No Capgo package or transition plugin was installed.
-- [Appademics' transition article](https://medium.com/appademics-magazine/the-sneaky-secret-technique-mobile-apps-use-to-make-transitions-appear-smoother-than-they-really-d4081a812a21): prepare content before revealing it. Here bounded page caching and lazy modules provide continuity; no screenshots of private screens are stored by the app.
-- [Google branding](https://developers.google.com/identity/branding-guidelines): official unaltered G, approved label and Google-only font exception.
-
-## Website anti-AI checklist
-
-1. Flat paper/pine/clay fills and hairlines; no Territory Run gradients/glow/blur/shadows.
-2. Own SVG controls and territory geometry; no emoji or icon package.
-3. Ruled account lists and sections; no identical feature-card grid.
-4. Concrete copy and left-aligned hierarchy; no proof badges, pills or fake counts.
-5. Deliberate spacing: brand hero, actions, forms and account lists have distinct roles.
-6. Square/2px corners. The native Google account picker retains Android's own styling.
-7. Own code art and supplied Google mark; no stock photos or fake store badges.
-8. Hexes identify territory, brand, avatars, loading buttons and empty states; no wallpaper.
-
 ## Checks
 
-From the repository root: `npm test --prefix mobile`, `npm run lint --prefix mobile`,
-`npm run build --prefix mobile`, `npm run check:bundle --prefix mobile`.
-Generate/verify native assets with `npm run assets:generate --prefix mobile` and
-`npm run assets:check --prefix mobile`. Sharp 0.35.5 is a mobile devDependency only.
-The generator covers all five densities, adaptive colour/monochrome, white
-notification mask and paper splash, and removes only replaced Capacitor template art.
-The first React paint releases the splash without waiting on network; exit is
-instant, so reduced motion cannot inherit a launch animation.
+From `mobile/`: `npm test`, `npm run lint`, `npm run build`, `npm run check:bundle`,
+`npm run check:contrast`. Native assets: `npm run assets:generate` / `assets:check`.
+Device checks and before/after performance are recorded in `mobile/README.md`.
 
-Real command output, device checks, native file inventory and before/after
-performance are recorded in mobile/README.md. Screenshots are ignored in
-`.local/screenshots/`; UI-01 through UI-10 are tracked in docs/EDGE_CASES.md.
-
-## Owner correction: fewer boxes
-
-The owner found the first preview's always-open units/bio fields and full-width
-Save actions too heavy. The corrected You screen is a profile overview: hex
-avatar/identity, current values in short ruled rows, and focused editors on tap.
-Units and visibility use labelled radio lists; name/bio editors open only when
-needed. Closing/back preserves the in-memory draft, including native autofill
-values read with FormData. A contained Save appears with “Unsaved changes”;
-only that action writes to the existing API. Failure keeps the draft.
-
-Other screens use lighter underlined fields with persistent labels and a strong
-pine underline/label focus indicator. Secondary actions are quiet; destructive and primary actions retain
-52px targets. Google's required button styling stays intact. No new package,
-endpoint, preference or automatic-save behaviour was added.
-
-This applies [Android settings patterns](https://developer.android.com/design/ui/mobile/guides/patterns/settings),
-[Material's scannable lists](https://m3.material.io/components/lists/overview) and
-[NN/G's progressive disclosure](https://www.nngroup.com/articles/progressive-disclosure/).
-The trade-off is an extra tap to edit a preference; viewing the profile no longer
-requires scanning a full form. Privacy reads also load concurrently.
-
-
-## Owner correction: no overlapping tab content
-
-A two-layer crossfade briefly showed Settings and You together. Only one route
-is now paintable at a time: inactive cached pages are hidden, inert and excluded
-from accessibility immediately. This intentionally replaces the brief's overlapping
-crossfade with an incoming-only 150ms fade; reduced motion changes instantly.
-Drafts and scroll positions still remain in memory. Focus goes only to the active
-heading. Back takes precedence over a restored tab's old navigation state.
-
-Regression checks stress rapid tabs before animations finish, active heading
-focus, scroll/draft preservation, Back direction, and a release footer that stays
-mounted instead of flashing its loading state. Page errors suppress a duplicate
-global connection notice. The owner confirmed the corrected phone build has no
-overlap after 72 device-tested switches recorded zero overlapping frames.
+Motion helpers (`motion.jsx`): `CountUp`/`useCountUp` (hero values only), `HoldButton` (hold-to-finish ring, `onComplete`), `.stagger` (set `--i` per child) and `.pop-in` classes.

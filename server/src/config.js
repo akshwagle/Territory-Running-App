@@ -26,6 +26,15 @@ function readConfig(env = process.env) {
       throw new Error('CORS_ORIGINS must contain exact origins without paths, wildcards or credentials.');
     }
   }
+  if (env.NODE_ENV === 'production') {
+    // Cleartext origins are only for debug builds and local development.
+    if (origins.some((origin) => origin.startsWith('http:'))) throw new Error('CORS_ORIGINS must not contain http: origins in production.');
+    if (['127.0.0.1', 'localhost'].includes(env.HOST ?? '127.0.0.1') && env.ALLOW_LOOPBACK_HOST !== 'true') {
+      throw new Error('HOST must be 0.0.0.0 (or a public interface) in production, or set ALLOW_LOOPBACK_HOST=true behind a local proxy.');
+    }
+  }
+  const trustProxyRaw = env.TRUST_PROXY ?? '0';
+  if (!/^\d{1,2}$/.test(trustProxyRaw)) throw new Error('TRUST_PROXY must be the number of reverse proxies in front of the API (0-99).');
   for (const name of ['JWT_ACCESS_SECRET', 'REFRESH_TOKEN_DERIVATION_SECRET']) {
     if (typeof env[name] !== 'string' || Buffer.byteLength(env[name], 'utf8') < 32 ||
         /^REPLACE_|^YOUR_/.test(env[name])) throw new Error(`${name} must be an independent random secret of at least 32 bytes.`);
@@ -57,15 +66,20 @@ function readConfig(env = process.env) {
   if (!['true', 'false'].includes(verifiedFlag)) throw new Error('REQUIRE_VERIFIED_EMAIL_FOR_RUNS must be true or false.');
   const consentVersions = {};
   for (const [type,name] of Object.entries({LOCATION:'LOCATION_CONSENT_VERSION',TERMS:'TERMS_VERSION',PRIVACY:'PRIVACY_POLICY_VERSION'})) {
-    const version=env[name] ?? '2026-11-13';
+    const version=env[name] ?? (type==='LOCATION'?'2026-11-13-run-v1':'2026-11-13');
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(version)) throw new Error(`${name} must be a policy version of 1–32 characters.`);
     consentVersions[type]=version;
   }
   return {
     consentVersions,
+    minAppVersion:integer(env.MIN_APP_VERSION,6,'MIN_APP_VERSION',1,2100000000),
+    pointRetentionDays:integer(env.POINT_RETENTION_DAYS,365,'POINT_RETENTION_DAYS',1,3650),
+    runWriteLimit:integer(env.RUN_WRITE_LIMIT,1200,'RUN_WRITE_LIMIT',1,10000),
     profileWriteLimit:integer(env.PROFILE_WRITE_LIMIT,30,'PROFILE_WRITE_LIMIT',1,10000),
     exportRequestLimit:integer(env.EXPORT_REQUEST_LIMIT,3,'EXPORT_REQUEST_LIMIT',1,1000),
     host,
+    trustProxy: Number(trustProxyRaw),
+    shutdownTimeoutMs: integer(env.SHUTDOWN_TIMEOUT_MS, 10000, 'SHUTDOWN_TIMEOUT_MS', 1000, 120000),
     port: integer(env.PORT, 4000, 'PORT', 1, 65535),
     origins,
     rateLimitMax: integer(env.API_RATE_LIMIT_MAX, 100, 'API_RATE_LIMIT_MAX', 1, 100000),

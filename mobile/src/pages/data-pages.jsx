@@ -3,11 +3,11 @@ import {useNavigate} from 'react-router';
 import {useAuth} from '../auth/context.jsx';
 import {friendlyMessage} from '../auth/errors.js';
 import {Notice} from '../components/forms.jsx';
-import {useResource} from './settings-pages.jsx';
+import {useResource} from './use-resource.js';
 import {SettingsFrame,ResourceState} from './profile-pages.jsx';
 import {exportShare} from '../profile/export-share.js';
 import {recordingDecision} from '../profile/consent-controls.js';
-import {Button,Dialog,EmptyState,TextField} from '../ui/index.jsx';
+import {Button,Card,Dialog,EmptyState,TextField} from '../ui/index.jsx';
 
 export function ConsentPage() {
   const {auth}=useAuth(),load=useCallback(()=>auth.api.request('/api/me/consents'),[auth]),data=useResource(load);
@@ -23,7 +23,7 @@ export function ConsentPage() {
   return <SettingsFrame title="Consent"><p className="small">Android edition {__APP_VERSION__}</p>
     <p>Read these notices before your first run. No location is collected in this build. You can use account settings without accepting.</p>
     <ResourceState data={data} label="consent notices"/>{data.phase==='ready'&&<>
-      {data.value.consents.map(row=><article className="consent-card" key={row.type}><h2>{row.title}</h2><p>{row.text}</p><p className="small">Version {row.version} · {row.accepted?'Accepted':'Acceptance needed'}</p></article>)}
+      {data.value.consents.map(row=><Card className="consent-card" key={row.type}><h2>{row.title}</h2><p>{row.text}</p><p className="small">Version {row.version} · {row.accepted?'Accepted':'Acceptance needed'}</p></Card>)}
       <Button disabled={busy||data.value.consents.every(c=>c.accepted)} onClick={accept}>{busy?'Saving…':data.value.consents.every(c=>c.accepted)?'Current notices accepted':'Accept current notices'}</Button>
       <p className="small">Withdraw location consent at any time in Privacy. It stops recording; you choose what happens to unsent points.</p>
       <h2 className="section-title">Precise location</h2><p>{recordingDecision(data.value.consents,'approximate').reason==='PRECISE_LOCATION_REQUIRED'?recordingDecision(data.value.consents,'approximate').message:'When recording arrives, it will need precise location to validate your route. Approximate location cannot be used for a run.'} Android will ask only when recording is available.</p>

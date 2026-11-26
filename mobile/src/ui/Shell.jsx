@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useNavigationType } from 'react-router';
 import { closeTopOverlay, Screen, TabBar } from './index.jsx';
+import { useUnread } from '../notifications/unread.jsx';
 import { exitApp, parentRoute, ROOT_ROUTES, watchBack } from '../platform/navigation.js';
 
 export const TABS = [
@@ -10,7 +11,7 @@ export const TABS = [
   { to: '/settings', label: 'Settings', icon: 'settings' },
   { to: '/you', label: 'You', icon: 'user' },
 ];
-const TITLES = { '/': 'Territory Run', '/welcome': 'Territory Run', '/home': 'Territory Run', '/workout': 'Workout', '/community': 'Community', '/you': 'You', '/you/privacy': 'Privacy', '/you/consent': 'Consent',
+const TITLES = { '/': 'Territory Run', '/welcome': 'Territory Run', '/home': 'Territory Run', '/workout': 'Workout', '/community': 'Community', '/run': 'Run', '/map': 'Territory map', '/notifications': 'Notifications', '/run/history': 'Run history', '/run/summary': 'Run summary', '/you': 'You', '/you/privacy': 'Privacy', '/you/consent': 'Consent',
   '/settings': 'Settings', '/settings/methods': 'Sign-in methods', '/settings/sessions': 'Active sessions',
   '/settings/password': 'Password', '/settings/export': 'Export data', '/settings/delete': 'Delete account',
   '/login': 'Log in', '/signup': 'Create account', '/forgot': 'Password help', '/reset': 'Reset password', '/verify': 'Email verification' };
@@ -20,7 +21,7 @@ export function Shell({ user, children, renderRoutes, footer, showFooter = true,
   const location = useLocation(), navigate = useNavigate(), type = useNavigationType();
   const scroll = useRef(null), positions = useRef(new Map()), cache = useRef(new Map());
   const identity = user?.id || null, priorIdentity = useRef(identity), last = useRef(null), history = useRef([]);
-  const [barError, setBarError] = useState(false);
+  const [barError, setBarError] = useState(false), unread = useUnread().count;
   if (identity !== priorIdentity.current) { cache.current.clear(); positions.current.clear(); history.current = []; priorIdentity.current = identity; }
   if (last.current?.key !== location.key) {
     if (type === 'POP') { const index = history.current.findIndex(entry => entry.key === location.key); history.current = index < 0 ? [location] : history.current.slice(0, index + 1); }
@@ -31,7 +32,7 @@ export function Shell({ user, children, renderRoutes, footer, showFooter = true,
   const canCache = identity && CACHEABLE.has(location.pathname);
   if (canCache) cache.current.set(location.pathname, location);
   const activeTab = location.pathname.startsWith('/you') ? '/you' : location.pathname.startsWith('/settings') || location.pathname === '/verify' ? '/settings'
-    : location.pathname === '/workout' || location.pathname === '/community' ? location.pathname : '/home';
+    : location.pathname === '/community' ? '/community' : location.pathname === '/workout' || location.pathname.startsWith('/run') ? '/workout' : '/home';
   const root = ROOT_ROUTES.has(location.pathname), backRef = useRef(null);
   backRef.current = (native = false) => {
     if (closeTopOverlay()) return;
@@ -39,7 +40,7 @@ export function Shell({ user, children, renderRoutes, footer, showFooter = true,
     const previous = history.current.at(-2);
     // Tabs are roots. After logout/deep links the old account's history must
     // never cause a Protected -> login redirect loop.
-    if (previous && (!identity || ['/home', '/workout', '/community', '/you', '/settings'].some(prefix => previous.pathname.startsWith(prefix)))) navigate(-1);
+    if (previous && (!identity || ['/home', '/workout', '/community', '/run', '/you', '/settings'].some(prefix => previous.pathname.startsWith(prefix)))) navigate(-1);
     else navigate(parentRoute(location.pathname), { replace: true, state: { direction: 'back' } });
   };
   useEffect(() => {
@@ -56,7 +57,7 @@ export function Shell({ user, children, renderRoutes, footer, showFooter = true,
   return <Screen title={TITLES[location.pathname] || 'Territory Run'} onBack={!root ? () => backRef.current() : undefined}
     className={location.pathname === '/' || location.pathname === '/welcome' ? 'shell-welcome' : ''} scrollRef={scroll}
     onScroll={event => positions.current.set(location.pathname, event.currentTarget.scrollTop)}
-    bottom={identity ? <TabBar tabs={TABS} active={activeTab} onSelect={(event, tab) => { event.preventDefault(); if (tab.to !== location.pathname) navigate(tab.to, { state: { tab: true } }); }}/>:null}>
+    bottom={identity ? <TabBar tabs={TABS.map(tab => tab.to === '/home' && unread > 0 ? { ...tab, badge: unread } : tab)} active={activeTab} onSelect={(event, tab) => { event.preventDefault(); if (tab.to !== location.pathname) navigate(tab.to, { state: { tab: true } }); }}/>:null}>
     {barError && <p className="small" role="alert">System back is unavailable. Use the Back button above, or reopen the app.</p>}
     {children}
     {[...cache.current.entries()].map(([path, entry]) => <div key={`${identity}:${path}`} hidden={!canCache || path !== location.pathname} inert={!canCache || path !== location.pathname} aria-hidden={!canCache || path !== location.pathname} data-active={canCache && path === location.pathname} className="route-page" data-route={path} data-direction={direction}>{renderRoutes(entry)}</div>)}

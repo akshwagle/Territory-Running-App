@@ -19,7 +19,7 @@ export function createAuthController({ origin, storage, pending, google, fetchIm
     operation++; profileLoad++; pending.pause();
     await vault.clear();
     await storage.remove(GOOGLE_ATTEMPT);
-    await pending.discard(ownerId,DISCARD_CONFIRMATION);
+    await pending.discard(ownerId,DISCARD_CONFIRMATION,{eraseAccount:true});
     await clearCaches();
     await google.signOut?.();
     await storage.remove(DELETED_ACCOUNT);
@@ -42,7 +42,7 @@ export function createAuthController({ origin, storage, pending, google, fetchIm
       if (load !== profileLoad) return;
       if (['signedOut', 'reauthRequired'].includes(state.status) || isAccountError(error)) throw error;
       const current = vault.snapshot().session;
-      if (current) { pending.pause(); set({ status: isConnectionError(error) ? 'offline' : 'unavailable', user: current.user, message: friendlyMessage(error) }); }
+      if (current) { pending.resume(current.user.id); pending.pause('connection'); set({ status: isConnectionError(error) ? 'offline' : 'unavailable', user: current.user, message: friendlyMessage(error) }); }
       throw error;
     }
   }
@@ -133,6 +133,7 @@ export function createAuthController({ origin, storage, pending, google, fetchIm
         if (confirmation !== DISCARD_CONFIRMATION) throw new ApiError('CONFIRM_DISCARD', 'Confirm again before discarding saved data.');
         await pending.discard(current.user.id, confirmation);
       }
+      await pending.stopRecording(current.user.id,'session-ended');
       operation++; profileLoad++; pending.pause();
       let remoteFailed = false;
       try { await api.request('/api/auth/logout', { auth: false, method: 'POST', body: { refreshToken: current.refreshToken } }); }

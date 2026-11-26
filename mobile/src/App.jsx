@@ -4,15 +4,28 @@ import { useAuth } from './auth/context.jsx';
 import { parseAuthLink, watchNativeAuth } from './auth/deep-links.js';
 import { Notice } from './components/forms.jsx';
 import { SplashPage, WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage } from './pages/auth-pages.jsx';
-import { SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
 import { HomePage } from './pages/feed-pages.jsx';
-import { WorkoutPage } from './pages/workout-pages.jsx';
-import { CommunityPage } from './pages/community-pages.jsx';
 
-import { UIProvider, Skeleton, InlineNotice } from './ui/index.jsx';
+import { UnreadProvider } from './notifications/unread.jsx';
+import { UIProvider, Skeleton, InlineNotice, Banner } from './ui/index.jsx';
 import { Shell } from './ui/Shell.jsx';
 import { PendingNotice } from './ui/PendingNotice.jsx';
+import { FirstRunIntro } from './ui/FirstRunIntro.jsx';
 import { firstScreenReady } from './platform/splash.js';
+const SettingsPage=lazy(()=>import('./pages/settings-pages.jsx').then(m=>({default:m.SettingsPage})));
+const MethodsPage=lazy(()=>import('./pages/settings-pages.jsx').then(m=>({default:m.MethodsPage})));
+const SessionsPage=lazy(()=>import('./pages/settings-pages.jsx').then(m=>({default:m.SessionsPage})));
+const ChangePasswordPage=lazy(()=>import('./pages/settings-pages.jsx').then(m=>({default:m.ChangePasswordPage})));
+const SignOutControl=lazy(()=>import('./pages/settings-pages.jsx').then(m=>({default:m.SignOutControl})));
+const WorkoutPage=lazy(()=>import('./pages/workout-pages.jsx').then(m=>({default:m.WorkoutPage})));
+const CommunityPage=lazy(()=>import('./pages/community-pages.jsx').then(m=>({default:m.CommunityPage})));
+const RunPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunPage})));
+const RunSummaryPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunSummaryPage})));
+const RunHistoryPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunHistoryPage})));
+const RunDetailPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunDetailPage})));
+const NotificationsPage=lazy(()=>import('./notifications/pages.jsx').then(m=>({default:m.NotificationsPage})));
+const StatsPage=lazy(()=>import('./stats/pages.jsx').then(m=>({default:m.StatsPage})));
+const TerritoryMapPage=lazy(()=>import('./map/TerritoryMapPage.jsx').then(m=>({default:m.TerritoryMapPage})));
 const ProfilePage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.ProfilePage })));
 const PrivacyPage = lazy(() => import('./pages/profile-pages.jsx').then(m => ({ default: m.PrivacyPage })));
 const ConsentPage = lazy(() => import('./pages/data-pages.jsx').then(m => ({ default: m.ConsentPage })));
@@ -75,6 +88,10 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
     <Route path="/welcome" element={state.user ? <Navigate to="/home" replace /> : <WelcomePage notice={state.authOutcome?.kind === 'error' ? state.authOutcome.message : linkError} />} />
     <Route path="/signup" element={<SignupPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/forgot" element={<ForgotPage />} />
     <Route path="/reset" element={<ResetPage key={generation} link={link} clearLink={clearLink} />} /><Route path="/verify" element={<VerifyPage key={generation} link={link} clearLink={clearLink} />} />
+    <Route path="/run" element={<Protected><RunPage/></Protected>}/><Route path="/run/summary" element={<Protected><RunSummaryPage/></Protected>}/><Route path="/run/history" element={<Protected><RunHistoryPage/></Protected>}/><Route path="/run/history/:id" element={<Protected><RunDetailPage/></Protected>}/>
+    <Route path="/notifications" element={<Protected><NotificationsPage/></Protected>}/>
+    <Route path="/stats" element={<Protected><StatsPage/></Protected>}/>
+    <Route path="/map" element={<Protected><TerritoryMapPage/></Protected>}/>
     <Route path="/home" element={<Protected><HomePage /></Protected>} />
     <Route path="/workout" element={<Protected><WorkoutPage /></Protected>} />
     <Route path="/community" element={<Protected><CommunityPage /></Protected>} />
@@ -88,20 +105,21 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
   </Routes></Suspense>;
   const ready = !['restoring', 'storageError', 'blocked'].includes(state.status) &&
     !(state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname));
-  return <Shell user={state.user} renderRoutes={ready ? pageRoutes : () => null}
+  return <UnreadProvider api={auth.api} userId={state.user?.id}><Shell user={state.user} renderRoutes={ready ? pageRoutes : () => null}
     showFooter={!state.user && location.pathname !== '/' || location.pathname === '/settings'}
     footer={<><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
       {ready && location.pathname !== '/' && location.pathname !== '/welcome' && state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome?.kind !== 'progress' && state.authOutcome && <Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice>}
       {location.pathname !== '/' && location.pathname !== '/welcome' && !state.authOutcome && linkError && <InlineNotice error>{linkError}</InlineNotice>}
       {state.status === 'restoring' ? <section><h1>Getting ready</h1><Skeleton label="Restoring your sign-in securely…"/></section> :
         state.status === 'storageError' ? <section><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
-          state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><SignOutControl /></section> :
+          state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><Suspense fallback={null}><SignOutControl /></Suspense></section> :
             state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><InlineNotice>{state.message}</InlineNotice><Link className="button primary" to="/login">Go to login</Link></section> : <>
-            {['offline', 'unavailable'].includes(state.status) && <InlineNotice className="connection-notice" error action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</InlineNotice>}
+            {['offline', 'unavailable'].includes(state.status) && <Banner className="connection-notice" tone="error" action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</Banner>}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
             {location.pathname !== '/' && location.pathname !== '/welcome' && <PendingNotice/>}
+            {location.pathname === '/home' && <FirstRunIntro/>}
 
 
           </>}
-  </Shell>;
+  </Shell></UnreadProvider>;
 }

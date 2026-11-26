@@ -232,8 +232,8 @@ module.exports=function profileCases({prisma,pool,config}) {
     error(await get(f,b,`/api/me/export/${id}`),404,'NOT_FOUND');error(await get(f,a,`/api/me/export/${randomUUID()}`),404,'NOT_FOUND');
   });
   test('PRIV-06 expiry removes ciphertext and keys, missing artifacts fail safely, and export cannot outlive deletion',async t=>{
-    let now=new Date();const f=await fixture(t,{}, {clock:()=>now}),a=await f.signup();
-    const created=await post(f,a,'/api/me/export');await f.app.locals.profileJobs.drain();const id=created.body.export.id;
+    const f=await fixture(t),a=await f.signup();
+    const created=await post(f,a,'/api/me/export');assert.equal(created.status,202);await f.app.locals.profileJobs.drain();const id=created.body.export.id;
     // Keep JWT inside 15 minutes; the export clock alone advances for expiry.
     const {createExportService}=require('../src/profile/exports');
     const service=createExportService({prisma,jobs:f.app.locals.profileJobs,directory:f.exportDir,clock:()=>new Date(Date.now()+25*3600000)});

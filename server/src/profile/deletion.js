@@ -51,6 +51,9 @@ function createDeletionService({prisma,config,jobs,exports,mailer,clock=()=>new 
         if(!successor)await tx.team.delete({where:{id:activeMembership.teamId}});
         else if(activeMembership.role==='CAPTAIN')await tx.teamMember.update({where:{userId:successor.userId},data:{role:'CAPTAIN'}});
       }
+      // Abort the live recording under the same account-work lock and transaction
+      // as deletion. Concurrent ingest/finish cannot publish after this commit.
+      await tx.run.updateMany({where:{userId:user.id,status:'ACTIVE',deletedAt:null},data:{deletedAt:new Date()}});
       const artifacts=await tx.dataExport.findMany({where:{userId:user.id},select:{id:true}});
       await mailer?.prepareErasure?.({userId:user.id,email:user.email});
       // Root deletion invokes the reviewed audit trigger while identity/history

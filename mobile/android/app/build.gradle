@@ -21,7 +21,8 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
@@ -39,6 +40,9 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // Already supplied at runtime by the approved, unmodified location plugin.
+    // App-owned write-before-bridge journaling needs its native broadcast API.
+    compileOnly 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
@@ -46,3 +50,15 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+// Debug simulator UI must never be copied into a release APK by a stale sync.
+// Release native code uses src/release, which contains no synthetic producer.
+tasks.register('verifyReleaseAssets') {
+    doLast {
+        def assets = fileTree('src/main/assets/public') { include '**/*.js' }
+        if (assets.any { it.getText('UTF-8').contains('Start desk simulation') }) {
+            throw new GradleException('Release assets include debug tools. Run npm run build and cap sync android without TERRITORY_DEBUG_BUILD, then retry.')
+        }
+    }
+}
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach { dependsOn('verifyReleaseAssets') }

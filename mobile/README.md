@@ -587,3 +587,109 @@ status and real run/claim/map/leaderboard features remain deferred. This step
 provides UI and generic pending-count/preservation behavior only. The existing
 server limits remain: real SMTP delivery has not been verified, rate limiting
 is per process, and verified HTTPS App Links require future hosting.
+
+
+## Step 05 — run recording (0.4.0 / code 6)
+
+The implementation on feat/run-recording uses the existing UI components and
+four tabs: Home, Run, You and Settings. Recording starts only after the API has
+acknowledged a reservation. No new offline starts are possible. Acknowledged
+runs continue offline; their points, controls and exact upload lease stay in an
+encrypted native journal until the server acknowledges finish or explicit discard.
+
+The approved, unmodified @capacitor-community/background-geolocation 1.3.1
+(MIT, published 22 October 2026; Capacitor peer >=3, inspected against 8.6.0)
+provides Android's location foreground service. App-owned code consumes its
+native local broadcast and commits a point before any JS upload reads it. It
+never calls the plugin's JS watcher. Its application-context service binding
+survives Activity recreation. The dependency has no point database, third-party
+upload or location/token log. Capacitor loggingBehavior remains none.
+
+Storage is application-level AES-256-GCM over Android SQLite, not plaintext
+SQLite: per-account Android Keystore keys, fresh 96-bit nonce, authenticated
+owner/kind/id/schema AAD, synchronous transactions. SQLite indexes contain only
+hashed account scopes, run IDs and sequence numbers. Location and recovery
+payloads are ciphertext. A missing key never triggers silent replacement over
+existing records. Explicit account erasure removes its rows and key; sign-out
+keeps both. Existing auth secure storage stays separate. No storage npm plugin
+was added. FLAG_KEEP_SCREEN_ON replaces a keep-awake dependency.
+
+Permission explanations precede foreground location, background location,
+notification and optional activity-recognition prompts. Approximate location
+blocks starts. Background refusal gives foreground-only mode; leaving the app
+then pauses safely. Android 13+ notification refusal does not remove the service
+requirement: Android lists it in Active apps but may hide its drawer entry.
+Activity-recognition refusal simply omits steps, without a penalty. Revoked
+location pauses and preserves points; GPS off/on adds a separated interruption.
+The battery guide opens Android settings without requesting an exemption itself.
+
+The notification shows distance/time and Pause (or Resume)/Stop. A foreground
+service cannot defeat force-stop, a reboot or every OEM battery policy. Resume
+records an explicit interruption; it does not invent locations for downtime.
+Known-same-boot recovery offers Resume or Finish. After a reboot (or an unknown
+boot identifier), only Finish at the last committed point is offered. Installing
+an APK with the same package/key preserves the versioned journal; unsupported
+future/downgrade formats fail closed rather than dropping data.
+
+Native capture stores accuracy >50 m but excludes it from live distance; cold
+fixes wait for <=25 m or 15 seconds. Jitter under max(8 m, accuracy) adds no
+movement. A fix older than ten seconds shows Weak GPS. Gaps over thirty seconds
+and every resume break the route. Raw fixes are unchanged: server filtering is
+authoritative. Stationary runs pause at five minutes and finish after thirty
+at last movement, retaining the tail as evidence. Limits are 24 hours and
+100,000 points; >8 hours is informational review, not rejection. No claims are
+made. Provider and native mock bits are sent; Android exposes no reliable
+public query for whether a mock-provider app is selected, so that run signal is
+null (unknown), never a fabricated false. ANDROID_ID is hashed, never sent raw.
+
+Native monotonic time aligns with the server's acknowledgement; raw device wall
+time is retained separately. Clock jumps above two minutes create CLOCK_JUMP.
+Batches contain <=200 points, battery level and an optional step delta; they are
+leased durably and retried unchanged with exponential jittered backoff and
+Retry-After. The highest server sequence is not a cumulative acknowledgement
+of missing batches. Native CapacitorHttp keeps requests/headers in memory and
+disables redirects. The legacy bridge avoids WebView background event throttling;
+collection/storage remains native even if JS or connectivity is interrupted.
+On finish, unsent data is retained until the server returns its authoritative
+summary. The account work hooks stop capture on session loss/consent withdrawal,
+preserve encrypted points, and require an explicit upload-or-discard choice.
+A storage write failure stops collection and holds at most 64 pending fixes in
+memory; Retry commits the original validated fix atomically, then pauses. Do not
+close the process while the storage warning says a fix is held only in memory.
+
+### Desk simulation and release boundary
+
+`npm run apk:debug --prefix mobile` enables the debug-only desk button. It feeds
+app-owned synthetic locations with the native mock bit set, without changing
+Android's mock provider or another app's location. It still requires consent,
+real precise-location permission and an online reservation. Release Java source
+sets contain no producer or simulator API. Normal `npm run build --prefix mobile`
+removes the debug UI; a Gradle release guard rejects stale debug web assets.
+Never use a simulated route as evidence of a real outdoor test.
+
+Native store tests use fresh random fixture namespaces only, with no reset of
+the installed app's database or owner keys. Unit tests and instrumented tests:
+
+```sh
+cd mobile/android
+./gradlew testDebugUnitTest assembleDebugAndroidTest
+# Install the debug app/test APKs, then (connected test phone):
+adb shell am instrument -w -e class com.equimaps.capacitor_background_geolocation.RunStoreTest com.territoryrunning.app.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+### Phone proof status
+
+Encrypted-store/acknowledgement instrumentation: 5 tests passed on the connected Android phone.
+Native policy/math: 9 tests passed. Desk recording and the owner's real outdoor
+proof are pending; neither is claimed as passed. Remaining phone steps are in
+[the step review](../docs/PHASE4_RUN_RECORDING_REVIEW.md). Step 06 validation,
+territory claiming, the map and leaderboards remain out of scope. SMTP delivery
+is still unverified and write rate limits remain per API process.
+
+
+After the guided desk proof, follow the exact ten-minute outdoor sequence and
+read-only psql command in docs/PHASE4_RUN_RECORDING_REVIEW.md. From the root:
+`./scripts/run-points-report.sh` (or pass one run UUID). It reads server/.env
+without displaying credentials and prints only summary/sequence/gap/mock counts.
+The desk storage-stop control is a debug-only fault seam; Retry storage commits
+its held fix and pauses before any further capture. No such method ships in release.

@@ -16,6 +16,7 @@
     "dev": "node --watch src/index.js",
     "release:register": "node scripts/register-release.js",
     "test:api": "node --test --test-concurrency=1 api-tests/*.test.js",
+    "e2e:smoke": "node scripts/e2e-smoke.js",
     "auth:google:try": "node scripts/google-sign-in.js"
   },
   "prisma": {
@@ -34,6 +35,7 @@
     "express": "5.3.0",
     "express-rate-limit": "8.7.4",
     "google-auth-library": "11.3.4",
+    "h3-js": "4.5.0",
     "helmet": "8.3.0",
     "jose": "6.2.17",
     "nodemailer": "10.5.0",

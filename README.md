@@ -1,6 +1,6 @@
 # Territory Run
 
-Current work is Phase 4, step 03: Android authentication. See [mobile setup and phone checks](mobile/README.md), [verification results](docs/PHASE4_APP_AUTH_REVIEW.md) and the [edge-case audit](docs/EDGE_CASES.md). Native Google and email phone checks passed. Run recording and uploads remain deferred to step 05. The sections below retain the earlier phases' setup and historical verification records.
+**Status:** Phases 4–6 are built on the overnight branches (auth, run recording, territory claiming, map, community, history/stats, notifications, production hardening, mobile polish). See [docs/FINAL_STATUS.md](docs/FINAL_STATUS.md) for what is verified and what only the owner can verify, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for hosting and release, and [mobile setup and phone checks](mobile/README.md). The sections below retain earlier setup and historical verification records.
 
 Everything lives in **`/Users/akshwagle/Desktop/Territory-Running-App`** (`~/Desktop/Territory-Running-App`). Every phase uses this one folder. There is no root npm workspace. Application code is plain JavaScript; native Android source is generated Java/Gradle/XML.
 
@@ -146,12 +146,13 @@ shasum -a 256 ../mobile/android/app/build/outputs/apk/debug/app-debug.apk
 
 ## Tests
 
-The unchanged 23 DB tests use `DATABASE_URL_TEST`. API tests use `DATABASE_URL_API_TEST` with the same URL/identity/empty-database/PostgreSQL-16 guards before migrations. Neither suite writes to development. Create both disposable databases once; recreate each before rerunning its suite. Do not use an application database for resets.
+The 45 DB tests use `DATABASE_URL_TEST`. API tests use `DATABASE_URL_API_TEST` with the same URL/identity/empty-database/PostgreSQL-16 guards before migrations. Neither suite writes to development. Create both disposable databases once; recreate each before rerunning its suite. Do not use an application database for resets.
 
 ```sh
 # From repo root; local PostgreSQL binaries and relocated libpq:
 export PATH="$PWD/.local/postgres16/bin:$PATH"
 export DYLD_LIBRARY_PATH="$PWD/.local/postgres16/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+# Simpler: node server/scripts/reset-test-databases.js db|api|all
 # Create the API test database once:
 createdb -h 127.0.0.1 -p 55432 -U territory -W territory_api_test
 # Before rerunning each suite, recreate only its corresponding disposable DB:
@@ -171,7 +172,9 @@ For Docker, create/reset the two test databases with `docker compose --env-file 
 
 ## What is not done
 
-No login, run recording, maps, hex claiming, user features, polished UI, hosting, deployment or physical-phone validation in this phase. The phone guide below is for the project owner to run. There are no production credentials in the repository, and APKs, keystores, env files, local.properties, caches and build outputs remain ignored.
+Not verified here, because they need the owner's accounts or hardware: outdoor GPS runs on a phone, Google OAuth production setup, hosting, release keystore and signed APK, Firebase push, store/website upload. Not built because they need schema changes: goals, gear, challenges, clubs, kudos/comments, notification preferences and push tokens (see overnight decisions in [docs/FINAL_STATUS.md](docs/FINAL_STATUS.md)).
+
+**Smoke test:** with the API test database recreated, `npm run e2e:smoke --prefix server` registers, logs in, records and finishes a synthetic run, checks the claim, territory, leaderboard, notifications, export and account deletion against a local in-process API.
 
 ## PostgreSQL setup reference
 

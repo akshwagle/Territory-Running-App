@@ -11,9 +11,9 @@ anti-cheat flags, notifications, privacy controls and administration.
 - Backend: Node.js 22.12+ and Express 5 (plain JavaScript).
 - Database: PostgreSQL 16, Prisma 6 (exact version in server/package.json).
 - Mobile: Capacitor wraps the React app into an Android APK downloaded from the website.
-- Phase 3 and Phase 4 step 03 are merged; step 04 profile/privacy is implemented and phone-verified on feat/profile-privacy, awaiting PR review.
-- Step 03: native Google and email phone checks passed; recording/uploads and cross-device ACTIVE-run rules are deferred to step 05.
-- No login, runner features, UI redesign, hosting or deployment in Phase 2.
+- Status: Phases 1-3 merged. Phase 4-6 features (auth, run recording, claiming, map, community, stats, notifications, hardening, mobile polish) are built on stacked branches awaiting owner review; see docs/FINAL_STATUS.md. Still 30 tables; no schema changes since step 05.
+- Unverified by the agent: on-device GPS runs, Google OAuth production, hosting, signed release, Firebase push.
+- (Historical) Phase 2 had no login, runner features, UI redesign, hosting or deployment.
 
 ## Project layout
 - The single project root is /Users/akshwagle/Desktop/Territory-Running-App (~/Desktop/Territory-Running-App).

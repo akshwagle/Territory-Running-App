@@ -29,8 +29,8 @@ async function ownData(tx,userId) {
   const privacy=await tx.userPrivacySetting.findUnique({where:{userId}});
   const consents=await tx.userConsent.findMany({where:{userId},orderBy:{id:'asc'},select:{id:true,type:true,version:true,accepted:true,createdAt:true}});
   const runs=await tx.run.findMany({where:{userId},orderBy:{startedAt:'asc'},select:{id:true,clientRunId:true,startedAt:true,endedAt:true,
-    distanceM:true,durationS:true,routePolyline:true,h3Resolution:true,status:true,mockGps:true,appVersion:true,createdAt:true,
-    points:{orderBy:{seq:'asc'},select:{seq:true,lat:true,lng:true,recordedAt:true,accuracyM:true,speedMps:true}},
+    distanceM:true,durationS:true,routePolyline:true,h3Resolution:true,status:true,mockGps:true,appVersion:true,createdAt:true,runSignals:true,deletedAt:true,
+    points:{orderBy:{seq:'asc'},select:{seq:true,lat:true,lng:true,recordedAt:true,accuracyM:true,speedMps:true,provider:true,isMock:true}},
     hexes:{select:{h3Index:true,outcome:true,prevOwnerId:true,createdAt:true}}}});
   runs.forEach(run=>{run.hexes=run.hexes.map(({prevOwnerId,...hex})=>({...hex,previousOwner:prevOwnerId===null?null:prevOwnerId===userId?'You':'Runner'}));});
   const flags=await tx.runFlag.findMany({where:{OR:[{run:{userId}},{reporterId:userId},{resolverId:userId}]},
@@ -125,7 +125,7 @@ function createExportService({prisma,jobs,directory=path.resolve(__dirname,'../.
     await cleanup();
     for(const row of await prisma.dataExport.findMany({where:{status:'PENDING'},select:{id:true,userId:true}}))
       jobs.enqueue(row.userId,signal=>build(row.userId,row.id,signal));
-    const timer=setInterval(()=>cleanup().catch(()=>{}),3600000);timer.unref();return ()=>clearInterval(timer);
+    let running=false;const timer=setInterval(()=>{if(running)return;running=true;cleanup().catch(()=>{}).finally(()=>{running=false;});},3600000);timer.unref();return ()=>clearInterval(timer);
   }
   return {create,get,cleanup,start,removeFiles,directory};
 }

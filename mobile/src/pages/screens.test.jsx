@@ -209,7 +209,7 @@ it('app bootstrap, offline and blocked states are explicit; resume/link watcher 
   auth.api.request.mockResolvedValue({ versionCode: 2 });
   const { user } = view(<App downloadUrl="http://localhost:5173/#download" nativeWatch={watch} />, auth, '/home');
   expect(screen.getByText('Restoring your sign-in securely…')).toBeVisible();
-  act(() => auth.emit(signedIn())); expect(await screen.findByRole('heading', { name: /Good to see you/ })).toBeVisible();
+  act(() => auth.emit(signedIn())); expect(await screen.findByRole('heading', { name: /Take a little ground/ })).toBeVisible();
   await user.click(screen.getByRole('link', { name: 'Settings', exact: true })); expect(watch).toHaveBeenCalledOnce();
   act(() => auth.emit({ ...signedIn(), status: 'offline', message: 'Cannot reach the server.' })); expect(screen.getByText(/Uploads are paused/)).toBeVisible();
   act(() => auth.emit({ ...signedIn(), status: 'blocked', message: 'Account suspended. Data stays encrypted.' })); expect(screen.getByRole('heading', { name: 'Account unavailable' })).toBeVisible();
@@ -305,4 +305,21 @@ it('UI-07 a blocked-account screen takes priority over a previous Google error i
  view(<App downloadUrl="http://localhost:5173/" nativeWatch={async()=>()=>{}}/>,auth,'/home');
  expect(screen.getAllByRole('alert')).toHaveLength(1);expect(screen.getByRole('alert')).toHaveTextContent('Account unavailable.');
  expect(screen.queryByText('Earlier Google failure.')).toBeNull();
+});
+
+it('auth screens put Google first and validate email on blur with the right keyboard hints', async () => {
+  const { user } = view(<LoginPage />);
+  const google = screen.getByRole('button', { name: 'Continue with Google' }), email = screen.getByLabelText('Email');
+  expect(google.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(email).toHaveAttribute('inputmode', 'email'); expect(email).toHaveAttribute('autocapitalize', 'none');
+  await user.type(email, 'not-an-email'); await user.tab();
+  expect(await screen.findByText(/valid email address/)).toBeInTheDocument();
+});
+
+it('settings groups account, privacy & data, and keeps delete last in its own danger section', () => {
+  view(<SettingsPage />, fakeAuth(signedIn()));
+  const titles = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent);
+  expect(titles).toEqual(['Account', 'Privacy & data', 'App', 'Danger zone']);
+  expect(screen.getByRole('link', { name: /Delete account/ })).toHaveAttribute('href', '/settings/delete');
+  expect(screen.getByRole('link', { name: /Notifications/ })).toHaveAttribute('href', '/notifications');
 });

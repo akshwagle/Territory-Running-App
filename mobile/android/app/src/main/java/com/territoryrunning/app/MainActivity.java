@@ -11,6 +11,7 @@ import android.webkit.WebSettings;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        RecorderRegistration.register(this);
         super.onCreate(savedInstanceState);
         // One inset owner: Capacitor SystemBars passes safe areas to CSS and
         // resizes for the IME. EdgeToEdge also opts older Android versions in.

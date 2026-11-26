@@ -18,5 +18,8 @@
       "showSpinner": false,
       "androidScaleType": "CENTER"
     }
+  },
+  "android": {
+    "useLegacyBridge": true
   }
 }
