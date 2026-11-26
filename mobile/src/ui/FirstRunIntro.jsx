@@ -17,7 +17,7 @@ export function FirstRunIntro() {
     <p>Territory Run records your route with precise GPS while you run, so the cells you cross can become your territory. Android asks for permission when you start your first run; background location keeps recording with the screen off. Recording stops when you finish.</p>
     <h3>Notifications</h3>
     <p>Run results, lost territory, followers and badges appear in the bell on Home. This build sends no push notifications, so Android will not ask for notification permission.</p>
-    <p className="small">You can review or withdraw location consent in Profile → Privacy at any time.</p>
+    <p className="small">You can review or withdraw location consent at any time in Privacy on the You tab.</p>
     <div className="editor-actions"><Button onClick={close}>Got it</Button></div>
   </Sheet>;
 }

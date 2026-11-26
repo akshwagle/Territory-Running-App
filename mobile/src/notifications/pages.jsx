@@ -30,17 +30,16 @@ export function NotificationsPage(){
     catch{setError('Could not mark everything as read.');}
   }
   const anyUnread=items.some(n=>!n.read);
-  return <section className="notifications-page"><p className="eyebrow">Activity</p><h1>Notifications</h1>
-    {phase==='loading'&&<Skeleton label="Loading notifications…"/>}
+  return <section className="notifications-page"><div className="page-head"><h1>Notifications</h1>{phase==='ready'&&anyUnread&&<Button variant="ghost" size="sm" onClick={readAll}>Mark all as read</Button>}</div>
+    {phase==='loading'&&<Skeleton shape="row" lines={4} label="Loading notifications…"/>}
     {phase==='error'&&<ErrorState onRetry={()=>load(null)} label="Try again">{error}</ErrorState>}
-    {phase==='ready'&&!items.length&&<EmptyState title="You’re all caught up">Run results, territory changes and badges will appear here after your next run.</EmptyState>}
+    {phase==='ready'&&!items.length&&<EmptyState title="You’re all caught up">Run results, territory changes and badges appear here after your next run.</EmptyState>}
     {phase==='ready'&&items.length>0&&<>
-      {anyUnread&&<Button variant="secondary" size="sm" onClick={readAll}>Mark all as read</Button>}
-      {items.reduce((groups,n)=>{const k=dayKey(n.createdAt),g=groups.at(-1);if(g&&g.k===k)g.rows.push(n);else groups.push({k,rows:[n]});return groups;},[]).map(g=><section key={g.k} aria-label={dayLabel(g.rows[0].createdAt)}><h2 className="notice-day">{dayLabel(g.rows[0].createdAt)}</h2><Section><ul className="notice-list">{g.rows.map(n=><li key={n.id} className={`notice-item${n.read?'':' unread'}`}>
+      {items.reduce((groups,n)=>{const k=dayKey(n.createdAt),g=groups.at(-1);if(g&&g.k===k)g.rows.push(n);else groups.push({k,rows:[n]});return groups;},[]).map(g=><Section key={g.k} title={dayLabel(g.rows[0].createdAt)}><ul className="notice-list">{g.rows.map(n=><li key={n.id} className={`notice-item${n.read?'':' unread'}`}>
         <button type="button" onClick={()=>read(n)} aria-label={`${n.title}${n.read?'':', unread. Mark as read'}`}>
           <span className="notice-dot" aria-hidden="true"/><span className="notice-text"><strong>{n.title}</strong>{n.body&&<span>{n.body}</span>}<time dateTime={n.createdAt} className="small">{when(n.createdAt)}</time></span>
-        </button></li>)}</ul></Section></section>)}
-      {cursor&&<Button variant="secondary" loading={more} onClick={()=>load(cursor)}>Load older</Button>}
+        </button></li>)}</ul></Section>)}
+      {cursor&&<Button variant="secondary" block loading={more} onClick={()=>load(cursor)}>Load older</Button>}
       {error&&<InlineNotice error>{error}</InlineNotice>}</>}
   </section>;
 }

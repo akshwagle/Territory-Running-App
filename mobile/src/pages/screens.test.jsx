@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { it, expect, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
@@ -143,7 +143,7 @@ it('sign-in methods shows loading, error/retry, one-method note and successful n
 
 it('sign-in methods has an honest empty state', async () => {
   const auth = fakeAuth(signedIn()); auth.api.request.mockResolvedValue({ identities: [] }); view(<MethodsPage />, auth);
-  expect(await screen.findByText(/No sign-in methods were found/)).toBeVisible();
+  expect(await screen.findByText(/No sign-in methods found/)).toBeVisible();
 });
 
 it('AUTH-06 sessions label This device and revoke only another family, with loading and success', async () => {
@@ -164,7 +164,7 @@ it('AUTH-06 sessions label This device and revoke only another family, with load
 it('sessions and password-method loading errors offer retry; sessions also has an empty state', async () => {
   const auth = fakeAuth(signedIn()); auth.api.request.mockRejectedValueOnce(new ApiError('NETWORK_UNAVAILABLE', 'Offline.')).mockResolvedValue({ sessions: [] });
   const { user } = view(<SessionsPage />, auth); expect(await screen.findByRole('alert')).toHaveTextContent('Offline.');
-  await user.click(screen.getByRole('button', { name: 'Try again' })); expect(await screen.findByText('No active sessions were found.')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Try again' })); expect(await screen.findByText('No sessions found')).toBeVisible();
 });
 
 it('password change loads methods, validates, handles failure/success and keeps the current session', async () => {
@@ -209,7 +209,7 @@ it('app bootstrap, offline and blocked states are explicit; resume/link watcher 
   auth.api.request.mockResolvedValue({ versionCode: 2 });
   const { user } = view(<App downloadUrl="http://localhost:5173/#download" nativeWatch={watch} />, auth, '/home');
   expect(screen.getByText('Restoring your sign-in securely…')).toBeVisible();
-  act(() => auth.emit(signedIn())); expect(await screen.findByRole('heading', { name: /Take a little ground/ })).toBeVisible();
+  act(() => auth.emit(signedIn())); expect(await screen.findByRole('heading', { name: 'Your territory' })).toBeVisible();
   await user.click(screen.getByRole('link', { name: 'Settings', exact: true })); expect(watch).toHaveBeenCalledOnce();
   act(() => auth.emit({ ...signedIn(), status: 'offline', message: 'Cannot reach the server.' })); expect(screen.getByText(/Uploads are paused/)).toBeVisible();
   act(() => auth.emit({ ...signedIn(), status: 'blocked', message: 'Account suspended. Data stays encrypted.' })); expect(screen.getByRole('heading', { name: 'Account unavailable' })).toBeVisible();
@@ -319,7 +319,22 @@ it('auth screens put Google first and validate email on blur with the right keyb
 it('settings groups account, privacy & data, and keeps delete last in its own danger section', () => {
   view(<SettingsPage />, fakeAuth(signedIn()));
   const titles = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent);
-  expect(titles).toEqual(['Account', 'Privacy & data', 'App', 'Danger zone']);
+  expect(titles).toEqual(['Account', 'Privacy & data', 'Appearance', 'Danger zone']);
   expect(screen.getByRole('link', { name: /Delete account/ })).toHaveAttribute('href', '/settings/delete');
   expect(screen.getByRole('link', { name: /Notifications/ })).toHaveAttribute('href', '/notifications');
+});
+
+it('UI-04 settings Theme defaults to System and applies Light and Dark instantly, stored locally', async () => {
+  localStorage.clear(); delete document.documentElement.dataset.theme;
+  const user = userEvent.setup();
+  view(<SettingsPage />, fakeAuth(signedIn()));
+  const theme = screen.getByRole('group', { name: 'Theme' });
+  expect(within(theme).getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
+  await user.click(within(theme).getByRole('button', { name: 'Light' }));
+  expect(document.documentElement.dataset.theme).toBe('light');
+  expect(localStorage.getItem('tr.theme')).toBe('light');
+  expect(within(theme).getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true');
+  await user.click(within(theme).getByRole('button', { name: 'Dark' }));
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  localStorage.clear();
 });

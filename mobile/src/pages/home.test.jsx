@@ -32,6 +32,13 @@ describe('Home', () => {
     expect(await screen.findByText('No territory yet')).toBeVisible();
     expect(await screen.findAllByRole('button', { name: 'Try again' })).not.toHaveLength(0);
   });
+  it('keeps a single primary action: Start run in the hero, feed and week empty states stay secondary', async () => {
+    mount(route({ '/territory/me': { count: 0, hexes: [], nextCursor: null }, '/stats/overview': { bucket: 'day', series, totals: { runs: 0, distanceM: 0, durationS: 0 }, streak: null }, '/community/feed': { runs: [], nextCursor: null } }));
+    expect(await screen.findByText('Your feed is quiet')).toBeVisible();
+    expect(await screen.findByText('No runs this week')).toBeVisible();
+    expect(document.querySelectorAll('.ui-button--primary')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Find runners to follow' })).toHaveClass('ui-button--secondary');
+  });
   it('todayStatus words the streak kindly', () => {
     const now = new Date(2026, 10, 26, 12);
     expect(todayStatus({ current: 0, lastRunOn: null }, now)).toBe('No run yet today.');

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from '../auth/context.jsx';
-import { Avatar, Button, Card, EmptyState, ErrorState, Section, Skeleton, StatGrid, StatTile } from '../ui/index.jsx';
+import { Avatar, Button, Card, CountUp, EmptyState, ErrorState, Section, Skeleton } from '../ui/index.jsx';
 import { BarChart, useUnits } from '../stats/pages.jsx';
 import { distanceLabel, paceLabel, timeLabel } from '../runs/format.js';
 import { Icon } from '../ui/icons.jsx';
@@ -14,7 +14,7 @@ function ActivityCard({ run }) {
   return <article className="feed-post">
     <header className="feed-post-head">
       <Avatar id={run.runner.avatarId} color={run.runner.avatarColor} size={44}/>
-      <div className="feed-post-who"><strong dir="auto">{run.runner.displayName}</strong><span>{whenLabel(run.startedAt)} · Territory Run</span></div>
+      <div className="feed-post-who"><strong dir="auto">{run.runner.displayName}</strong><span>{whenLabel(run.startedAt)}</span></div>
     </header>
     <dl className="feed-stats">
       <div><dt>Distance</dt><dd>{distanceLabel(run.distanceM)}</dd></div>
@@ -37,10 +37,10 @@ function Feed() {
     try { const r = await auth.api.request(`/api/community/feed?limit=10&cursor=${encodeURIComponent(cursor)}`); setExtra(e => ({ runs: [...e.runs, ...r.runs], cursor: r.nextCursor, busy: false, error: '' })); }
     catch (error) { setExtra(e => ({ ...e, busy: false, error: error?.message || 'Could not load more.' })); }
   };
-  if (!runs.length) return <EmptyState title="Nothing here yet" action={<Button to="/community">Find runners to follow</Button>}>Runs from people you follow appear here once they are validated. Only runners with a public or followers-only profile are shown.</EmptyState>;
+  if (!runs.length) return <EmptyState title="Your feed is quiet" action={<Button to="/community" variant="secondary">Find runners to follow</Button>}>Validated runs from people you follow show up here. Only runners with a public or followers-only profile appear.</EmptyState>;
   return <>{runs.map(r => <ActivityCard key={r.id} run={r}/>)}
     {extra.error && <p role="alert" className="form-error">{extra.error}</p>}
-    {cursor && <Button variant="secondary" loading={extra.busy} onClick={more}>Load more</Button>}</>;
+    {cursor && <Button variant="secondary" block loading={extra.busy} onClick={more}>Load more</Button>}</>;
 }
 
 const greeting = (d = new Date()) => { const h = d.getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; };
@@ -53,56 +53,56 @@ export function todayStatus(streak, now = new Date()) {
   return streak.current > 0 ? `Run today to keep your ${streak.current}-day streak.` : 'No run yet today.';
 }
 
-function StartCard({ status }) {
-  return <Card className="home-hero" aria-labelledby="home-start-title">
-    <p className="eyebrow">{status || 'Ready when you are'}</p>
-    <h2 id="home-start-title">Take a little ground.</h2>
-    <Button to="/run" block>Start run</Button>
-    <Link className="home-hero-link" to="/map">Open territory map</Link>
-  </Card>;
-}
-
-function Snapshot() {
+// Territory numbers inside the hero. One big figure (hexes held), two supporting ones.
+function HeroTerritory() {
   const { auth } = useAuth(), load = useCallback(() => auth.api.request('/api/territory/me?limit=200'), [auth]), data = useResource(load), v = data.value;
-  if (data.phase === 'loading' && !v) return <Skeleton shape="stat" label="Loading your territory…"/>;
+  if (data.phase === 'loading' && !v) return <Skeleton shape="stat" lines={2} label="Loading your territory…"/>;
   if (data.phase === 'error' && !v) return <ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>;
-  if (!v.count || !Array.isArray(v.hexes)) return <EmptyState title="No territory yet" action={<Button to="/run" variant="secondary">Start a run</Button>}>Every area you run through becomes yours until someone takes it.</EmptyState>;
+  if (!v.count || !Array.isArray(v.hexes)) return <EmptyState compact title="No territory yet">Every area you run through becomes yours until someone takes it.</EmptyState>;
   const weekAgo = Date.now() - 7 * 86400000, complete = !v.nextCursor;
   const gained = complete ? v.hexes.filter(h => +new Date(h.claimedAt) >= weekAgo).length : null;
   const cooling = complete ? v.hexes.filter(h => h.onCooldown).length : null;
-  return <StatGrid aria-label="Territory snapshot">
-    <StatTile label="Hexes held" value={v.count} count/>
-    {gained !== null && <StatTile label="Gained this week" value={gained} delta={gained > 0 ? `+${gained}` : undefined} count/>}
-    {cooling !== null && <StatTile label="Protected now" value={cooling} count/>}
-  </StatGrid>;
+  return <dl className="home-hero-stats" aria-label="Territory snapshot">
+    <div className="home-hero-main"><dt>Hexes held</dt><dd><CountUp value={v.count}/></dd></div>
+    {gained !== null && <div><dt>Gained this week</dt><dd>{gained > 0 ? `+${gained}` : '0'}</dd></div>}
+    {cooling !== null && <div><dt>Protected now</dt><dd>{cooling}</dd></div>}
+  </dl>;
+}
+
+// Home hero: today's status, the territory figure and the one primary action.
+function HomeHero({ status }) {
+  return <Card className="home-hero" aria-labelledby="home-hero-title">
+    <h2 id="home-hero-title" className="sr-only">Your territory</h2>
+    {status && <p className="home-hero-status">{status}</p>}
+    <HeroTerritory/>
+    <div className="home-hero-actions"><Button to="/run" block>Start run</Button><Button to="/map" variant="ghost" block>Open territory map</Button></div>
+  </Card>;
 }
 
 function WeekChart({ onStatus }) {
   const { auth } = useAuth(), units = useUnits(), load = useCallback(() => auth.api.request('/api/me/stats/overview?range=week'), [auth]), data = useResource(load), v = data.value;
   useEffect(() => { if (v?.streak) onStatus(v.streak); }, [v, onStatus]);
-  if (data.phase === 'loading' && !v) return <Skeleton shape="stat" label="Loading this week…"/>;
-  if (data.phase === 'error' && !v) return <ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>;
-  if (!v.totals?.runs || !Array.isArray(v.series)) return <EmptyState title="No runs this week" action={<Button to="/run" variant="secondary">Start a run</Button>}>Your distance for the last 7 days shows up here after a valid run.</EmptyState>;
-  return <><p className="small">{distanceLabel(v.totals.distanceM, units)} in {v.totals.runs} {v.totals.runs === 1 ? 'run' : 'runs'}</p><BarChart series={v.series} bucket={v.bucket} units={units}/></>;
+  const hasRuns = Boolean(v?.totals?.runs && Array.isArray(v.series));
+  return <Section plain title="This week" aside={hasRuns ? `${distanceLabel(v.totals.distanceM, units)} in ${v.totals.runs} ${v.totals.runs === 1 ? 'run' : 'runs'}` : undefined}>
+    {data.phase === 'loading' && !v ? <Skeleton shape="card" label="Loading this week…"/>
+      : data.phase === 'error' && !v ? <ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>
+        : !hasRuns ? <EmptyState compact title="No runs this week">Your distance for the last 7 days shows up here after a valid run.</EmptyState>
+          : <BarChart series={v.series} bucket={v.bucket} units={units}/>}
+  </Section>;
 }
 
 export function HomePage() {
   const { state } = useAuth(), unread = useUnread().count, [streak, setStreak] = useState(null), onStatus = useCallback(s => setStreak(s), []);
-  return <section className="feed-page">
-    <div className="feed-top">
-      <div>
-        <p className="eyebrow">{greeting()}</p>
-        <h1 className="feed-greeting"><bdi>{state.user.displayName}</bdi></h1>
-      </div>
-      <div className="feed-top-actions">
+  return <section className="home-page">
+    <div className="home-top">
+      <div><p className="eyebrow">{greeting()}</p><h1><bdi>{state.user.displayName}</bdi></h1></div>
+      <div className="home-actions">
         <Link className="home-bell" to="/notifications" aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}><Icon name="bell"/>{unread > 0 && <span className="tab-badge" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}</Link>
         <Link className="home-avatar" to="/you" aria-label="Open your profile"><Avatar id={state.user.avatarId || 0} color={state.user.avatarColor} size={40}/></Link>
       </div>
     </div>
-    <StartCard status={todayStatus(streak)}/>
-    <Section title="Your territory"><Snapshot/></Section>
-    <Section title="This week"><WeekChart onStatus={onStatus}/></Section>
-    <div className="feed-heading"><h2>Your feed</h2></div>
-    <Feed/>
+    <HomeHero status={todayStatus(streak)}/>
+    <WeekChart onStatus={onStatus}/>
+    <Section plain title="From runners you follow"><Feed/></Section>
   </section>;
 }

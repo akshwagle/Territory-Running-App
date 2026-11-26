@@ -101,7 +101,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
     <Route path="/you/consent" element={<Protected><ConsentPage /></Protected>} /><Route path="/settings/export" element={<Protected><ExportPage /></Protected>} />
     <Route path="/settings/delete" element={<Protected><DeletePage /></Protected>} /><Route path="/settings/password" element={<Protected><ChangePasswordPage /></Protected>} />
     <Route path="/settings/profile" element={<Navigate to="/you" replace/>}/><Route path="/settings/privacy" element={<Navigate to="/you/privacy" replace/>}/><Route path="/settings/consent" element={<Navigate to="/you/consent" replace/>}/>
-    <Route path="*" element={<section><h1>Page not found</h1><Link className="button secondary" to="/">Go home</Link></section>} />
+    <Route path="*" element={<section><h1>Page not found</h1><p>This screen does not exist. It may have moved.</p><Link className="ui-button ui-button--secondary" to="/">Go home</Link></section>} />
   </Routes></Suspense>;
   const ready = !['restoring', 'storageError', 'blocked'].includes(state.status) &&
     !(state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname));
@@ -110,10 +110,10 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
     footer={<><UpdateBanner api={auth.api} versionCode={__APP_VERSION_CODE__} downloadUrl={downloadUrl}/><p className="small">Territory Run · Android {__APP_VERSION__}</p></>}>
       {ready && location.pathname !== '/' && location.pathname !== '/welcome' && state.authOutcome?.code !== 'ACCOUNT_LINK_REQUIRED' && state.authOutcome?.kind !== 'progress' && state.authOutcome && <Notice error={state.authOutcome.kind === 'error'}>{state.authOutcome.message}</Notice>}
       {location.pathname !== '/' && location.pathname !== '/welcome' && !state.authOutcome && linkError && <InlineNotice error>{linkError}</InlineNotice>}
-      {state.status === 'restoring' ? <section><h1>Getting ready</h1><Skeleton label="Restoring your sign-in securely…"/></section> :
-        state.status === 'storageError' ? <section><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
-          state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><Suspense fallback={null}><SignOutControl /></Suspense></section> :
-            state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><InlineNotice>{state.message}</InlineNotice><Link className="button primary" to="/login">Go to login</Link></section> : <>
+      {state.status === 'restoring' ? <section className="status-screen"><h1>Getting ready</h1><Skeleton label="Restoring your sign-in securely…"/></section> :
+        state.status === 'storageError' ? <section className="status-screen"><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
+          state.status === 'blocked' ? <section className="status-screen"><h1>Account unavailable</h1><Notice error>{state.message}</Notice><Suspense fallback={null}><SignOutControl /></Suspense></section> :
+            state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section className="status-screen"><h1>Sign in again</h1><InlineNotice>{state.message}</InlineNotice><Link className="button primary" to="/login">Go to login</Link></section> : <>
             {['offline', 'unavailable'].includes(state.status) && <Banner className="connection-notice" tone="error" action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</Banner>}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
             {location.pathname !== '/' && location.pathname !== '/welcome' && <PendingNotice/>}

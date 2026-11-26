@@ -1,6 +1,6 @@
 :root {
   --motion-short: 100ms; --motion-medium: 200ms; --motion-long: 300ms;
-  --motion-press: 90ms; --motion-tab: 150ms; --motion-sheet: 220ms; --motion-content: 150ms;
+  --motion-press: 100ms; --motion-tab: 150ms; --motion-sheet: 300ms; --motion-content: 150ms;
   --ease-standard: cubic-bezier(.2,0,0,1);
   --ease-enter: cubic-bezier(.05,.7,.1,1);
   --ease-exit: cubic-bezier(.3,0,.8,.15);
@@ -12,6 +12,8 @@
 @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 @keyframes banner-in { from { opacity: 0; transform: translateY(-100%); } to { opacity: 1; transform: none; } }
 @keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialog-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes tile-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes pop-in { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes hex-fill { from { opacity: 0; } to { opacity: 1; } }
