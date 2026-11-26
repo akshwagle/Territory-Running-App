@@ -33,13 +33,13 @@ it('leaderboard empty state, opt-out hint and error retry are honest', async () 
   const { user } = mount({ 'GET /api/community/leaderboard': () => { if (fail) { fail = false; throw new ApiError('NETWORK_UNAVAILABLE', 'Cannot reach the server.'); } return board({ optedIn: false }); } });
   expect(await screen.findByText('Cannot reach the server.')).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Retry' }));
-  expect(await screen.findByText('No one ranked yet')).toBeVisible();
+  expect(await screen.findByText('The board is open')).toBeVisible();
   expect(screen.getByText(/Appear on leaderboards/)).toBeVisible();
 });
 
 it('changing metric and scope requests the matching query', async () => {
   const { request, user } = mount({ 'GET /api/community/leaderboard': board() });
-  await screen.findByText('No one ranked yet');
+  await screen.findByText('The board is open');
   await user.click(screen.getByRole('button', { name: 'Distance' })); await user.click(screen.getByRole('button', { name: 'Following' }));
   await waitFor(() => expect(request).toHaveBeenLastCalledWith('/api/community/leaderboard?metric=distance&period=week&scope=following&limit=25'));
 });

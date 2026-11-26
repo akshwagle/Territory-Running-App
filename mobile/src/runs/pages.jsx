@@ -42,8 +42,8 @@ export function RunPage(){
  return <section><p className="eyebrow">A little ground. A good run.</p><h1>{state.recovery?'Your saved run':state.state==='PAUSED'?'Run paused':'Run'}</h1>
    {notice&&<InlineNotice error={Boolean(state.error)}>{notice}</InlineNotice>}
    {!state.available&&!state.error&&<Skeleton label="Opening encrypted run storage…"/>}
-   {state.available&&['IDLE','DONE'].includes(state.state)&&!state.remoteRun&&<><EmptyState title="Take it outside">GPS records your route. Standing still or using a treadmill records time, with no distance or territory. Steps-only runs are not supported.</EmptyState>
-     <Button loading={state.busy} onClick={safe(recorder.prepare)}>{state.startPending?'Recover start confirmation':'Get ready to run'}</Button></>}
+   {state.available&&['IDLE','DONE'].includes(state.state)&&!state.remoteRun&&<><EmptyState title="Take it outside">GPS records your route and claims the hexes you cover. Treadmill and indoor runs record time only, with no distance or territory.</EmptyState>
+     <Button loading={state.busy} onClick={safe(recorder.prepare)}>{state.startPending?'Recover start confirmation':'Start a run'}</Button></>}
    {active&&<><Stats distanceM={state.distanceM} durationS={state.elapsedMs/1000} units={units}/>
      {state.simulated&&<InlineNotice>Simulated desk run. These points are marked mock and are not a real outdoor run.</InlineNotice>}
      <p className="small" role="status">{state.sync==='waiting'?'Waiting for signal':state.sync==='uploading'?'Uploading saved points…':'All saved'} · {state.pendingPoints||0} points waiting on this phone</p>

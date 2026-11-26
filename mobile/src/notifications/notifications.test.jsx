@@ -34,7 +34,7 @@ it('marks all as read and shows the empty state', async () => {
 });
 it('shows an empty state and an error state with retry', async () => {
   mount((path) => counted(path) || { notifications: [], nextCursor: null, unreadCount: 0 });
-  expect(await screen.findByText('Nothing new')).toBeInTheDocument();
+  expect(await screen.findByText('You’re all caught up')).toBeInTheDocument();
 });
 it('reports load failure honestly', async () => {
   mount((path) => { if (path.endsWith('unread-count')) return { unreadCount: 0 }; throw new ApiError('OFFLINE', 'offline', 0); });

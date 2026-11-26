@@ -35,7 +35,7 @@ it('stats empty state, error retry and range switch', async () => {
   const { user, request } = mount({ 'GET /api/me/profile': { profile: { preferredUnits: 'km' } }, 'GET /api/me/stats/overview': path => { if (fail) { fail = false; throw new ApiError('NETWORK_UNAVAILABLE', 'Cannot reach the server.'); } return overview({ lifetime: { runs: 0, distanceM: 0, durationS: 0 }, range: path.includes('year') ? 'year' : 'week' }); } });
   expect(await screen.findByText('Cannot reach the server.')).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Try again' }));
-  expect(await screen.findByText('No stats yet')).toBeVisible();
+  expect(await screen.findByText('Your stats start with a run')).toBeVisible();
   await user.click(screen.getByRole('button', { name: '12 months' }));
   expect(request).toHaveBeenCalledWith('/api/me/stats/overview?range=year');
 });
