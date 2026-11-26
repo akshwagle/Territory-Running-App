@@ -16,9 +16,12 @@ Goal: a premium, production-grade fitness app (think the polish of Strava, Nike 
 - Accent discipline: pine green is the single brand accent. It marks ONLY the primary action, the active tab, key live metrics and "my territory", under ~10% of any screen. Clay is a secondary signal for attention/danger only. Everything else is warm neutral. No glow, no gradients (flat fills only), no neon.
 - Semantic colours always paired with icon or text, never colour alone. Map: mine = pine, others = dusty slate blue, cooldown = ochre, restricted = clay with hatch, flagged = ochre, error = clay.
 - Typography: Barlow (body, 400/500/600) and Barlow Condensed (headings and big stat numbers, 600/700), matching the website. Both are already dependencies (@fontsource/barlow, @fontsource/barlow-condensed) so they are bundled locally: no runtime font request; import only the weights used, latin subset. Scale (px/line): display 48/48 (Condensed), title 28/32 (Condensed), headline 20/24 (Barlow 600), body 16/24, small 14/20, caption 12/16 (never below 12). Use `font-variant-numeric: tabular-nums` where Barlow supports it; otherwise give number slots a fixed min-width so digits never jitter. Respect OS font scaling (layouts survive 1.3x). System fonts as fallback.
+- Page titles (refined 2026-11-26): page `h1` is a large title, Condensed 700 36/40 (`--fs-large-title`); the header bar title fades in only after the h1 scrolls away (large-title pattern) so a title is never shown twice. Sentence case everywhere: no uppercase, letter-spaced eyebrows or labels (they read as template chrome). A small sentence-case lead line is allowed only where it carries information (Home greeting).
 - Spacing: 4 px grid (4, 8, 12, 16, 20, 24, 32, 40, 48). Screen padding 16-20, section gap 24, card padding 16, list row min height 56.
-- Radius: --r-md 16, --r-lg 22, --r-xl 28, pill for chips/segmented. Controls 12-16. One radius family per screen.
-- Elevation: borders (--line) and surface tint, not shadows. Shadow only for bottom sheets/dialogs/toasts.
+- Radius: --r-sm 12, --r-control 14 (buttons, inputs), --r-md 16, --r-lg 22 (cards, list sections), --r-xl 28 (hero cards, sheets), pill for chips/segmented/tab indicator. One radius family per screen.
+- Focus: one focus ring everywhere, 3 px `--focus` (ochre) with 2 px offset, so it never disappears on pine buttons.
+- Elevation: borders (--line) and surface tint, not shadows. Shadow only for bottom sheets/dialogs/toasts and controls floating over the map.
+- Media screens: splash and welcome are photographic and always dark; wrap them in `.theme-media` (re-declares the dark tokens) instead of hardcoding colours.
 - Icons: single set in `mobile/src/ui/icons.jsx`, 24 px grid, 1.75 px stroke, currentColor, aria-hidden with a text label. No emoji as icons.
 - Safe areas: use --safe-top/--safe-bottom everywhere; tab bar and sticky CTAs sit above the gesture bar.
 
@@ -51,8 +54,10 @@ No neon or "volt" colours anywhere in `mobile/`: no lime/chartreuse (hue about 6
 - Card: surface-raised, line border, r-lg, 16 padding; tappable cards have pressed state.
 - List row: 56+ px, leading icon/avatar, title + secondary, trailing value/chevron, divider inset.
 - Stat tile: caption label, tabular number (display/title), unit in --text-3, optional delta chip.
-- Chips/segmented control: 36-44 px high, selected = accent-dim + accent text + line-accent.
-- Bottom tab bar: 5 tabs (Home, Workout, Community, Settings, You), icon + 12 px label, active = accent + indicator, unread dot on Home, hit area >= 48.
+- Chips/segmented control: chips 44 px, selected = accent-dim + accent text + line-accent; segmented selected = raised surface + hairline (calmer than accent, used for view switches and tabs).
+- Section: grouped list = small label above a raised surface with inset dividers; `plain` = headline + open content (charts, feeds, badge grids). Never nest cards inside a card.
+- Lists never repeat primary buttons: row actions (Follow, Remove, Revoke) are secondary or ghost, size sm.
+- Bottom tab bar: 5 tabs (Home, Workout, Community, Settings, You), icon + 12 px label, active = pine icon on an accent-dim pill + full-ink label, unread count on Home, hit area >= 48.
 - Bottom sheet: grabber, drag-to-dismiss, scrim, focus trap, max 85% height, slides up (surface-enter).
 - Dialog: only for destructive/irreversible confirmations; sheet otherwise. Toast: top-safe, auto-dismiss 4 s, one at a time, never blocks.
 - Skeleton: matches the final layout, subtle shimmer (06). Empty state: simple SVG, one line what, one line why, one action. Error state: icon, plain sentence, Retry.
@@ -77,6 +82,9 @@ Contrast >= 4.5:1 text, 3:1 UI (check both themes); touch targets >= 44 px (48 f
 
 ## Anti-patterns (reject in review)
 Mock or sample data; dead buttons; neon glow, stacked gradients, glassmorphism everywhere (backdrop-filter only on tab bar/sheets, with solid fallback); more than one primary button; text under 12 px; placeholder-as-label; spinners where skeletons fit; modal for non-destructive tasks; hard-coded colours/px outside tokens; screens that need the manual to understand; layouts that break at 360 px or in light theme.
+
+## Known platform constraint
+The Android shell currently uses `Theme.AppCompat.Light` with force-dark off (EDGE_CASES UI-04), so the WebView always reports `prefers-color-scheme: light` and the dark theme never shows on a phone. Showing dark needs an owner decision (DayNight parent + `values-night` window colours). Both themes stay complete in CSS.
 
 ## Definition of done for any UI work
 Both themes, 360 and 412 px widths, font scale 1.3, all states, reduced motion, tests updated, lint + build green, docs updated (this file and mobile/src/ui/README.md).
