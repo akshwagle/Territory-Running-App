@@ -2,7 +2,7 @@ import {useCallback,useEffect,useState} from 'react';
 import {useAuth} from '../auth/context.jsx';
 import {Chip,EmptyState,ErrorState,ListRow,Section,Skeleton,Button,StatGrid,StatTile,Icon} from '../ui/index.jsx';
 import {tap} from '../ui/haptics.js';
-import {useResource} from '../pages/settings-pages.jsx';
+import {useResource} from '../pages/use-resource.js';
 import {distanceLabel,timeLabel,paceLabel} from '../runs/format.js';
 import {barGeometry,bucketLabel} from './chart.js';
 

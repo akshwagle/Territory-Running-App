@@ -1,6 +1,6 @@
 import {useCallback} from 'react';
 import {useAuth} from '../auth/context.jsx';
-import {useResource} from '../pages/settings-pages.jsx';
+import {useResource} from '../pages/use-resource.js';
 import {ErrorState,InlineNotice,Skeleton,StatGrid,StatTile} from '../ui/index.jsx';
 import {CountUp} from '../ui/motion.jsx';
 import {claimTiles,flagText,nextStepText,verdictText} from './format.js';
