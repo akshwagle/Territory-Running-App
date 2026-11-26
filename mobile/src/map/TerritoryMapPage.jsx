@@ -4,11 +4,11 @@ import 'leaflet/dist/leaflet.css';
 import './map.css';
 import { useAuth } from '../auth/context.jsx';
 import { friendlyMessage } from '../auth/errors.js';
-import { Button, InlineNotice, Sheet } from '../ui/index.jsx';
+import { Button, Icon, InlineNotice, Sheet } from '../ui/index.jsx';
 import { TILE_ATTRIBUTION, TILE_URL, MIN_ZOOM, boundary, boxQuery, boxTooLarge, createHexCache, describeHex, hexStyle, mapColor, snapBounds } from './hexes.js';
 
 export function Legend() {
-  return <ul className="map-legend" aria-label="Map legend">
+  return <ul className="map-legend" id="map-legend" aria-label="Map legend">
     <li><span className="swatch mine"/>Yours</li><li><span className="swatch other"/>Other runners</li>
     <li><span className="swatch restricted"/>Restricted</li><li><span className="swatch cooling"/>In cooldown</li>
   </ul>;
@@ -16,6 +16,7 @@ export function Legend() {
 export function HexSheet({ hex, now = Date.now(), onClose }) {
   const d = describeHex(hex, now);
   return <Sheet title={d.kind === 'restricted' ? 'Restricted area' : d.kind === 'mine' ? 'Your territory' : 'Runner territory'} onClose={onClose}>
+    <p className={`hex-status ${d.kind === 'restricted' ? 'restricted' : d.cooldown ? 'cooling' : 'open'}`}>{d.kind === 'restricted' ? 'Restricted' : d.cooldown ? `In cooldown · ${d.cooldown}` : d.kind === 'mine' ? 'Yours' : 'Can be captured'}</p>
     {d.note && <p>{d.note}</p>}
     {!d.note && <dl className="hex-detail">
       <div><dt>Owner</dt><dd>{d.owner ?? 'A runner who keeps their profile private'}</dd></div>
@@ -29,7 +30,7 @@ export function HexSheet({ hex, now = Date.now(), onClose }) {
 export function TerritoryMapPage({ geolocation = typeof navigator !== 'undefined' ? navigator.geolocation : undefined, debounceMs = 400 }) {
   const { auth } = useAuth(), box = useRef(null), refs = useRef({}), cache = useRef(createHexCache());
   const [zoomedOut, setZoomedOut] = useState(true), [loading, setLoading] = useState(false), [error, setError] = useState(''), [selected, setSelected] = useState(null);
-  const [location, setLocation] = useState(geolocation ? 'waiting' : 'unsupported'), [online, setOnline] = useState(typeof navigator === 'undefined' || navigator.onLine !== false), [truncated, setTruncated] = useState(false);
+  const [location, setLocation] = useState(geolocation ? 'waiting' : 'unsupported'), [online, setOnline] = useState(typeof navigator === 'undefined' || navigator.onLine !== false), [truncated, setTruncated] = useState(false), [legendOpen, setLegendOpen] = useState(false);
   const request = auth.api.request.bind(auth.api);
 
   const draw = useCallback(data => {
@@ -100,12 +101,15 @@ export function TerritoryMapPage({ geolocation = typeof navigator !== 'undefined
       {location === 'denied' && <InlineNotice action="Try again" onAction={startLocation}>Location is off for Territory Run, so your position is hidden. Allow it in Android settings, or pan the map yourself.</InlineNotice>}
       {location === 'unavailable' && <InlineNotice action="Try again" onAction={startLocation}>Your location is not available right now.</InlineNotice>}
       {location === 'unsupported' && <InlineNotice>This device cannot share its location with the map.</InlineNotice>}
-      {zoomedOut && <InlineNotice>Zoom in to see territory.</InlineNotice>}
       {truncated && <InlineNotice>Showing part of this area. Zoom in to see every cell.</InlineNotice>}
+      {zoomedOut && <p className="map-hint" role="status">Zoom in to see territory</p>}
       {loading && <p className="small map-status" role="status">Loading territory…</p>}
     </div>
-    <button type="button" className="map-recenter" aria-label="Centre on my location" disabled={location === 'unsupported'} onClick={recenter}>◎</button>
-    <Legend/>
+    <div className="map-fabs">
+      <button type="button" className="map-fab" aria-label="Map legend" aria-expanded={legendOpen} aria-controls="map-legend" onClick={() => setLegendOpen(v => !v)}><Icon name="layers"/></button>
+      <button type="button" className="map-fab primary" aria-label="Centre on my location" disabled={location === 'unsupported'} onClick={recenter}><Icon name="target"/></button>
+    </div>
+    {legendOpen && <Legend/>}
     {selected && <HexSheet hex={selected} onClose={() => setSelected(null)}/>}
   </section>;
 }

@@ -45,5 +45,7 @@ Status: [ ] todo  [x] done
   Not visually verified. Left: TabBar still 3 tabs per Shell TABS (5 listed), feed cards unchanged, no pull-to-refresh, `.stagger` not applied.
 - T06 (feat/ui-t06-workout): recorder page gets GPS quality chip (good/waiting/weak/paused), giant stats (existing RunStats), HoldButton Finish (1 s ring) replacing the finish dialog; reboot-recovery keeps 'Finish saved run' dialog. Controller/recording logic untouched.
   Not visually verified. Left: Workout landing page unchanged, controls not sticky to bottom, no low-storage banner beyond existing storageFailed message.
+- T08 (feat/ui-t08-map): legend moved behind a layers chip, recenter uses the target icon, both float in the thumb zone above safe-area; zoom hint is a pill; hex sheet leads with a status chip (restricted/cooldown/yours/capturable); light theme drops the tile invert filter.
+  Not visually verified. Left: no hex fade-in animation, no cooldown countdown tick, tiles still remote OSM.
 - T07 (feat/ui-t07-run-summary): summary gets "+N hexes" count-up hero (ClaimResult), route map and share on the summary, kind next-step text for flagged/rejected runs (nextStepText).
   Stat grid, badges, history and run detail were already on the T02 components. Not visually verified. Left: history list rows unchanged, detail page has no hero.
