@@ -22,13 +22,12 @@ export function BarChart({series,bucket,units}){
 function Overview({units}){
   const {auth}=useAuth(),[range,setRange]=useState('week'),load=useCallback(()=>auth.api.request(`/api/me/stats/overview?range=${range}`),[auth,range]),data=useResource(load),v=data.value;
   return <>
-    <div className="sport-chips" role="group" aria-label="Period">{RANGES.map(([key,label])=><Chip key={key} selected={range===key} onClick={()=>setRange(key)}>{label}</Chip>)}</div>
-    {data.phase==='loading'&&!v&&<Skeleton label="Loading your stats…"/>}
+    <div className="chip-row" role="group" aria-label="Period">{RANGES.map(([key,label])=><Chip key={key} selected={range===key} onClick={()=>setRange(key)}>{label}</Chip>)}</div>
+    {data.phase==='loading'&&!v&&<Skeleton shape="stat" lines={4} label="Loading your stats…"/>}
     {data.phase==='error'&&<ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>}
     {v&&(v.lifetime.runs===0?<EmptyState title="Your stats start with a run" action={<Button to="/run">Start a run</Button>}>Distance, time, pace and streaks fill in after your first valid run.</EmptyState>:<>
-      <StatGrid><StatTile tone="accent" label="Distance" value={distanceLabel(v.totals.distanceM,units)}/><StatTile label="Time" value={timeLabel(v.totals.durationS)}/><StatTile label="Avg pace" value={paceLabel(v.totals.distanceM,v.totals.durationS,units)}/><StatTile label="Runs" value={v.totals.runs}/></StatGrid>
-      <p className="small">{v.lifetime.runs} {v.lifetime.runs===1?'run':'runs'} all time ({distanceLabel(v.lifetime.distanceM,units)})</p>
-      <BarChart series={v.series} bucket={v.bucket} units={units}/>
+      <StatGrid className="stats-grid"><StatTile tone="accent" label="Distance" value={distanceLabel(v.totals.distanceM,units)}/><StatTile label="Time" value={timeLabel(v.totals.durationS)}/><StatTile label="Average pace" value={paceLabel(v.totals.distanceM,v.totals.durationS,units)}/><StatTile label="Runs" value={v.totals.runs}/></StatGrid>
+      <Section plain title="Distance" aside={`${v.lifetime.runs} ${v.lifetime.runs===1?'run':'runs'} all time, ${distanceLabel(v.lifetime.distanceM,units)}`}><BarChart series={v.series} bucket={v.bucket} units={units}/></Section>
       <Section title="Streak"><ListRow label="Current streak" value={`${v.streak.current} ${v.streak.current===1?'day':'days'}`}/><ListRow label="Best streak" value={`${v.streak.best} ${v.streak.best===1?'day':'days'}`}/></Section></>)}
   </>;
 }
@@ -38,7 +37,7 @@ function RecordRow({label,rec,detail}){
 function Records({units}){
   const {auth}=useAuth(),load=useCallback(()=>auth.api.request('/api/me/stats/records'),[auth]),data=useResource(load),r=data.value;
   const pace=rec=>`${timeLabel(rec.durationS)} · ${paceLabel(rec.distanceM,rec.durationS,units)}`;
-  return <>{data.phase==='loading'&&!r&&<Skeleton label="Loading records…"/>}{data.phase==='error'&&<ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>}
+  return <>{data.phase==='loading'&&!r&&<Skeleton shape="card" label="Loading records…"/>}{data.phase==='error'&&<ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>}
     {r&&(!r.longestDistance?<EmptyState title="No records yet">Finish a validated run and your bests appear here.</EmptyState>:<>
       <Section title="Distance and time"><RecordRow label="Longest run" rec={r.longestDistance} detail={x=>distanceLabel(x.distanceM,units)}/><RecordRow label="Longest time" rec={r.longestDuration} detail={x=>timeLabel(x.durationS)}/>
         {r.bestWeek&&<ListRow label="Best week" value={distanceLabel(r.bestWeek.distanceM,units)}><small>Week of {dateText(r.bestWeek.weekStart)}</small></ListRow>}
@@ -46,7 +45,7 @@ function Records({units}){
       <Section title="Fastest pace by run length"><RecordRow label="1 km or more" rec={r.fastest['1k']} detail={pace}/><RecordRow label="5 km or more" rec={r.fastest['5k']} detail={pace}/>
         <RecordRow label="10 km or more" rec={r.fastest['10k']} detail={pace}/><RecordRow label="Half marathon or more" rec={r.fastest.half} detail={pace}/></Section>
       {r.mostCellsInRun&&<Section title="Territory"><ListRow to={`/run/history/${r.mostCellsInRun.runId}`} label="Most cells in one run" value={String(r.mostCellsInRun.cells)}><small>{dateText(r.mostCellsInRun.startedAt)}</small></ListRow></Section>}
-      <p className="small">Fastest pace is the best average over a whole run of at least that distance.</p></>)}</>;
+      <p className="small">Fastest pace is your best average over a whole run of at least that distance.</p></>)}</>;
 }
 const SEEN_KEY='tr.badges.seen';
 function readSeen(){try{const v=JSON.parse(globalThis.localStorage?.getItem(SEEN_KEY)||'null');return Array.isArray(v)?v:null;}catch{return null;}}
@@ -65,17 +64,17 @@ function Achievements(){
   const [fresh,setFresh]=useState([]);
   useEffect(()=>{if(!list)return;const found=newlyEarned(list,readSeen());writeSeen(list.filter(b=>b.earned).map(b=>b.id));if(found.length){setFresh(found);tap('confirm');}},[list]);
   const earned=list?.filter(b=>b.earned)||[],open=list?.filter(b=>!b.earned)||[],isFresh=id=>fresh.some(f=>f.id===id);
-  return <>{data.phase==='loading'&&!list&&<Skeleton label="Loading achievements…"/>}{data.phase==='error'&&<ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>}
+  return <>{data.phase==='loading'&&!list&&<Skeleton shape="stat" lines={4} label="Loading badges…"/>}{data.phase==='error'&&<ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>}
     {fresh.length>0&&<div className="badge-celebrate" role="status"><span>{fresh.length===1?`New badge: ${fresh[0].name}`:`${fresh.length} new badges earned`}</span><Button variant="ghost" size="sm" onClick={()=>setFresh([])}>Dismiss</Button></div>}
     {list&&!list.length&&<EmptyState title="No achievements available">Badges will appear here when they are published.</EmptyState>}
-    {earned.length>0&&<Section title={`Earned (${earned.length})`}><ul className="badge-grid">{earned.map(b=><BadgeTile key={b.id} b={b} fresh={isFresh(b.id)}/>)}</ul></Section>}
-    {open.length>0&&<Section title={earned.length?'Still to earn':'Keep going'}><ul className="badge-grid">{open.map(b=><BadgeTile key={b.id} b={b}/>)}</ul></Section>}</>;
+    {earned.length>0&&<Section plain title={`Earned (${earned.length})`}><ul className="badge-grid">{earned.map(b=><BadgeTile key={b.id} b={b} fresh={isFresh(b.id)}/>)}</ul></Section>}
+    {open.length>0&&<Section plain title={earned.length?'Still to earn':'Your first badges'}><ul className="badge-grid">{open.map(b=><BadgeTile key={b.id} b={b}/>)}</ul></Section>}</>;
 }
 const TABS=[['stats','Stats'],['records','Records'],['achievements','Badges']];
 export function StatsPage(){
   const units=useUnits(),[tab,setTab]=useState('stats');
-  return <section><p className="eyebrow">Your progress</p><h1>Stats</h1>
-    <div className="sport-chips" role="tablist" aria-label="Stats sections">{TABS.map(([key,label])=><Chip key={key} role="tab" aria-selected={tab===key} selected={tab===key} onClick={()=>setTab(key)}>{label}</Chip>)}</div>
+  return <section><h1>Stats</h1>
+    <div className="ui-segmented" role="tablist" aria-label="Stats sections">{TABS.map(([key,label])=><button type="button" key={key} role="tab" aria-selected={tab===key} onClick={()=>{if(tab!==key){tap('light');setTab(key);}}}>{label}</button>)}</div>
     {tab==='stats'&&<Overview units={units}/>}{tab==='records'&&<Records units={units}/>}{tab==='achievements'&&<Achievements/>}
     <Section><ListRow to="/run/history" label="Run history"/></Section></section>;
 }

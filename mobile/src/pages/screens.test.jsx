@@ -143,7 +143,7 @@ it('sign-in methods shows loading, error/retry, one-method note and successful n
 
 it('sign-in methods has an honest empty state', async () => {
   const auth = fakeAuth(signedIn()); auth.api.request.mockResolvedValue({ identities: [] }); view(<MethodsPage />, auth);
-  expect(await screen.findByText(/No sign-in methods were found/)).toBeVisible();
+  expect(await screen.findByText(/No sign-in methods found/)).toBeVisible();
 });
 
 it('AUTH-06 sessions label This device and revoke only another family, with loading and success', async () => {
@@ -164,7 +164,7 @@ it('AUTH-06 sessions label This device and revoke only another family, with load
 it('sessions and password-method loading errors offer retry; sessions also has an empty state', async () => {
   const auth = fakeAuth(signedIn()); auth.api.request.mockRejectedValueOnce(new ApiError('NETWORK_UNAVAILABLE', 'Offline.')).mockResolvedValue({ sessions: [] });
   const { user } = view(<SessionsPage />, auth); expect(await screen.findByRole('alert')).toHaveTextContent('Offline.');
-  await user.click(screen.getByRole('button', { name: 'Try again' })); expect(await screen.findByText('No active sessions were found.')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Try again' })); expect(await screen.findByText('No sessions found')).toBeVisible();
 });
 
 it('password change loads methods, validates, handles failure/success and keeps the current session', async () => {
@@ -319,7 +319,7 @@ it('auth screens put Google first and validate email on blur with the right keyb
 it('settings groups account, privacy & data, and keeps delete last in its own danger section', () => {
   view(<SettingsPage />, fakeAuth(signedIn()));
   const titles = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent);
-  expect(titles).toEqual(['Account', 'Privacy & data', 'App', 'Danger zone']);
+  expect(titles).toEqual(['Account', 'Privacy & data', 'Danger zone']);
   expect(screen.getByRole('link', { name: /Delete account/ })).toHaveAttribute('href', '/settings/delete');
   expect(screen.getByRole('link', { name: /Notifications/ })).toHaveAttribute('href', '/notifications');
 });
