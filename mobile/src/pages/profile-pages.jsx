@@ -7,7 +7,8 @@ import {useResource} from './settings-pages.jsx';
 import {createConsentControls,discardSaved} from '../profile/consent-controls.js';
 import {DISCARD_CONFIRMATION} from '../auth/pending-work.js';
 import {MyBadges} from '../notifications/MyBadges.jsx';
-import {Avatar,Button,Chip,Dialog,ErrorState,InlineNotice,ListRow,Section,Sheet,Skeleton,Switch,TextField} from '../ui/index.jsx';
+import {distanceLabel} from '../runs/format.js';
+import {Avatar,Button,Chip,Dialog,ErrorState,InlineNotice,ListRow,Section,Sheet,Skeleton,StatGrid,StatTile,Switch,TextField} from '../ui/index.jsx';
 
 export function SettingsFrame({title,children}) {
   return <section><p className="eyebrow">Account settings</p><h1>{title}</h1>{children}</section>;
@@ -57,17 +58,7 @@ function ProfileForm({initial,options,regions,onSave}) {
   return <div className="profile-overview resource-content" aria-busy={busy}>
     <div className="profile-identity"><button type="button" className="profile-avatar" aria-label="Change hex avatar" disabled={busy} onClick={()=>open('avatar')}><Avatar id={draft.avatarId} color={draft.avatarColor} size={72}/><span>Change</span></button>
       <div><p className="eyebrow">Your profile</p><h1><bdi>{draft.displayName}</bdi></h1></div></div>
-    <div className="you-summary">
-      <dl className="you-stats"><div><dt>Activities</dt><dd>0</dd></div><div><dt>Distance</dt><dd>0 km</dd></div><div><dt>Territory</dt><dd>0 hexes</dd></div></dl>
-      <div className="you-chart">
-        <div className="you-chart-head"><strong>Last 12 weeks</strong><span>Fills in after your first run</span></div>
-        <svg viewBox="0 0 320 72" aria-hidden="true" focusable="false">
-          <g className="you-chart-grid"><path d="M0 14h320M0 37h320M0 60h320"/></g>
-          <path className="you-chart-line" d="M0 60h320"/>
-        </svg>
-        <p className="small">No runs recorded yet. Your weekly distance and territory appear here.</p>
-      </div>
-    </div>
+    <ProfileStats units={draft.preferredUnits}/>
     <Section title="About you"><ListRow label="Display name" value={draft.displayName} onClick={()=>open('displayName')} disabled={busy}/>
       <ListRow label="Bio" value={draft.bio?'Edit':'Add'} onClick={()=>open('bio')} disabled={busy}>{draft.bio&&<small className="row-support" dir="auto">{draft.bio}</small>}</ListRow>
       <ListRow label="Home region" value={region?region.name:'Not set'} onClick={()=>open('homeRegionId')} disabled={busy}/></Section>
@@ -87,6 +78,18 @@ function ProfileForm({initial,options,regions,onSave}) {
       </form>}
     </Sheet>}
   </div>;
+}
+// Lifetime numbers come from the server; nothing is shown as zero unless it is zero.
+function ProfileStats({units}){
+  const {auth}=useAuth(),load=useCallback(async()=>{
+    const [stats,territory]=await Promise.all([auth.api.request('/api/me/stats/overview?range=week'),auth.api.request('/api/territory/me?limit=1')]);
+    return {lifetime:stats?.lifetime,count:territory?.count};
+  },[auth]),data=useResource(load);
+  if(data.phase==='loading'&&!data.value)return <Skeleton shape="stat" label="Loading your stats…"/>;
+  const life=data.value?.lifetime;
+  if(data.phase==='error'||!life||typeof life.runs!=='number')return <ErrorState onRetry={data.reload} label="Try again">Your totals could not be loaded.</ErrorState>;
+  const count=Number.isFinite(data.value.count)?data.value.count:0;
+  return <StatGrid className="you-stats" aria-label="Your totals"><StatTile label="Activities" value={life.runs}/><StatTile label="Distance" value={distanceLabel(life.distanceM,units)}/><StatTile label="Territory" value={`${count} ${count===1?'hex':'hexes'}`}/></StatGrid>;
 }
 export function ProfilePage() {
   const {auth}=useAuth(),load=useCallback(()=>auth.api.request('/api/me/profile'),[auth]),data=useResource(load);
@@ -109,7 +112,7 @@ function PrivacyForm({initial,save}) {
     <p className="field-help">Private profiles appear as Runner to other people. Territory ownership stays with your account.</p>
     <Switch label="Appear on leaderboards" name="appearOnLeaderboards" defaultChecked={initial.appearOnLeaderboards} onChange={()=>setDirty(true)}/>
     <Switch label="Share route shapes" name="shareRouteShapes" defaultChecked={initial.shareRouteShapes} onChange={()=>setDirty(true)}/>
-    <p className="small">These preferences will apply when maps and leaderboards arrive.</p>
+    <p className="small">Leaderboards and other runners’ maps respect these choices.</p>
     {dirty&&<div className="save-actions"><span className="small" role="status">Unsaved changes</span><Button type="submit" loading={busy}>{busy?'Saving…':'Save privacy choices'}</Button></div>}
   </fieldset><Notice error>{error}</Notice><Notice>{message}</Notice></form>
     {picker&&<Sheet title="Who can view your profile?" onClose={closePicker}><form ref={selection} onSubmit={event=>{event.preventDefault();closePicker();}}><fieldset className="choice-list"><legend className="sr-only">Profile visibility</legend>{VISIBILITY.map(([value,label,description])=><label key={value}><span>{label}<small className="row-support">{description}</small></span><input type="radio" name="profileVisibility" value={value} defaultChecked={value===visibility}/></label>)}</fieldset><div className="editor-actions"><Button type="submit">Done</Button></div></form></Sheet>}

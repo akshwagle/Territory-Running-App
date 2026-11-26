@@ -53,15 +53,21 @@ export function SettingsPage() {
   const { state } = useAuth();
   return <section><p className="eyebrow">Your account</p><h1>Settings</h1>
     <div className="account-summary"><div><strong dir="auto">{state.user.displayName}</strong><p className="copyable" dir="auto">{state.user.email}</p></div></div>
-    <nav aria-label="Account settings"><Section title="Sign-in & security">
+    <nav aria-label="Account settings"><Section title="Account">
+      <ListRow to="/you" label="Edit profile" value="Name, avatar, units"/>
       <ListRow to="/settings/methods" label="Sign-in methods"/>
-      <ListRow to="/settings/sessions" label="Active sessions"/>
       <ListRow to="/settings/password" label="Change password"/>
+      <ListRow to="/settings/sessions" label="Active sessions"/>
       <ListRow to="/verify" label="Email verification" value={state.user.emailVerified ? 'Verified' : 'Needed'}/>
-    </Section><Section title="Your data">
+    </Section><Section title="Privacy & data">
+      <ListRow to="/you/privacy" label="Privacy" value="Visibility & location"/>
+      <ListRow to="/notifications" label="Notifications" value="Activity inbox"/>
       <ListRow to="/settings/export" label="Export my data"/>
-      <ListRow to="/settings/delete" label="Delete account"/>
-    </Section></nav><SignOutControl/>
+    </Section><Section title="App">
+      <SignOutControl/>
+    </Section><Section title="Danger zone" className="danger">
+      <ListRow to="/settings/delete" label="Delete account" value="Permanent"/>
+    </Section></nav>
   </section>;
 }
 

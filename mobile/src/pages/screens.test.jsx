@@ -315,3 +315,11 @@ it('auth screens put Google first and validate email on blur with the right keyb
   await user.type(email, 'not-an-email'); await user.tab();
   expect(await screen.findByText(/valid email address/)).toBeInTheDocument();
 });
+
+it('settings groups account, privacy & data, and keeps delete last in its own danger section', () => {
+  view(<SettingsPage />, fakeAuth(signedIn()));
+  const titles = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent);
+  expect(titles).toEqual(['Account', 'Privacy & data', 'App', 'Danger zone']);
+  expect(screen.getByRole('link', { name: /Delete account/ })).toHaveAttribute('href', '/settings/delete');
+  expect(screen.getByRole('link', { name: /Notifications/ })).toHaveAttribute('href', '/notifications');
+});
