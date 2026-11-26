@@ -188,7 +188,7 @@ label, legend { color: var(--text-2); font: 600 var(--fs-small)/var(--lh-small) 
 
 input, textarea, select {
   width: 100%; min-width: 0; min-height: 52px; padding: 13px 16px; font: inherit; font-size: 1rem;
-  color: var(--text); background: var(--fill-2); border: 1px solid var(--line-strong); border-radius: var(--r-control);
+  color: var(--text); background: var(--surface-raised-2); border: 1px solid var(--line-strong); border-radius: var(--r-control);
   scroll-margin-block: 24px 80px;
 }
 input::placeholder, textarea::placeholder { color: var(--text-3); }
@@ -277,6 +277,8 @@ p { margin: 0 0 var(--sp-4); color: var(--text-2); }
 .shell-welcome .ui-header-title { display: none; }
 .shell-welcome > main { padding: 0 0 var(--safe-bottom); }
 .ui-screen.shell-welcome > main { padding-bottom: var(--safe-bottom); }
+.ui-screen.shell-welcome > main:has(.splash-page) { padding-bottom: 0; }
+.shell-welcome .status-screen { padding: var(--sp-4) var(--gutter); }
 .shell-welcome .screen-edition { padding: 0 20px 12px; }
 
 .welcome-hero {
@@ -322,9 +324,9 @@ p { margin: 0 0 var(--sp-4); color: var(--text-2); }
 
 /* ── Splash ──────────────────────────────────────────────────────────── */
 .splash-page {
-  position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 100dvh;
+  position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: calc(100dvh - var(--safe-top));
   overflow: hidden; background: var(--media-bg); color: var(--on-media); box-sizing: border-box;
-  padding: max(20px, var(--safe-top)) max(24px, var(--safe-right)) max(28px, var(--safe-bottom)) max(24px, var(--safe-left));
+  padding: max(20px, var(--safe-top)) max(24px, var(--safe-right)) max(40px, calc(var(--safe-bottom) + 24px)) max(24px, var(--safe-left));
 }
 .splash-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
 .splash-runner-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; filter: contrast(1.04); }
