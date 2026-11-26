@@ -17,7 +17,7 @@ function setup(Page,initial={},handler,route='/run'){
  return {recorder,auth,user:userEvent.setup(),emit:patch=>act(()=>{current={...current,...patch};for(const fn of listeners)fn();})};
 }
 it('GPS-10 Run explains treadmill limits and starts via a permission flow, with no coordinate display',async()=>{
- const f=setup(<RunPage/>);expect(screen.getByText(/Steps-only runs are not supported/)).toBeVisible();await f.user.click(screen.getByRole('button',{name:'Get ready to run'}));expect(f.recorder.prepare).toHaveBeenCalledOnce();
+ const f=setup(<RunPage/>);expect(screen.getByText(/Treadmill and indoor runs record time only/)).toBeVisible();await f.user.click(screen.getByRole('button',{name:'Start a run'}));expect(f.recorder.prepare).toHaveBeenCalledOnce();
 });
 it('PERM-01 blocked permission shows Android settings, PERM-06 approximate explains precise without a prompt loop',async()=>{
  const f=setup(<RunPage/>,{flow:'location',permissions:{location:'blocked'}});await f.user.click(screen.getByRole('button',{name:'Open Android app settings'}));expect(f.recorder.openSettings).toHaveBeenCalledOnce();expect(screen.queryByRole('button',{name:'Allow precise location'})).not.toBeInTheDocument();
@@ -55,7 +55,7 @@ it('GPS-04 detail renders segment paths independently; GPS-08 gives only a gener
 });
 
 it('LIFE-09 a completed summary never traps Back to Run in a redirect loop',async()=>{
- setup(<RunPage/>,{state:'DONE',lastFinished:{run:{id:'one',distanceM:10,durationS:30},discarded:false}});expect(await screen.findByRole('button',{name:'Get ready to run'})).toBeVisible();expect(screen.queryByRole('heading',{name:'Run saved'})).not.toBeInTheDocument();
+ setup(<RunPage/>,{state:'DONE',lastFinished:{run:{id:'one',distanceM:10,durationS:30},discarded:false}});expect(await screen.findByRole('button',{name:'Start a run'})).toBeVisible();expect(screen.queryByRole('heading',{name:'Run saved'})).not.toBeInTheDocument();
 });
 
 it('PRIV-03 opening consent closes the old permission sheet before navigating away',async()=>{

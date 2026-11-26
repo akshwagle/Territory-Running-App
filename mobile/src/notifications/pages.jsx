@@ -31,7 +31,7 @@ export function NotificationsPage(){
   return <section className="notifications-page"><p className="eyebrow">Activity</p><h1>Notifications</h1>
     {phase==='loading'&&<Skeleton label="Loading notifications…"/>}
     {phase==='error'&&<ErrorState onRetry={()=>load(null)} label="Try again">{error}</ErrorState>}
-    {phase==='ready'&&!items.length&&<EmptyState title="Nothing new">Run results, territory changes, followers, team updates and badges show up here.</EmptyState>}
+    {phase==='ready'&&!items.length&&<EmptyState title="You’re all caught up">Run results, territory changes and badges will appear here after your next run.</EmptyState>}
     {phase==='ready'&&items.length>0&&<>
       {anyUnread&&<Button variant="secondary" onClick={readAll}>Mark all as read</Button>}
       <Section><ul className="notice-list">{items.map(n=><li key={n.id} className={`notice-item${n.read?'':' unread'}`}>

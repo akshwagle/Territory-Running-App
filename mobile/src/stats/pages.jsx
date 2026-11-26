@@ -25,7 +25,7 @@ function Overview({units}){
     <div className="sport-chips" role="group" aria-label="Period">{RANGES.map(([key,label])=><Chip key={key} selected={range===key} onClick={()=>setRange(key)}>{label}</Chip>)}</div>
     {data.phase==='loading'&&!v&&<Skeleton label="Loading your stats…"/>}
     {data.phase==='error'&&<ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>}
-    {v&&(v.lifetime.runs===0?<EmptyState title="No stats yet" action={<Button to="/run">Start a run</Button>}>Validated runs show up here with distance, time and pace.</EmptyState>:<>
+    {v&&(v.lifetime.runs===0?<EmptyState title="Your stats start with a run" action={<Button to="/run">Start a run</Button>}>Distance, time, pace and streaks fill in after your first valid run.</EmptyState>:<>
       <dl className="ui-run-stats"><Tile label="Distance" value={distanceLabel(v.totals.distanceM,units)}/><Tile label="Time" value={timeLabel(v.totals.durationS)}/><Tile label="Avg pace" value={paceLabel(v.totals.distanceM,v.totals.durationS,units)}/></dl>
       <p className="small">{v.totals.runs} {v.totals.runs===1?'run':'runs'} in this period · {v.lifetime.runs} all time ({distanceLabel(v.lifetime.distanceM,units)})</p>
       <BarChart series={v.series} bucket={v.bucket} units={units}/>

@@ -13,7 +13,7 @@ const SCOPES = [{ key: 'global', label: 'Everyone' }, { key: 'following', label:
 const COLORS = ['#1F5A46', '#B8452A', '#14392C', '#2C6E9E', '#7A4FB0', '#A8812A'];
 
 const valueText = (metric, value) => metric === 'distance' ? distanceLabel(value) : String(value);
-const errText = error => error?.message || 'Something went wrong. Try again.';
+const errText = error => error?.message || 'That didn’t go through. Check your connection and try again.';
 
 export function Person({ person, children, sub }) {
   return <li className="person-row">
@@ -53,7 +53,7 @@ function Leaderboard() {
       {v.season && v.period === 'season' && <p className="small">{v.season.name} · {v.season.daysLeft} days left</p>}
       {!v.optedIn && <p className="feed-note">You are not on leaderboards. Turn on “Appear on leaderboards” in Privacy to be ranked.</p>}
       {v.me && <p className="feed-note">Your rank: #{v.me.rank} · {valueText(v.metric, v.me.value)}</p>}
-      {v.entries.length === 0 ? <EmptyState title="No one ranked yet">{v.period === 'season' && !v.season ? 'No season is running right now.' : 'Complete a validated run to appear here.'}</EmptyState>
+      {v.entries.length === 0 ? <EmptyState title="The board is open">{v.period === 'season' && !v.season ? 'No season is running right now.' : 'Finish a valid run to take the first spot.'}</EmptyState>
         : <ol className="board-list">{v.entries.map(e => <Person key={`${e.rank}-${e.id || e.displayName}-${e.value}`} person={e} sub={e.isMe ? 'You' : null}>
           <span className="board-rank" aria-label={`Rank ${e.rank}`}>#{e.rank}</span><b>{valueText(v.metric, e.value)}</b></Person>)}</ol>}
     </>}
