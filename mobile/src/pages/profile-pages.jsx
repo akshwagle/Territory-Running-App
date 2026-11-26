@@ -8,10 +8,11 @@ import {createConsentControls,discardSaved} from '../profile/consent-controls.js
 import {DISCARD_CONFIRMATION} from '../auth/pending-work.js';
 import {MyBadges} from '../notifications/MyBadges.jsx';
 import {distanceLabel} from '../runs/format.js';
+const splitUnit=label=>{const at=String(label).lastIndexOf(' ');return at>0?[label.slice(0,at),label.slice(at+1)]:[label,''];};
 import {Avatar,Button,Chip,Dialog,ErrorState,InlineNotice,ListRow,Section,Sheet,Skeleton,StatGrid,StatTile,Switch,TextField} from '../ui/index.jsx';
 
 export function SettingsFrame({title,children}) {
-  return <section><p className="eyebrow">Account settings</p><h1>{title}</h1>{children}</section>;
+  return <section><h1>{title}</h1>{children}</section>;
 }
 export function ResourceState({data,label}) {
   return data.phase==='loading'?<Skeleton label={`Loading ${label}…`}/>:data.phase==='error'?<ErrorState label="Try again" onRetry={data.reload}>{data.error}</ErrorState>:null;
@@ -57,13 +58,13 @@ function ProfileForm({initial,options,regions,onSave}) {
   const titles={displayName:'Edit display name',bio:'Your bio',preferredUnits:'Distance units',homeRegionId:'Home region',avatar:'Choose your hex'};
   return <div className="profile-overview resource-content" aria-busy={busy}>
     <div className="profile-identity"><button type="button" className="profile-avatar" aria-label="Change hex avatar" disabled={busy} onClick={()=>open('avatar')}><Avatar id={draft.avatarId} color={draft.avatarColor} size={72}/><span>Change</span></button>
-      <div><p className="eyebrow">Your profile</p><h1><bdi>{draft.displayName}</bdi></h1></div></div>
+      <div><h1><bdi>{draft.displayName}</bdi></h1></div></div>
     <ProfileStats units={draft.preferredUnits}/>
-    <Section title="About you"><ListRow label="Display name" value={draft.displayName} onClick={()=>open('displayName')} disabled={busy}/>
+    <Section title="Profile"><ListRow label="Display name" value={draft.displayName} onClick={()=>open('displayName')} disabled={busy}/>
       <ListRow label="Bio" value={draft.bio?'Edit':'Add'} onClick={()=>open('bio')} disabled={busy}>{draft.bio&&<small className="row-support" dir="auto">{draft.bio}</small>}</ListRow>
       <ListRow label="Home region" value={region?region.name:'Not set'} onClick={()=>open('homeRegionId')} disabled={busy}/></Section>
     <Section title="Preferences"><ListRow id="preferredUnits" label="Distance units" value={draft.preferredUnits==='mi'?'Miles':'Kilometres'} onClick={()=>open('preferredUnits')} disabled={busy}/>
-      <ListRow to="/you/privacy" label="Privacy" value="Visibility & consent"/></Section>
+      <ListRow to="/you/privacy" label="Privacy" value="Visibility and consent"/></Section>
     {dirty&&<div className="save-actions"><span className="small" role="status">Unsaved changes</span><Button loading={busy} onClick={save}>{busy?'Saving…':'Save profile'}</Button></div>}
     <Notice error>{error}</Notice><Notice>{message}</Notice>
     {editor&&<Sheet title={titles[editor]} onClose={close}>
@@ -89,7 +90,8 @@ function ProfileStats({units}){
   const life=data.value?.lifetime;
   if(data.phase==='error'||!life||typeof life.runs!=='number')return <ErrorState onRetry={data.reload} label="Try again">Your totals could not be loaded.</ErrorState>;
   const count=Number.isFinite(data.value.count)?data.value.count:0;
-  return <StatGrid className="you-stats" aria-label="Your totals"><StatTile label="Activities" value={life.runs}/><StatTile label="Distance" value={distanceLabel(life.distanceM,units)}/><StatTile label="Territory" value={`${count} ${count===1?'hex':'hexes'}`}/></StatGrid>;
+  const [distance,unit]=splitUnit(distanceLabel(life.distanceM,units));
+  return <StatGrid className="you-stats" aria-label="Your totals"><StatTile label="Runs" value={life.runs}/><StatTile label="Distance" value={distance} unit={unit}/><StatTile label="Territory" value={count} unit={count===1?'hex':'hexes'}/></StatGrid>;
 }
 export function ProfilePage() {
   const {auth}=useAuth(),load=useCallback(()=>auth.api.request('/api/me/profile'),[auth]),data=useResource(load);
@@ -135,9 +137,9 @@ export function PrivacyPage() {
   }
   return <SettingsFrame title="Privacy"><ResourceState data={data} label="privacy choices"/>{data.phase==='ready'&&<>
     <PrivacyForm initial={data.value.privacy} save={body=>auth.api.request('/api/me/privacy',{method:'PATCH',body})}/>
-    <Section title="Location consent"><p>Withdrawing stops recording on this phone immediately. Other devices must check the server before sending new points.</p>
-    <Button variant="secondary" disabled={busy} onClick={withdraw}>{busy?'Working…':'Withdraw location consent'}</Button>
-    <ListRow to="/you/consent" label="Consent & history"/></Section>
+    <Section title="Location consent"><ListRow to="/you/consent" label="Consent and history"/></Section>
+    <p className="small">Withdrawing stops recording on this phone straight away. Other devices check the server before sending new points.</p>
+    <Button variant="secondary" block disabled={busy} onClick={withdraw}>{busy?'Withdrawing…':'Withdraw location consent'}</Button>
   </>}{withdrawn&&<InlineNotice>Recording is stopped. {remaining?'Choose whether to upload the earlier points or discard them.':'There is no unsent data on this phone.'}</InlineNotice>}
     {withdrawn&&remaining>0&&<div className="stack"><Button variant="secondary" disabled={busy} onClick={()=>saved('upload')}>Upload earlier points</Button><Button variant="destructive" disabled={busy} onClick={()=>setConfirmDiscard(true)}>Discard saved points…</Button>
       {confirmDiscard&&<Dialog title="Discard saved points?" onClose={()=>setConfirmDiscard(false)}><p>This permanently erases the saved points. They cannot be recovered.</p><Button variant="destructive" disabled={busy} onClick={()=>saved('discard')}>Yes, discard saved points</Button><Button variant="secondary" onClick={()=>setConfirmDiscard(false)}>Keep encrypted points</Button></Dialog>}</div>}

@@ -21,12 +21,12 @@ export function ConsentPage() {
     } catch(failure){setError(friendlyMessage(failure));await data.reload();}finally{setBusy(false);}
   }
   return <SettingsFrame title="Consent"><p className="small">Android edition {__APP_VERSION__}</p>
-    <p>Read these notices before your first run. No location is collected in this build. You can use account settings without accepting.</p>
+    <p>Read these notices before your first run. Recording needs them; account settings work without them.</p>
     <ResourceState data={data} label="consent notices"/>{data.phase==='ready'&&<>
       {data.value.consents.map(row=><Card className="consent-card" key={row.type}><h2>{row.title}</h2><p>{row.text}</p><p className="small">Version {row.version} · {row.accepted?'Accepted':'Acceptance needed'}</p></Card>)}
-      <Button disabled={busy||data.value.consents.every(c=>c.accepted)} onClick={accept}>{busy?'Saving…':data.value.consents.every(c=>c.accepted)?'Current notices accepted':'Accept current notices'}</Button>
+      <Button block disabled={busy||data.value.consents.every(c=>c.accepted)} onClick={accept}>{busy?'Saving…':data.value.consents.every(c=>c.accepted)?'Current notices accepted':'Accept current notices'}</Button>
       <p className="small">Withdraw location consent at any time in Privacy. It stops recording; you choose what happens to unsent points.</p>
-      <h2 className="section-title">Precise location</h2><p>{recordingDecision(data.value.consents,'approximate').reason==='PRECISE_LOCATION_REQUIRED'?recordingDecision(data.value.consents,'approximate').message:'When recording arrives, it will need precise location to validate your route. Approximate location cannot be used for a run.'} Android will ask only when recording is available.</p>
+      <h2 className="section-title">Precise location</h2><p>{recordingDecision(data.value.consents,'approximate').reason==='PRECISE_LOCATION_REQUIRED'?recordingDecision(data.value.consents,'approximate').message:'Runs need precise location to validate your route. Approximate location cannot be used for a run.'} Android asks when you start your first run.</p>
       <details><summary>Consent history ({data.value.history.length})</summary>{data.value.history.length?<ul className="resource-list">{data.value.history.map(row=><li key={row.id}><strong>{row.type} · {row.accepted?'Accepted':'Withdrawn'}</strong><span>Version {row.version}</span><time dateTime={row.createdAt}>{new Date(row.createdAt).toLocaleString()}</time></li>)}</ul>:<p>You have not recorded any consent choices.</p>}</details>
     </>}<Notice error>{error}</Notice><Notice>{message}</Notice></SettingsFrame>;
 }
@@ -54,7 +54,7 @@ export function ExportPage({sharing=exportShare}) {
   }
   return <SettingsFrame title="Export my data"><p>Your JSON file includes your profile, consent history, runs and points, flags, team and notifications. Other runners are labelled Runner.</p>
     <p>It is available for 24 hours, one export at a time. Sharing uses a temporary app-cache file, removed when you return from sharing. Keep the copy private; it may contain your routes.</p>
-    {!job&&<EmptyState title="A copy for you">No export requested on this screen yet. Requesting again will reuse your active export.</EmptyState>}
+    {!job&&<EmptyState compact title="No export requested yet">Requesting again reuses an export that is still active.</EmptyState>}
     <div className="stack"><Button disabled={busy} onClick={requestExport}>{busy?'Working…':'Request export'}</Button>
       {job&&<><p className="small">Available until {new Date(job.expiresAt).toLocaleString()}</p><Button variant="secondary" disabled={busy} onClick={check}>Check export</Button></>}
       {payload&&<Button disabled={busy} onClick={share}>Share JSON</Button>}

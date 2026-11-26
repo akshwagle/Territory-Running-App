@@ -62,7 +62,7 @@ it('teams tab creates a team when you have none', async () => {
     'POST /api/teams': () => { team = { id: 't1', name: 'Dawn Crew', colorHex: '#1F5A46', role: 'CAPTAIN', memberCount: 1, maxMembers: 50, inviteCode: 'ABCDEFGHJK' }; return { team }; },
   });
   await user.click(screen.getByRole('button', { name: 'Teams' }));
-  expect(await screen.findByText('You are not in a team')).toBeVisible();
+  expect(await screen.findByText('Run with a team')).toBeVisible();
   await user.type(screen.getByLabelText('Team name'), 'Dawn Crew'); await user.click(screen.getByRole('button', { name: 'Create team' }));
   expect(await screen.findByText('ABCDEFGHJK')).toBeVisible();
   expect(request).toHaveBeenCalledWith('/api/teams', { method: 'POST', body: { name: 'Dawn Crew', colorHex: '#1F5A46' } });
