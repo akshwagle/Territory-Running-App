@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { it, expect, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
@@ -94,4 +94,50 @@ it('pins a you-row with my rank and marks my own row', async () => {
   expect((await screen.findByText('Your rank: #2 · 3')).closest('.you-row')).toBeVisible();
   expect(screen.getByText('Runner 2').closest('li')).toHaveAttribute('aria-current', 'true');
   expect(screen.getByText('Runner 1').closest('li')).not.toHaveAttribute('aria-current');
+});
+
+function teamRoutes(team, members) {
+  return { 'GET /api/teams/me/members': { members }, 'GET /api/teams/me': { team }, 'GET /api/community/team-leaderboard': { teams: [] }, 'GET /api/community/leaderboard': board(),
+    'POST /api/teams/leave': { left: true } };
+}
+const myTeam = (extra = {}) => ({ id: 't1', name: 'Dawn Crew', colorHex: '#1F5A46', role: 'MEMBER', memberCount: 3, maxMembers: 50, inviteCode: 'ABCDEFGHJK', ...extra });
+async function openLeave(routes) {
+  const ctx = mount(routes);
+  await ctx.user.click(screen.getByRole('button', { name: 'Teams' }));
+  await ctx.user.click(await screen.findByRole('button', { name: 'Leave team' }));
+  return ctx;
+}
+
+it('leaving a team asks first, defaults focus to Cancel and sends nothing until confirmed', async () => {
+  const { request, user } = await openLeave(teamRoutes(myTeam(), []));
+  const dialog = screen.getByRole('dialog', { name: 'Leave this team?' });
+  expect(dialog).toHaveTextContent('You can join or create a team again later.');
+  expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  expect(request).not.toHaveBeenCalledWith('/api/teams/leave', expect.anything());
+  await user.keyboard('{Tab}{Tab}{Tab}'); // Close, Leave, then wraps; focus never leaves the dialog
+  expect(dialog).toContainElement(document.activeElement);
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(request).not.toHaveBeenCalledWith('/api/teams/leave', expect.anything());
+});
+
+it('Escape closes the leave dialog without leaving', async () => {
+  const { request, user } = await openLeave(teamRoutes(myTeam(), []));
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(request).not.toHaveBeenCalledWith('/api/teams/leave', expect.anything());
+});
+
+it('confirming leaves the team; captain and sole-member copy explain what happens', async () => {
+  const captain = await openLeave(teamRoutes(myTeam({ role: 'CAPTAIN' }), []));
+  expect(screen.getByRole('dialog')).toHaveTextContent('longest becomes captain');
+  await captain.user.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.getByRole('button', { name: 'Leave team' })).toBeVisible();
+});
+
+it('sole member is told the team will be deleted, and confirm sends the request', async () => {
+  const { request, user } = await openLeave(teamRoutes(myTeam({ role: 'CAPTAIN', memberCount: 1 }), []));
+  expect(screen.getByRole('dialog')).toHaveTextContent('the team will be deleted');
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Leave team' }));
+  await waitFor(() => expect(request).toHaveBeenCalledWith('/api/teams/leave', { method: 'POST', body: {} }));
 });

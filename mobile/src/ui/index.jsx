@@ -104,7 +104,7 @@ function Modal({ title, children, onClose, sheet = false }) {
     const app = document.querySelector('.app-shell'), wasInert = app?.inert;
     if (app) app.inert = true;
     const controls = () => [...panel.current.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), select, textarea, [tabindex="0"]')];
-    (controls()[0] || panel.current).focus();
+    (panel.current.querySelector('[data-autofocus]') || controls()[0] || panel.current).focus();
     function keydown(event) {
       if (overlays.at(-1) !== close) return;
       if (event.key === 'Escape') { event.preventDefault(); close(); }

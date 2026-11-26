@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useAuth } from '../auth/context.jsx';
-import { Avatar, Button, Card, Chip, Segmented, EmptyState, ErrorState, Icon, Section, Skeleton, TextField, useToast } from '../ui/index.jsx';
+import { Avatar, Button, Card, Chip, Dialog, Segmented, EmptyState, ErrorState, Icon, Section, Skeleton, TextField, useToast } from '../ui/index.jsx';
 import { distanceLabel } from '../runs/format.js';
 import { useResource } from './use-resource.js';
 
@@ -82,7 +82,7 @@ function TeamCreate({ onDone }) {
 }
 
 function TeamView({ team, onChange }) {
-  const { auth } = useAuth(), show = useToast(), [busy, setBusy] = useState('');
+  const { auth } = useAuth(), show = useToast(), [busy, setBusy] = useState(''), [confirmLeave, setConfirmLeave] = useState(false);
   const load = useCallback(() => auth.api.request('/api/teams/me/members'), [auth]);
   const members = useResource(load);
   const act = async (key, path, opts) => {
@@ -103,7 +103,14 @@ function TeamView({ team, onChange }) {
         {team.role === 'CAPTAIN' && !m.isMe && m.id && <Button variant="secondary" size="sm" loading={busy === m.id} aria-label={`Remove ${m.displayName}`}
           onClick={() => act(m.id, `/api/teams/me/members/${m.id}`, { method: 'DELETE' })}>Remove</Button>}</Person>)}</ul>}
     </Section>
-    <Button variant="destructive" block loading={busy === 'leave'} onClick={() => act('leave', '/api/teams/leave', { method: 'POST', body: {} })}>Leave team</Button>
+    <Button variant="destructive" block loading={busy === 'leave'} onClick={() => setConfirmLeave(true)}>Leave team</Button>
+    {confirmLeave && <Dialog title="Leave this team?" onClose={() => setConfirmLeave(false)}>
+      <p>{team.memberCount > 1
+        ? (team.role === 'CAPTAIN' ? 'You are the captain. The member who has been on the team longest becomes captain. ' : '')
+        : 'You are the only member, so the team will be deleted. '}You can join or create a team again later.</p>
+      <Button variant="secondary" data-autofocus onClick={() => setConfirmLeave(false)}>Cancel</Button>
+      <Button variant="destructive" onClick={() => { setConfirmLeave(false); act('leave', '/api/teams/leave', { method: 'POST', body: {} }); }}>Leave team</Button>
+    </Dialog>}
   </div>;
 }
 
