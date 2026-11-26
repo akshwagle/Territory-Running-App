@@ -42,7 +42,7 @@
 .ui-switch { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); min-height: 56px; position: relative;
   margin: 0; padding-block: var(--sp-2); color: var(--text); font: 400 var(--fs-body)/var(--lh-body) var(--font-body); }
 .ui-switch:has(input:disabled) { opacity: .55; }
-.ui-switch input { position: absolute; width: 52px; height: 48px; min-height: 0; right: 0; top: 50%; translate: 0 -50%; margin: 0; opacity: 0; z-index: 1; cursor: pointer; }
+.ui-switch input { position: absolute; width: 52px; height: 48px; min-height: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0; opacity: 0; z-index: 1; cursor: pointer; }
 .ui-switch-track { width: 48px; height: 28px; flex: 0 0 auto; padding: 3px; border-radius: var(--r-pill); background: var(--fill-5); border: 1px solid var(--line-strong); }
 .ui-switch-track::after { content: ''; display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--text-2);
   transition: transform var(--motion-short) var(--ease-standard); }
@@ -61,6 +61,7 @@
 .chip-row { display: flex; gap: var(--sp-2); overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
 .chip-row::-webkit-scrollbar { display: none; }
 .chip-row .ui-chip { flex: 0 0 auto; }
+.ui-section-body .chip-row, .ui-sheet .chip-row { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; margin-bottom: var(--sp-3); }
 
 .ui-segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--sp-1); margin: 0 0 var(--sp-5);
   padding: var(--sp-1); border-radius: var(--r-pill); background: var(--fill-3); }
