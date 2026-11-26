@@ -13,62 +13,24 @@ import archC from '../assets/arch-c.jpg';
 import archD from '../assets/arch-d.jpg';
 import archE from '../assets/arch-e.jpg';
 
-/* ─── Splash / Onboarding page ─────────────────────────────────────── */
+/* Splash: full-bleed runner photo, one promise, one action. Always dark (theme-media). */
 export function SplashPage() {
   const navigate = useNavigate();
-
-  return (
-    <section className="splash-page" aria-label="Territory Run welcome">
-      {/* Full-bleed runner image background */}
-      <div className="splash-bg" aria-hidden="true">
-        <img
-          src={runnerHero}
-          alt=""
-          className="splash-runner-img"
-        />
-        {/* Soft atmospheric vignette for text legibility */}
-        <div className="splash-scrim" />
+  return <section className="splash-page theme-media" aria-label="Territory Run welcome">
+    <div className="splash-bg" aria-hidden="true"><img src={runnerHero} alt="" className="splash-runner-img"/><div className="splash-scrim"/></div>
+    <div className="splash-top-left">
+      <div className="splash-brand">
+        <div className="splash-brand-icon"><BrandMark width="20" height="20"/></div>
+        <div className="splash-brand-text"><span className="splash-brand-title">TERRITORY</span><span className="splash-brand-sub">RUN</span></div>
       </div>
-
-      {/* Top Left: Logo */}
-      <div className="splash-top-left">
-        <div className="splash-brand">
-          <div className="splash-brand-icon">
-            <BrandMark width="20" height="20" />
-          </div>
-          <div className="splash-brand-text">
-            <span className="splash-brand-title">TERRITORY</span>
-            <span className="splash-brand-sub">RUN</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Content: Clean, spacious, no clutter */}
-      <div className="splash-content">
-        <h1 className="splash-headline">
-          Find Your Next<br />
-          Big Challenge.
-        </h1>
-
-        {/* Action button */}
-        <button
-          type="button"
-          className="splash-cta"
-          onClick={() => navigate('/welcome')}
-        >
-          <span className="cta-label">Start Journey</span>
-          <span className="cta-chevrons" aria-hidden="true">
-            <span>›</span><span>›</span><span>›</span><span>›</span>
-          </span>
-        </button>
-
-        <p className="splash-hint">
-          Already have an account?{' '}
-          <Link to="/login" className="splash-link">Log in</Link>
-        </p>
-      </div>
-    </section>
-  );
+    </div>
+    <div className="splash-content">
+      <h1 className="splash-headline">Turn your runs into territory.</h1>
+      <p className="splash-lead">Every street you cover becomes yours, until another runner takes it back.</p>
+      <button type="button" className="ui-button ui-button--primary splash-cta" onClick={() => navigate('/welcome')}>Get started</button>
+      <p className="splash-hint">Already have an account? <Link to="/login" className="splash-link">Log in</Link></p>
+    </div>
+  </section>;
 }
 
 export function GoogleButton({ link = false, onLinked = () => {}, onError }) {
@@ -117,7 +79,7 @@ function ArchField() {
 
 export function WelcomePage({ notice = '' }) {
   const [error, setError] = useState('');
-  return <section className="welcome">
+  return <section className="welcome theme-media">
     <div className="welcome-hero"><div className="welcome-brand"><BrandMark width="44" height="44"/><span>TERRITORY<br/>RUN</span></div>
       <ArchField/>
       <h1>Make your<br/>next run count.</h1>
@@ -131,8 +93,8 @@ export function WelcomePage({ notice = '' }) {
 
 export function SignupPage() {
   const { auth } = useAuth(), navigate = useNavigate();
-  return <section className="auth-screen"><p className="eyebrow">Start here</p><h1>Create an account</h1>
-    <p className="auth-lead">Claim the streets you run. Takes under a minute.</p>
+  return <section className="auth-screen"><h1>Create an account</h1>
+    <p className="auth-lead">Every street you run can become your territory. It takes under a minute.</p>
     <GoogleButton /><div className="auth-or"><span>or use email</span></div>
     <AuthForm kind="signup" fields={[{ name: 'displayName', label: 'Display name', autoComplete: 'nickname' }, emailField,
       { ...passwordField, autoComplete: 'new-password', help: 'Use 10–128 characters. Spaces are allowed.' }]}
@@ -143,7 +105,7 @@ export function SignupPage() {
 
 export function LoginPage() {
   const { auth } = useAuth(), navigate = useNavigate();
-  return <section className="auth-screen"><p className="eyebrow">Good to see you</p><h1>Log in</h1>
+  return <section className="auth-screen"><h1>Log in</h1><p className="auth-lead">Welcome back. Pick up where you left off.</p>
     <GoogleButton /><div className="auth-or"><span>or use email</span></div>
     <AuthForm kind="login" fields={[{ ...emailField, autoComplete: 'username' }, passwordField]} submitLabel="Log in" busyLabel="Signing in…"
       onSubmit={auth.login} onSuccess={() => navigate('/home', { replace: true })} />
@@ -154,8 +116,8 @@ export function LoginPage() {
 
 export function ForgotPage() {
   const { auth } = useAuth();
-  return <section className="auth-screen"><p className="eyebrow">Back on track</p><h1>Reset your password</h1>
-    <p>Enter your email. If an account exists, we’ll send a link that lasts 30 minutes.</p>
+  return <section className="auth-screen"><h1>Reset your password</h1>
+    <p className="auth-lead">Enter your email. If an account exists, we’ll send a link that lasts 30 minutes.</p>
     <AuthForm kind="forgot" fields={[emailField]} submitLabel="Send reset link" busyLabel="Requesting link…"
       onSubmit={body => auth.api.request('/api/auth/password/forgot', { auth: false, method: 'POST', body })} />
     <Link className="text-link" to="/login">Back to login</Link>
@@ -165,7 +127,7 @@ export function ForgotPage() {
 export function ResetPage({ link, clearLink }) {
   const { auth } = useAuth(), [done, setDone] = useState(false);
   if (done) return <section className="auth-screen"><h1>Password updated</h1><p role="status">Sign in with your new password. Your saved data stays on this phone.</p><Link className="ui-button ui-button--primary" to="/login">Go to login</Link></section>;
-  return <section className="auth-screen"><p className="eyebrow">Back on track</p><h1>Choose a new password</h1>
+  return <section className="auth-screen"><h1>Choose a new password</h1>
     {!link?.token || link.action !== 'reset' ? <><Notice error>{link?.error || 'Open the reset link from your email to continue.'}</Notice><Link className="ui-button ui-button--secondary" to="/forgot">Request a new link</Link></> :
       <><p>This changes your password and ends all existing sessions. It does not sign you in.</p>
         <AuthForm kind="reset" fields={[newPasswordField]} submitLabel="Update password" busyLabel="Updating password…"
@@ -190,13 +152,13 @@ export function VerifyPage({ link, clearLink }) {
   // An explicit email link must be checked even when this phone's current
   // account is already verified; it may be expired or belong to someone else.
   const verified = done || (!link && state.user?.emailVerified === true);
-  return <section className="auth-screen"><p className="eyebrow">One small step</p><h1>{verified ? 'Email verified' : 'Verify your email'}</h1>
+  return <section className="auth-screen"><h1>{verified ? 'Email verified' : 'Verify your email'}</h1>
 
     <p>{verified ? 'Your email is confirmed. You can return to the app.' : 'Check your inbox and open the verification link on this phone. Links last 24 hours.'}</p>
     {!verified && hasToken && <Button disabled={busy} onClick={() => act(true)}>{busy ? 'Confirming…' : 'Confirm email'}</Button>}
     {!verified && !hasToken && link?.error && <Notice error>{link.error}</Notice>}
     {!verified && state.user && <><Button variant="secondary" disabled={busy} onClick={() => act(false)}>{busy && !hasToken ? 'Requesting email…' : 'Resend verification email'}</Button>
-      <Button variant="ghost" disabled={busy} onClick={async () => { setError(''); try { await auth.loadMe(); } catch (failure) { setError(friendlyMessage(failure)); } }}>I’ve verified my email · check again</Button></>}
+      <Button variant="ghost" disabled={busy} onClick={async () => { setError(''); try { await auth.loadMe(); } catch (failure) { setError(friendlyMessage(failure)); } }}>I’ve verified it, check again</Button></>}
     {!verified && !state.user && !hasToken && <Link className="ui-button ui-button--secondary" to="/login">Log in to request a new email</Link>}
     <Notice>{message}</Notice><Notice error>{error}</Notice>
     <p className="small">Opening a link never signs you in.</p><Link className="text-link" to={state.user ? '/home' : '/login'}>Return to {state.user ? 'home' : 'login'}</Link>

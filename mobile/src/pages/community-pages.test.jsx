@@ -85,7 +85,7 @@ it('home feed renders followed runners’ real runs, and shows an empty state', 
 
 it('home feed empty state points to finding runners', async () => {
   mount({ 'GET /api/community/feed': { runs: [], nextCursor: null } }, <HomePage/>);
-  expect(await screen.findByText('Nothing here yet')).toBeVisible();
+  expect(await screen.findByText('Your feed is quiet')).toBeVisible();
   expect(screen.getByRole('link', { name: 'Find runners to follow' })).toHaveAttribute('href', '/community');
 });
 
