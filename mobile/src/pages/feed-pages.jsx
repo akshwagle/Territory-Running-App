@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from '../auth/context.jsx';
-import { Avatar, Button, EmptyState, ErrorState, Skeleton } from '../ui/index.jsx';
+import { Avatar, Button, Card, EmptyState, ErrorState, Section, Skeleton, StatGrid, StatTile } from '../ui/index.jsx';
+import { BarChart, useUnits } from '../stats/pages.jsx';
 import { distanceLabel, paceLabel, timeLabel } from '../runs/format.js';
 import { Icon } from '../ui/icons.jsx';
 import { useUnread } from '../notifications/unread.jsx';
@@ -42,20 +43,65 @@ function Feed() {
     {cursor && <Button variant="secondary" loading={extra.busy} onClick={more}>Load more</Button>}</>;
 }
 
+const greeting = (d = new Date()) => { const h = d.getHours(); return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; };
+const localDay = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export function todayStatus(streak, now = new Date()) {
+  if (!streak) return '';
+  const ran = streak.lastRunOn && String(streak.lastRunOn).slice(0, 10) === localDay(now);
+  if (ran) return streak.current > 1 ? `You ran today. ${streak.current}-day streak.` : 'You ran today. Nice work.';
+  return streak.current > 0 ? `Run today to keep your ${streak.current}-day streak.` : 'No run yet today.';
+}
+
+function StartCard({ status }) {
+  return <Card className="home-hero" aria-labelledby="home-start-title">
+    <p className="eyebrow">{status || 'Ready when you are'}</p>
+    <h2 id="home-start-title">Take a little ground.</h2>
+    <Button to="/run" block>Start run</Button>
+    <Link className="home-hero-link" to="/map">Open territory map</Link>
+  </Card>;
+}
+
+function Snapshot() {
+  const { auth } = useAuth(), load = useCallback(() => auth.api.request('/api/territory/me?limit=200'), [auth]), data = useResource(load), v = data.value;
+  if (data.phase === 'loading' && !v) return <Skeleton shape="stat" label="Loading your territory…"/>;
+  if (data.phase === 'error' && !v) return <ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>;
+  if (!v.count || !Array.isArray(v.hexes)) return <EmptyState title="No territory yet" action={<Button to="/run" variant="secondary">Start a run</Button>}>Every area you run through becomes yours until someone takes it.</EmptyState>;
+  const weekAgo = Date.now() - 7 * 86400000, complete = !v.nextCursor;
+  const gained = complete ? v.hexes.filter(h => +new Date(h.claimedAt) >= weekAgo).length : null;
+  const cooling = complete ? v.hexes.filter(h => h.onCooldown).length : null;
+  return <StatGrid aria-label="Territory snapshot">
+    <StatTile label="Hexes held" value={v.count} count/>
+    {gained !== null && <StatTile label="Gained this week" value={gained} delta={gained > 0 ? `+${gained}` : undefined} count/>}
+    {cooling !== null && <StatTile label="Protected now" value={cooling} count/>}
+  </StatGrid>;
+}
+
+function WeekChart({ onStatus }) {
+  const { auth } = useAuth(), units = useUnits(), load = useCallback(() => auth.api.request('/api/me/stats/overview?range=week'), [auth]), data = useResource(load), v = data.value;
+  useEffect(() => { if (v?.streak) onStatus(v.streak); }, [v, onStatus]);
+  if (data.phase === 'loading' && !v) return <Skeleton shape="stat" label="Loading this week…"/>;
+  if (data.phase === 'error' && !v) return <ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>;
+  if (!v.totals?.runs || !Array.isArray(v.series)) return <EmptyState title="No runs this week" action={<Button to="/run" variant="secondary">Start a run</Button>}>Your distance for the last 7 days shows up here after a valid run.</EmptyState>;
+  return <><p className="small">{distanceLabel(v.totals.distanceM, units)} in {v.totals.runs} {v.totals.runs === 1 ? 'run' : 'runs'}</p><BarChart series={v.series} bucket={v.bucket} units={units}/></>;
+}
+
 export function HomePage() {
-  const { state } = useAuth(), unread = useUnread().count;
+  const { state } = useAuth(), unread = useUnread().count, [streak, setStreak] = useState(null), onStatus = useCallback(s => setStreak(s), []);
   return <section className="feed-page">
     <div className="feed-top">
       <div>
-        <p className="eyebrow">A little ground. A good run.</p>
-        <h1 className="feed-greeting">Good to see you,<br/><bdi>{state.user.displayName}</bdi>.</h1>
+        <p className="eyebrow">{greeting()}</p>
+        <h1 className="feed-greeting"><bdi>{state.user.displayName}</bdi></h1>
       </div>
       <div className="feed-top-actions">
         <Link className="home-bell" to="/notifications" aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}><Icon name="bell"/>{unread > 0 && <span className="tab-badge" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}</Link>
         <Link className="home-avatar" to="/you" aria-label="Open your profile"><Avatar id={state.user.avatarId || 0} color={state.user.avatarColor} size={40}/></Link>
       </div>
     </div>
-    <Link className="outline-action map-entry" to="/map">Open territory map</Link>
+    <StartCard status={todayStatus(streak)}/>
+    <Section title="Your territory"><Snapshot/></Section>
+    <Section title="This week"><WeekChart onStatus={onStatus}/></Section>
     <div className="feed-heading"><h2>Your feed</h2></div>
     <Feed/>
   </section>;
