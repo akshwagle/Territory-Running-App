@@ -250,7 +250,7 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .resource-list { list-style: none; padding: 0; margin: 1rem 0; overflow-wrap: anywhere; }
 .resource-list li { display: grid; gap: .5rem; border-top: 1px solid var(--line); padding: 1rem 0; }
 .resource-list { animation: content-enter var(--motion-content) var(--ease-enter); }
-.consent-card { border-top: 1px solid var(--line); padding: 1.25rem 0; }
+.consent-card { margin-bottom: 12px; }
 .consent-card h2 { font-size: 1.8rem; }
 .account-summary {
   display: flex; gap: 16px; align-items: center; margin-block: 4px 8px; padding: 18px;
@@ -426,8 +426,7 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 /* ── Workout ─────────────────────────────────────────────────────────── */
 .workout-page, .community-page { padding-top: 2px; }
 .page-lead { margin: 0 0 20px; font-size: .9rem; color: var(--text-2); }
-.sport-card { margin-bottom: 14px; padding: 18px; border: 1px solid var(--line); border-radius: var(--r-lg);
-  background: var(--surface-raised-2); }
+.sport-card { margin-bottom: 14px; }
 .sport-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .sport-icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 14px;
   background: var(--accent-dim); border: 1px solid var(--accent-ring); color: var(--accent); }
@@ -439,16 +438,10 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .workout-note { margin: 16px 0 0; font-size: .78rem; color: var(--text-3); }
 
 /* ── Community ───────────────────────────────────────────────────────── */
-.segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; margin: 0 0 20px;
-  padding: 4px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--fill-2); }
-.segmented button { min-height: 44px; padding: 8px 4px; border: 0; border-radius: var(--r-pill); background: transparent;
-  color: var(--text-2); font: 700 .72rem/1.2 var(--font-heading); letter-spacing: .04em; }
-.segmented button[aria-pressed=true] { background: var(--accent); color: var(--on-accent); outline: 0; }
 .community-section { display: grid; gap: 16px; }
 .community-section .ui-section { margin: 0; }
 .sport-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
 .sport-chips .ui-chip { flex: 0 0 auto; min-height: 44px; }
-.promo-card { padding: 18px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--fill-1); }
 .promo-icon { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 10px; border-radius: 12px;
   background: var(--accent-dim); border: 1px solid var(--accent-ring); color: var(--accent); }
 .promo-card h2 { margin: 0 0 6px; font-size: 1.3rem; }
@@ -552,8 +545,8 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .badge-chips li { padding: 8px 14px; border: 1px solid var(--accent-ring); background: var(--accent-dim); border-radius: var(--r-pill); font: 700 .875rem/1.2 var(--font-heading); animation: badge-pop 420ms var(--ease-enter) both; }
 
 /* ── UX pass: feedback ───────────────────────────────────────────────── */
-.ui-chip, .segmented button, .home-bell, .home-avatar, .ui-tabs > a { transition: transform var(--motion-press) var(--ease-standard), background var(--motion-short) var(--ease-standard), color var(--motion-short) var(--ease-standard); }
-.ui-chip:active, .segmented button:active, .home-bell:active, .home-avatar:active, .ui-tabs > a:active { transform: scale(.95); }
+.ui-chip, .home-bell, .home-avatar, .ui-tabs > a { transition: transform var(--motion-press) var(--ease-standard), background var(--motion-short) var(--ease-standard), color var(--motion-short) var(--ease-standard); }
+.ui-chip:active, .home-bell:active, .home-avatar:active, .ui-tabs > a:active { transform: scale(.95); }
 .ui-row:active, .notice-item button:active { background: var(--fill-2); opacity: 1; }
 @keyframes badge-pop { 0% { opacity: 0; transform: scale(.7); } 70% { transform: scale(1.06); } 100% { opacity: 1; transform: none; } }
 @keyframes tile-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useAuth } from '../auth/context.jsx';
-import { Avatar, Button, Chip, EmptyState, ErrorState, Icon, Section, Skeleton, TextField, useToast } from '../ui/index.jsx';
+import { Avatar, Button, Card, Chip, Segmented, EmptyState, ErrorState, Icon, Section, Skeleton, TextField, useToast } from '../ui/index.jsx';
 import { distanceLabel } from '../runs/format.js';
 import { useResource } from './settings-pages.jsx';
 
@@ -91,10 +91,10 @@ function TeamView({ team, onChange }) {
   };
   const copy = async () => { try { await navigator.clipboard.writeText(team.inviteCode); show?.('Invite code copied.'); } catch { show?.(`Invite code: ${team.inviteCode}`); } };
   return <div className="community-section">
-    <article className="promo-card"><h2 style={{ borderLeft: `6px solid ${team.colorHex}`, paddingLeft: 10 }} dir="auto">{team.name}</h2>
+    <Card className="promo-card"><h2 style={{ borderLeft: `6px solid ${team.colorHex}`, paddingLeft: 10 }} dir="auto">{team.name}</h2>
       <p>{team.memberCount} of {team.maxMembers} runners · you are {team.role === 'CAPTAIN' ? 'captain' : 'a member'}</p>
       <p>Invite code: <b className="invite-code">{team.inviteCode}</b></p>
-      <Button variant="secondary" onClick={copy}><Icon name="share" width="16" height="16"/>Copy invite code</Button></article>
+      <Button variant="secondary" onClick={copy}><Icon name="share" width="16" height="16"/>Copy invite code</Button></Card>
     <Section title="Members">
       {members.phase === 'loading' && !members.value && <Skeleton label="Loading members…"/>}
       {members.phase === 'error' && <ErrorState onRetry={members.reload}>{members.error}</ErrorState>}
@@ -153,9 +153,7 @@ export function CommunityPage() {
   const [section, setSection] = useState('Leaderboard');
   return <section className="community-page">
     <h1>Community</h1>
-    <div className="segmented" role="group" aria-label="Community sections">
-      {SECTIONS.map(name => <button key={name} type="button" aria-pressed={section === name} onClick={() => setSection(name)}>{name}</button>)}
-    </div>
+    <Segmented label="Community sections" options={SECTIONS} value={section} onChange={setSection}/>
     {section === 'Leaderboard' && <Leaderboard/>}
     {section === 'Teams' && <Teams/>}
     {section === 'Runners' && <Runners/>}

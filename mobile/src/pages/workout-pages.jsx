@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Button, Icon, Sheet } from '../ui/index.jsx';
+import { Button, Card, Icon, Sheet } from '../ui/index.jsx';
 
 const SPORTS = [
   { key: 'run', label: 'Run', icon: 'run', copy: 'Record a road or trail run. Every cell you cross becomes ground you hold.' },
@@ -11,14 +11,14 @@ export function WorkoutPage() {
   return <section className="workout-page">
     <h1>Workout</h1>
     <p className="page-lead">Record a run to claim the cells you cross.</p>
-    {SPORTS.map(sport => <article className="sport-card" key={sport.key}>
+    {SPORTS.map(sport => <Card className="sport-card" key={sport.key}>
       <div className="sport-head">
         <span className="sport-icon" aria-hidden="true"><Icon name={sport.icon}/></span>
         <h2>{sport.label}</h2>
         <button type="button" className="ui-icon-button sport-more" aria-label={`About ${sport.label.toLowerCase()} recording`} onClick={() => setDetail(sport)}><Icon name="chevron"/></button>
       </div>
       <Button onClick={() => navigate('/run')}><Icon name="play" width="18" height="18"/>Start</Button>
-    </article>)}
+    </Card>)}
     <button type="button" className="outline-action" onClick={() => navigate('/map')}>Territory map</button>
     <button type="button" className="outline-action" onClick={() => navigate('/stats')}>Stats, records and badges</button>
     <button type="button" className="outline-action" onClick={() => navigate('/run/history')}>Run history</button>
