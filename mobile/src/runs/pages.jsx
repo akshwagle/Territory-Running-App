@@ -8,6 +8,7 @@ import {RouteMap} from '../map/RouteMap.jsx';
 import {distanceLabel,timeLabel,paceLabel,statusLabel} from './format.js';
 import {ClaimResult} from './claim.jsx';
 import {Chip} from '../ui/index.jsx';
+import {HoldButton} from '../ui/motion.jsx';
 import {Splits} from '../stats/pages.jsx';
 import {historyQuery,shareText} from '../stats/chart.js';
 import {canShare,shareSummary} from '../stats/share.js';
@@ -44,14 +45,14 @@ export function RunPage(){
    {!state.available&&!state.error&&<Skeleton label="Opening encrypted run storage…"/>}
    {state.available&&['IDLE','DONE'].includes(state.state)&&!state.remoteRun&&<><EmptyState title="Take it outside">GPS records your route and claims the hexes you cover. Treadmill and indoor runs record time only, with no distance or territory.</EmptyState>
      <Button loading={state.busy} onClick={safe(recorder.prepare)}>{state.startPending?'Recover start confirmation':'Start a run'}</Button></>}
-   {active&&<><Stats distanceM={state.distanceM} durationS={state.elapsedMs/1000} units={units}/>
+   {active&&<div className="run-live"><span className={`gps-chip ${state.weakGps?'gps-chip--weak':state.gettingGps?'gps-chip--wait':''}`} role="status">{state.weakGps?'Weak GPS':state.gettingGps?'Waiting for GPS':state.state==='PAUSED'?'Paused':'GPS good'}</span><Stats distanceM={state.distanceM} durationS={state.elapsedMs/1000} units={units}/>
      {state.simulated&&<InlineNotice>Simulated desk run. These points are marked mock and are not a real outdoor run.</InlineNotice>}
      <p className="small" role="status">{state.sync==='waiting'?'Waiting for signal':state.sync==='uploading'?'Uploading saved points…':'All saved'} · {state.pendingPoints||0} points waiting on this phone</p>
      {state.recovery&&<InlineNotice>{state.reboot?'Your phone restarted. Finish at the last saved point; no gap is filled.':'Recording was interrupted. Resume as a new segment, or finish the saved run. No location is invented for the gap.'}</InlineNotice>}
      {state.consentBlocked||state.pauseReason==='CONSENT_WITHDRAWN'?<InlineNotice>Location consent changed. Finish and upload only the earlier saved points, or discard this run.</InlineNotice>:state.reboot?null:<Button loading={state.busy} disabled={state.storageFailed} onClick={safe(state.state==='ACTIVE'?recorder.pause:recorder.resume)}>{state.state==='ACTIVE'?'Pause':state.recovery?'Resume your run':'Resume'}</Button>}
-     <Button variant="secondary" disabled={state.busy||state.storageFailed} onClick={()=>setConfirm('finish')}>{state.reboot?'Finish saved run':'Finish run…'}</Button>
+     {state.reboot?<Button variant="secondary" disabled={state.busy||state.storageFailed} onClick={()=>setConfirm('finish')}>Finish saved run</Button>:<div className="run-finish"><HoldButton className="run-finish-hold" disabled={state.busy||state.storageFailed} onComplete={safe(async()=>{await recorder.finish();navigate('/run/summary',{replace:true});})}>Finish</HoldButton><p className="small">Hold for one second to finish</p></div>}
      <Button variant="destructive" disabled={state.busy} onClick={()=>setConfirm('discard')}>Discard run…</Button>
-   </>}
+   </div>}
    {pending&&<><InlineNotice>Your run is saved on this phone. {state.state==='DISCARDING'?'Reconnect to finish removing its server reservation.':'Uploads resume when connected.'}</InlineNotice><Button variant="secondary" onClick={safe(recorder.retry)}>Retry sync</Button></>}
    {state.storageFailed&&<Button onClick={safe(recorder.retryStorage)}>Retry storage</Button>}
    {state.remoteRun&&<Section title="A run is active elsewhere"><p>Resume it on its original phone, cancel this start, or end it here after ten minutes with no new points. This phone cannot take over its recording.</p><Button variant="secondary" onClick={safe(recorder.endStale)}>End inactive run</Button><Button variant="secondary" onClick={recorder.cancelFlow}>Cancel this start</Button></Section>}

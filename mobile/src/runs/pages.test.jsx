@@ -1,4 +1,4 @@
-import {act,render,screen,waitFor} from '@testing-library/react';
+import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {it,expect,vi} from 'vitest';
 import {MemoryRouter,Route,Routes} from 'react-router';
@@ -40,7 +40,7 @@ it('LIFE-03 reboot recovery offers Finish saved run and never a Resume control',
 });
 it('LIFE-09 finish/discard always require explicit confirmation and short runs have no flag warning',async()=>{
  const f=setup(<RunPage/>,{state:'PAUSED',distanceM:12});await f.user.click(screen.getByRole('button',{name:'Discard run…'}));expect(f.recorder.discard).not.toHaveBeenCalled();expect(screen.getByText(/without a flag/)).toBeVisible();await f.user.click(screen.getByRole('button',{name:'Keep recording data'}));expect(f.recorder.discard).not.toHaveBeenCalled();
- await f.user.click(screen.getByRole('button',{name:'Finish run…'}));await f.user.click(screen.getByRole('button',{name:'Yes, finish run'}));expect(f.recorder.finish).toHaveBeenCalledOnce();
+ const hold=screen.getByRole('button',{name:/Finish\. Hold to finish/});vi.useFakeTimers();fireEvent.pointerDown(hold);fireEvent.pointerUp(hold);await vi.advanceTimersByTimeAsync(1200);expect(f.recorder.finish).not.toHaveBeenCalled();fireEvent.pointerDown(hold);await vi.advanceTimersByTimeAsync(1100);vi.useRealTimers();await waitFor(()=>expect(f.recorder.finish).toHaveBeenCalledOnce());
 });
 it('LIFE-07 local finish summary remains honest about an upload pending and switches to server totals',async()=>{
  const f=setup(<RunSummaryPage/>,{state:'UPLOADING',distanceM:123,durationS:60,elapsedMs:60000,sync:'waiting'},null,'/run/summary');expect(screen.getByText(/Live estimate/)).toBeVisible();expect(screen.getByText(/Territory is calculated after upload/)).toBeVisible();await f.user.click(screen.getByRole('button',{name:'Retry upload'}));expect(f.recorder.retry).toHaveBeenCalledOnce();f.emit({state:'IDLE',lastFinished:{run:{id:'one',distanceM:111,durationS:60,status:'PENDING_VALIDATION'}}});expect(screen.getByText('0.11 km')).toBeVisible();expect(screen.getByText(/Server totals/)).toBeVisible();
@@ -63,7 +63,7 @@ it('PRIV-03 opening consent closes the old permission sheet before navigating aw
 });
 
 it('LIFE-04 storage failure blocks Resume and Finish until Retry commits the held fix',async()=>{
- const f=setup(<RunPage/>,{state:'PAUSED',storageFailed:true,rescueCount:1,message:'Storage failed. Recording stopped; a fix is held in memory.'});expect(screen.getByRole('button',{name:'Resume'})).toBeDisabled();expect(screen.getByRole('button',{name:'Finish run…'})).toBeDisabled();await f.user.click(screen.getByRole('button',{name:'Retry storage'}));expect(f.recorder.retryStorage).toHaveBeenCalledOnce();expect(f.recorder.finish).not.toHaveBeenCalled();expect(f.recorder.discard).not.toHaveBeenCalled();
+ const f=setup(<RunPage/>,{state:'PAUSED',storageFailed:true,rescueCount:1,message:'Storage failed. Recording stopped; a fix is held in memory.'});expect(screen.getByRole('button',{name:'Resume'})).toBeDisabled();expect(screen.getByRole('button',{name:/Finish\. Hold/i})).toBeDisabled();await f.user.click(screen.getByRole('button',{name:'Retry storage'}));expect(f.recorder.retryStorage).toHaveBeenCalledOnce();expect(f.recorder.finish).not.toHaveBeenCalled();expect(f.recorder.discard).not.toHaveBeenCalled();
 });
 
 const claimBody=(status,claim={},extra={})=>({runId:'one',status,distanceM:420,claim:{claimed:0,captured:0,capturedFromOthers:0,refreshed:0,onCooldown:0,restricted:0,lost:0,heldNow:0,...claim},reasons:[],flags:[],...extra});
