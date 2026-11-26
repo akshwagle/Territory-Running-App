@@ -10,7 +10,13 @@ if (main.length !== 1) throw Error('Build first; expected exactly one main JavaS
 const bytes = gzipSync(await readFile(new URL(main[0], directory))).length;
 let css = 0;
 for (const name of files.filter(name => name.endsWith('.css'))) css += gzipSync(await readFile(new URL(name, directory))).length;
-console.log(`Main JavaScript gzip: ${bytes} bytes (limit: 350000).`);
+console.log(`Main JavaScript gzip: ${bytes} bytes (limit: 100000).`);
 console.log(`CSS gzip: ${css} bytes.`);
-if (bytes >= 350000) { console.error('Main JavaScript exceeds the transfer budget.'); process.exitCode = 1; }
+if (bytes > 100000) { console.error('Main JavaScript exceeds the transfer budget.'); process.exitCode = 1; }
+if (css > 30000) { console.error('CSS exceeds the 30 kB gzip budget.'); process.exitCode = 1; }
+// Route chunks <= 40 kB gzip. The map vendor chunk (Leaflet + h3-js, lazy) and the shared UI chunk are exempt.
+for (const name of files.filter(name => name.endsWith('.js') && name !== main[0] && !/^(hexes|ui)-/.test(name))) {
+  const size = gzipSync(await readFile(new URL(name, directory))).length;
+  if (size > 40000) { console.error(`${name} exceeds the 40 kB gzip route-chunk budget (${size}).`); process.exitCode = 1; }
+}
 if (files.some(name => /sharp|libvips/i.test(name))) { console.error('Build-only image tooling must not enter the application.'); process.exitCode = 1; }

@@ -1,7 +1,7 @@
 import {useCallback} from 'react';
 import {Link} from 'react-router';
 import {useAuth} from '../auth/context.jsx';
-import {useResource} from '../pages/settings-pages.jsx';
+import {useResource} from '../pages/use-resource.js';
 
 // Earned badges for the signed-in runner (other runners' badges are not shown).
 export function MyBadges(){

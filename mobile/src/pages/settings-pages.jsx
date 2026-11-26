@@ -1,23 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../auth/context.jsx';
 import { friendlyMessage } from '../auth/errors.js';
 import { DISCARD_CONFIRMATION } from '../auth/pending-work.js';
 import { AuthForm, Notice, newPasswordField } from '../components/forms.jsx';
 import { GoogleButton } from './auth-pages.jsx';
+import { useResource } from './use-resource.js';
 import { Button, Dialog, EmptyState, ErrorState, ListRow, Section, Skeleton } from '../ui/index.jsx';
-
-export function useResource(load) {
-  const [state, setState] = useState({ phase: 'loading', value: null, error: '' });
-  const sequence = useRef(0);
-  const reload = useCallback(async () => {
-    const id = ++sequence.current; setState(old => ({ ...old, phase: 'loading', error: '' }));
-    try { const value = await load(); if (id === sequence.current) setState({ phase: 'ready', value, error: '' }); }
-    catch (error) { if (id === sequence.current) setState(old => ({ ...old, phase: 'error', error: friendlyMessage(error) })); }
-  }, [load]);
-  useEffect(() => { reload(); return () => { sequence.current++; }; }, [reload]);
-  return { ...state, reload };
-}
 
 export function SignOutControl() {
   const { auth } = useAuth(), navigate = useNavigate();
@@ -123,3 +112,5 @@ export function ChangePasswordPage() {
 
   </section>;
 }
+
+export { useResource };

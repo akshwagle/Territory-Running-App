@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useAuth } from '../auth/context.jsx';
 import { Avatar, Button, Card, Chip, Segmented, EmptyState, ErrorState, Icon, Section, Skeleton, TextField, useToast } from '../ui/index.jsx';
 import { distanceLabel } from '../runs/format.js';
-import { useResource } from './settings-pages.jsx';
+import { useResource } from './use-resource.js';
 
 const SECTIONS = ['Leaderboard', 'Teams', 'Runners'];
 const METRICS = [

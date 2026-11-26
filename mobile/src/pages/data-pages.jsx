@@ -3,7 +3,7 @@ import {useNavigate} from 'react-router';
 import {useAuth} from '../auth/context.jsx';
 import {friendlyMessage} from '../auth/errors.js';
 import {Notice} from '../components/forms.jsx';
-import {useResource} from './settings-pages.jsx';
+import {useResource} from './use-resource.js';
 import {SettingsFrame,ResourceState} from './profile-pages.jsx';
 import {exportShare} from '../profile/export-share.js';
 import {recordingDecision} from '../profile/consent-controls.js';

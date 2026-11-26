@@ -6,7 +6,7 @@ import { BarChart, useUnits } from '../stats/pages.jsx';
 import { distanceLabel, paceLabel, timeLabel } from '../runs/format.js';
 import { Icon } from '../ui/icons.jsx';
 import { useUnread } from '../notifications/unread.jsx';
-import { useResource } from './settings-pages.jsx';
+import { useResource } from './use-resource.js';
 
 const whenLabel = iso => new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 

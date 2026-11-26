@@ -3,7 +3,7 @@ import {useNavigate,useParams} from 'react-router';
 import {useAuth} from '../auth/context.jsx';
 import {useRecorder} from './context.jsx';
 import {Button,Dialog,EmptyState,ErrorState,InlineNotice,ListRow,Section,Sheet,Skeleton,RunStats} from '../ui/index.jsx';
-import {useResource} from '../pages/settings-pages.jsx';
+import {useResource} from '../pages/use-resource.js';
 import {RouteMap} from '../map/RouteMap.jsx';
 import {distanceLabel,timeLabel,paceLabel,statusLabel} from './format.js';
 import {ClaimResult} from './claim.jsx';

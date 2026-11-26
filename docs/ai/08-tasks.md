@@ -17,7 +17,7 @@ Status: [ ] todo  [x] done
 - [x] T10 Stats and achievements. Chart, records, achievements grid, one-shot badge celebration.
 - [x] T11 Notifications, You (profile), Settings and privacy screens, export/delete flows polish.
 - [x] T12 Accessibility + small screen + light theme audit across every route (360 and 412 px, font scale 1.3, reduced motion). Fix issues; list leftovers in docs/UI_REVIEW.md.
-- [ ] T13 Performance pass against 06 budgets (bundle sizes, lazy chunks, list sizes, re-render hot spots). Record before/after sizes.
+- [x] T13 Performance pass against 06 budgets (bundle sizes, lazy chunks, list sizes, re-render hot spots). Record before/after sizes.
 
 ## Backend and data (read 02, 03, 04, 07)
 - [ ] T14 Schema proposal document only: write docs/SCHEMA_PROPOSAL.md for goals, gear, challenges, clubs, kudos/comments, notification_preferences, device_tokens and notification enum values (details in 02). NO migrations, NO code. Owner reviews and approves each item.
@@ -59,3 +59,6 @@ Status: [ ] todo  [x] done
   Left: 5-tab bar still 3 tabs, no weekly chart on You (needs a 12-week series; overview range covers week/month/year only), swipe-to-read not built (tap only).
 - T12 (feat/ui-t12-a11y-audit): static CSS/markup audit; text under 12 px raised (tab labels, splash sub-brand), settings row values wrap instead of truncating. Rest already met 05 (44/48 px targets, focus rings, dialog focus trap, reduced motion, live regions).
   Leftovers listed in docs/UI_REVIEW.md. Not visually verified; real 360/412 px, font scale 1.3 and TalkBack need the device checklist (T17).
+- T13 (feat/ui-t13-performance): Settings, Community, Workout and sign-out screens now lazy chunks; useResource moved to pages/use-resource.js so Settings splits for real. Main JS 96.8 -> 92.3 kB gz (build output), CSS 19.3 kB gz.
+  check:bundle now enforces main <= 100 kB, CSS <= 30 kB, route chunks <= 40 kB (map vendor chunk Leaflet+h3 ~108 kB lazy, exempt). Map watch cleanup, cursor/limit lists already OK.
+  Left: stats/pages.jsx still in main (BarChart/useUnits shared with Home); no list windowing needed (lists capped at 50). Not measured on device.

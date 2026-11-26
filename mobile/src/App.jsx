@@ -4,10 +4,7 @@ import { useAuth } from './auth/context.jsx';
 import { parseAuthLink, watchNativeAuth } from './auth/deep-links.js';
 import { Notice } from './components/forms.jsx';
 import { SplashPage, WelcomePage, SignupPage, LoginPage, ForgotPage, ResetPage, VerifyPage } from './pages/auth-pages.jsx';
-import { SettingsPage, MethodsPage, SessionsPage, ChangePasswordPage, SignOutControl } from './pages/settings-pages.jsx';
 import { HomePage } from './pages/feed-pages.jsx';
-import { WorkoutPage } from './pages/workout-pages.jsx';
-import { CommunityPage } from './pages/community-pages.jsx';
 
 import { UnreadProvider } from './notifications/unread.jsx';
 import { UIProvider, Skeleton, InlineNotice, Banner } from './ui/index.jsx';
@@ -15,6 +12,13 @@ import { Shell } from './ui/Shell.jsx';
 import { PendingNotice } from './ui/PendingNotice.jsx';
 import { FirstRunIntro } from './ui/FirstRunIntro.jsx';
 import { firstScreenReady } from './platform/splash.js';
+const SettingsPage=lazy(()=>import('./pages/settings-pages.jsx').then(m=>({default:m.SettingsPage})));
+const MethodsPage=lazy(()=>import('./pages/settings-pages.jsx').then(m=>({default:m.MethodsPage})));
+const SessionsPage=lazy(()=>import('./pages/settings-pages.jsx').then(m=>({default:m.SessionsPage})));
+const ChangePasswordPage=lazy(()=>import('./pages/settings-pages.jsx').then(m=>({default:m.ChangePasswordPage})));
+const SignOutControl=lazy(()=>import('./pages/settings-pages.jsx').then(m=>({default:m.SignOutControl})));
+const WorkoutPage=lazy(()=>import('./pages/workout-pages.jsx').then(m=>({default:m.WorkoutPage})));
+const CommunityPage=lazy(()=>import('./pages/community-pages.jsx').then(m=>({default:m.CommunityPage})));
 const RunPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunPage})));
 const RunSummaryPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunSummaryPage})));
 const RunHistoryPage=lazy(()=>import('./runs/pages.jsx').then(m=>({default:m.RunHistoryPage})));
@@ -108,7 +112,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
       {location.pathname !== '/' && location.pathname !== '/welcome' && !state.authOutcome && linkError && <InlineNotice error>{linkError}</InlineNotice>}
       {state.status === 'restoring' ? <section><h1>Getting ready</h1><Skeleton label="Restoring your sign-in securely…"/></section> :
         state.status === 'storageError' ? <section><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
-          state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><SignOutControl /></section> :
+          state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><Suspense fallback={null}><SignOutControl /></Suspense></section> :
             state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><InlineNotice>{state.message}</InlineNotice><Link className="button primary" to="/login">Go to login</Link></section> : <>
             {['offline', 'unavailable'].includes(state.status) && <Banner className="connection-notice" tone="error" action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</Banner>}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}

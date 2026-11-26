@@ -3,7 +3,7 @@ import {useAuth} from '../auth/context.jsx';
 import {friendlyMessage} from '../auth/errors.js';
 import {normalizeDisplayName} from '../auth/validation.js';
 import {Notice} from '../components/forms.jsx';
-import {useResource} from './settings-pages.jsx';
+import {useResource} from './use-resource.js';
 import {createConsentControls,discardSaved} from '../profile/consent-controls.js';
 import {DISCARD_CONFIRMATION} from '../auth/pending-work.js';
 import {MyBadges} from '../notifications/MyBadges.jsx';
