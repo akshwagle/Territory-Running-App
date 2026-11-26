@@ -12,7 +12,7 @@ Status: [ ] todo  [x] done
 - [x] T05 Home. Hero Start-run card, territory snapshot, weekly chart, feed, notifications bell, skeletons/empty states.
 - [x] T06 Workout and live recorder. Giant stats, thumb-zone controls, hold-to-finish, GPS/low-storage/waiting states. Must not change recording logic or data safety.
 - [x] T07 Run summary, history, run detail. Count-up hero, stat grid, route map, badges, share, kind flagged/rejected explanations.
-- [ ] T08 Map. Full-bleed, floating controls, legend, hex sheet, zoom hint, offline/denied states.
+- [x] T08 Map. Full-bleed, floating controls, legend, hex sheet, zoom hint, offline/denied states.
 - [ ] T09 Community. Leaderboard/Teams/Runners, you-row, team card, search, feed polish.
 - [ ] T10 Stats and achievements. Chart, records, achievements grid, one-shot badge celebration.
 - [ ] T11 Notifications, You (profile), Settings and privacy screens, export/delete flows polish.
