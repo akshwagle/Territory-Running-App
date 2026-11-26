@@ -5,7 +5,7 @@ import './map.css';
 import { useAuth } from '../auth/context.jsx';
 import { friendlyMessage } from '../auth/errors.js';
 import { Button, InlineNotice, Sheet } from '../ui/index.jsx';
-import { TILE_ATTRIBUTION, TILE_URL, MIN_ZOOM, boundary, boxQuery, boxTooLarge, createHexCache, describeHex, hexStyle, snapBounds } from './hexes.js';
+import { TILE_ATTRIBUTION, TILE_URL, MIN_ZOOM, boundary, boxQuery, boxTooLarge, createHexCache, describeHex, hexStyle, mapColor, snapBounds } from './hexes.js';
 
 export function Legend() {
   return <ul className="map-legend" aria-label="Map legend">
@@ -80,7 +80,7 @@ export function TerritoryMapPage({ geolocation = typeof navigator !== 'undefined
     watchId.current = geolocation.watchPosition(pos => {
       const { map } = refs.current; if (!map) return;
       const at = [pos.coords.latitude, pos.coords.longitude]; setLocation('ready'); refs.current.here = at;
-      if (!refs.current.dot) refs.current.dot = L.circleMarker(at, { radius: 8, color: '#fff', weight: 3, fillColor: '#2f8bff', fillOpacity: 1, interactive: false }).addTo(map); else refs.current.dot.setLatLng(at);
+      if (!refs.current.dot) refs.current.dot = L.circleMarker(at, { radius: 8, color: mapColor('route'), weight: 3, fillColor: mapColor('meDot'), fillOpacity: 1, interactive: false }).addTo(map); else refs.current.dot.setLatLng(at);
       if (!centred.current) { centred.current = true; map.setView(at, 17); }
     }, err => setLocation(err.code === 1 ? 'denied' : 'unavailable'), { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
   }, [geolocation]);
