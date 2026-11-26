@@ -561,3 +561,9 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .auth-switch { margin: 0; color: var(--text-2); }
 .auth-screen .ui-button { width: 100%; }
 .auth-screen form fieldset { display: grid; gap: var(--sp-4); border: 0; padding: 0; margin: 0; min-width: 0; }
+
+/* Home hero (T05) */
+.home-hero { display: grid; gap: 12px; padding: 20px 16px 16px; background: var(--surface-raised-2, var(--fill-2)); }
+.home-hero .eyebrow { margin: 0; }
+.home-hero h2 { margin: 0; font-size: 1.6rem; }
+.home-hero-link { display: grid; place-items: center; min-height: 44px; color: var(--text-2); font-weight: 600; }

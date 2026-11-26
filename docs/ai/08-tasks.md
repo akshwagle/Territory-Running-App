@@ -9,7 +9,7 @@ Status: [ ] todo  [x] done
 - [x] T02 Component library. Bring Button, Input, Card, ListRow, StatTile, Chip/Segmented, TabBar, Sheet, Dialog, Toast, Skeleton, EmptyState, ErrorState, Banner to the 05 spec with all states and tests. Done: one place defines each; screens import them; no duplicate ad-hoc styles.
 - [x] T03 Motion system. Implement the 06 catalogue (press, screen/tab transitions, sheet, skeleton shimmer, count-up, hold-to-finish ring, banner) with reduced-motion handling. Done: only transform/opacity animated, reduced-motion verified in tests, bundle budget kept.
 - [x] T04 Auth screens (welcome, signup, login, forgot, reset, verify). Done: blueprint in 05, inline validation, correct autocomplete/inputmode, Google button spec, all error states. Read 04.
-- [ ] T05 Home. Hero Start-run card, territory snapshot, weekly chart, feed, notifications bell, skeletons/empty states.
+- [x] T05 Home. Hero Start-run card, territory snapshot, weekly chart, feed, notifications bell, skeletons/empty states.
 - [ ] T06 Workout and live recorder. Giant stats, thumb-zone controls, hold-to-finish, GPS/low-storage/waiting states. Must not change recording logic or data safety.
 - [ ] T07 Run summary, history, run detail. Count-up hero, stat grid, route map, badges, share, kind flagged/rejected explanations.
 - [ ] T08 Map. Full-bleed, floating controls, legend, hex sheet, zoom hint, offline/denied states.
@@ -41,3 +41,5 @@ Status: [ ] todo  [x] done
   Not visually verified. Left: HoldButton not yet wired into the recorder (T06), `.stagger` not yet applied to lists, pull-to-refresh not built, reduced motion removes fades entirely (spec allows <=150 ms).
 - T04 (feat/ui-t04-auth-screens): signup/login lead with Google then 'or use email'; AuthForm validates each field on blur (shared validation.js), email inputmode/autocapitalize kept; auth pages share `.auth-screen` layout, legacy `.button` links moved to ui-button.
   Controller, vault, Google adapter untouched. Not visually verified. Splash/Welcome photo composition left as is.
+- T05 (feat/ui-t05-home): Home = greeting + today status (streak), Start-run hero card, territory snapshot (/api/territory/me: held, gained this week, protected; gained hidden above 200 hexes), weekly distance chart (stats overview), feed, bell. Skeleton/empty/error per section.
+  Not visually verified. Left: TabBar still 3 tabs per Shell TABS (5 listed), feed cards unchanged, no pull-to-refresh, `.stagger` not applied.
