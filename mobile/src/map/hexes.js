@@ -44,12 +44,23 @@ export function describeHex(hex, now = Date.now()) {
   const owner = hex.owner.kind === 'me' ? 'You' : hex.owner.ownerId ? hex.owner.displayName : null;
   return { kind: hexKind(hex), owner, ownerHidden: hex.owner.kind !== 'me' && !hex.owner.ownerId, claimed: hex.claimedAt ? new Date(hex.claimedAt) : null, cooldown, note: null };
 }
-export const HEX_STYLES = {
-  mine: { color: '#a6e84c', fillColor: '#a6e84c', fillOpacity: .38 },
-  other: { color: '#5fb4ff', fillColor: '#5fb4ff', fillOpacity: .32 },
-  restricted: { color: '#ff5f5f', fillColor: '#ff5f5f', fillOpacity: .22, dashArray: '2 4' },
-};
+// Leaflet needs literal colours, so read the theme tokens (styles.css) at use time.
+// Fallbacks are the dark-theme values for environments without CSS (tests).
+const MAP_FALLBACK = { mine: '#6fb59a', other: '#6f86a6', cooldown: '#e0b454', restricted: '#e58a72', meDot: '#8ccbb1', route: '#6fb59a' };
+const MAP_VARS = { mine: '--map-mine', other: '--map-other', cooldown: '--map-cooldown', restricted: '--map-restricted', meDot: '--map-me-dot', route: '--map-mine' };
+export function mapColor(name) {
+  try { return getComputedStyle(document.documentElement).getPropertyValue(MAP_VARS[name]).trim() || MAP_FALLBACK[name]; }
+  catch { return MAP_FALLBACK[name]; }
+}
+export function hexStyles() {
+  const mine = mapColor('mine'), other = mapColor('other'), restricted = mapColor('restricted');
+  return {
+    mine: { color: mine, fillColor: mine, fillOpacity: .38 },
+    other: { color: other, fillColor: other, fillOpacity: .32 },
+    restricted: { color: restricted, fillColor: restricted, fillOpacity: .22, dashArray: '2 4' },
+  };
+}
 export function hexStyle(hex, now = Date.now()) {
-  const base = HEX_STYLES[hexKind(hex)], cooling = !hex.restricted && cooldownLabel(hex.cooldownUntil, now);
-  return { ...base, weight: cooling ? 2.5 : 1, opacity: cooling ? 1 : .7, dashArray: cooling ? '5 4' : base.dashArray };
+  const base = hexStyles()[hexKind(hex)], cooling = !hex.restricted && cooldownLabel(hex.cooldownUntil, now);
+  return { ...base, ...(cooling ? { color: mapColor('cooldown') } : {}), weight: cooling ? 2.5 : 1, opacity: cooling ? 1 : .7, dashArray: cooling ? '5 4' : base.dashArray };
 }
