@@ -16,7 +16,7 @@ Status: [ ] todo  [x] done
 - [x] T09 Community. Leaderboard/Teams/Runners, you-row, team card, search, feed polish.
 - [x] T10 Stats and achievements. Chart, records, achievements grid, one-shot badge celebration.
 - [x] T11 Notifications, You (profile), Settings and privacy screens, export/delete flows polish.
-- [ ] T12 Accessibility + small screen + light theme audit across every route (360 and 412 px, font scale 1.3, reduced motion). Fix issues; list leftovers in docs/UI_REVIEW.md.
+- [x] T12 Accessibility + small screen + light theme audit across every route (360 and 412 px, font scale 1.3, reduced motion). Fix issues; list leftovers in docs/UI_REVIEW.md.
 - [ ] T13 Performance pass against 06 budgets (bundle sizes, lazy chunks, list sizes, re-render hot spots). Record before/after sizes.
 
 ## Backend and data (read 02, 03, 04, 07)
@@ -57,3 +57,5 @@ Status: [ ] todo  [x] done
 - T11 (feat/ui-t11-profile-settings): You page shows real lifetime runs/distance/territory (StatGrid, skeleton + retry); fake zeros and placeholder chart removed. Notifications grouped by day; Settings regrouped Account / Privacy & data / App / Danger zone (delete last, separate).
   Section accepts className. Export/delete/consent flows unchanged (already dialog-gated). 247 tests, lint, build, bundle, contrast, debug APK green. Not visually verified.
   Left: 5-tab bar still 3 tabs, no weekly chart on You (needs a 12-week series; overview range covers week/month/year only), swipe-to-read not built (tap only).
+- T12 (feat/ui-t12-a11y-audit): static CSS/markup audit; text under 12 px raised (tab labels, splash sub-brand), settings row values wrap instead of truncating. Rest already met 05 (44/48 px targets, focus rings, dialog focus trap, reduced motion, live regions).
+  Leftovers listed in docs/UI_REVIEW.md. Not visually verified; real 360/412 px, font scale 1.3 and TalkBack need the device checklist (T17).

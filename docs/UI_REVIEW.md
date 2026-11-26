@@ -31,3 +31,22 @@ Status: **Fixed** = done in this pass, **Open** = left for the owner.
 
 ## Not verified
 Contrast ratios were checked from token values, not measured on rendered output. 360 and 412 px layouts were reviewed from CSS (flex and clamp rules), not on a device. Screens were not screenshotted.
+
+## T12 accessibility / small-screen audit (static)
+Method: code and CSS review only (no device or screen access). Not visually verified.
+
+## Fixed
+- Text below 12 px: tab-bar labels (.68rem) and splash sub-brand (.58rem) raised to .75rem.
+- Settings row values no longer truncate with an ellipsis (wrap and right-align) so font scale 1.3 keeps the full value.
+
+## Already compliant (verified in CSS/markup)
+- Touch targets: buttons/inputs/links 48 px min, chips/segmented 44 px, tab items 50 px.
+- Focus ring on all controls (accent or warn outline), sheets/dialogs trap and restore focus (role=dialog, aria-modal).
+- prefers-reduced-motion disables animation and transitions globally; count-up shows final value.
+- Status/error messages use role=status/alert; contrast script passes in dark and light.
+- Narrow screens: single-column grids under 340-350 px.
+
+## Left for owner device check (T17)
+- Real 360/412 px and font-scale 1.3 rendering, TalkBack reading order, light-theme map tile contrast.
+- Chart axis labels (.stat-labels) clip rather than wrap at large font scale.
+- Some pages still use a few literal px sizes outside tokens.
