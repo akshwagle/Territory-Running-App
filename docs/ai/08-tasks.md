@@ -15,7 +15,7 @@ Status: [ ] todo  [x] done
 - [x] T08 Map. Full-bleed, floating controls, legend, hex sheet, zoom hint, offline/denied states.
 - [x] T09 Community. Leaderboard/Teams/Runners, you-row, team card, search, feed polish.
 - [x] T10 Stats and achievements. Chart, records, achievements grid, one-shot badge celebration.
-- [ ] T11 Notifications, You (profile), Settings and privacy screens, export/delete flows polish.
+- [x] T11 Notifications, You (profile), Settings and privacy screens, export/delete flows polish.
 - [ ] T12 Accessibility + small screen + light theme audit across every route (360 and 412 px, font scale 1.3, reduced motion). Fix issues; list leftovers in docs/UI_REVIEW.md.
 - [ ] T13 Performance pass against 06 budgets (bundle sizes, lazy chunks, list sizes, re-render hot spots). Record before/after sizes.
 
@@ -54,3 +54,6 @@ Status: [ ] todo  [x] done
 - T10 (feat/ui-t10-stats): stats overview uses StatGrid tiles, latest bar emphasised; badges are a 2-col grid (Earned / Still to earn) with progress, locked state.
   One-shot celebration: badges earned since last visit (ids in localStorage `tr.badges.seen`, first visit only seeds) get icon pop + ring (transform/opacity only), dismissible status pill, confirm haptic; reduced motion disables animation.
   244 tests, lint, build, bundle, contrast, debug APK green. Not visually verified.
+- T11 (feat/ui-t11-profile-settings): You page shows real lifetime runs/distance/territory (StatGrid, skeleton + retry); fake zeros and placeholder chart removed. Notifications grouped by day; Settings regrouped Account / Privacy & data / App / Danger zone (delete last, separate).
+  Section accepts className. Export/delete/consent flows unchanged (already dialog-gated). 247 tests, lint, build, bundle, contrast, debug APK green. Not visually verified.
+  Left: 5-tab bar still 3 tabs, no weekly chart on You (needs a 12-week series; overview range covers week/month/year only), swipe-to-read not built (tap only).

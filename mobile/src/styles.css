@@ -466,13 +466,6 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .you-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0 0 16px; }
 .you-stats dt { font: 600 .72rem/1.4 var(--font-heading); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
 .you-stats dd { margin: 2px 0 0; font: 700 1.15rem/1.2 var(--font-heading); }
-.you-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-.you-chart-head strong { font: 700 .8rem/1.2 var(--font-heading); }
-.you-chart-head span { font-size: .7rem; color: var(--text-3); text-align: right; }
-.you-chart svg { display: block; width: 100%; height: auto; }
-.you-chart-grid path { stroke: var(--line); stroke-width: 1; }
-.you-chart-line { stroke: var(--accent-ring); stroke-width: 2; fill: none; stroke-dasharray: 4 5; }
-.you-chart p { margin: 8px 0 0; }
 .profile-avatar { display: grid; justify-items: center; gap: 4px; min-width: 80px; padding: 0; border: 0; background: transparent; font-size: .75rem; color: var(--accent); }
 .profile-overview .ui-section { margin-block: 24px; }
 .profile-overview .ui-row { min-height: 56px; }
@@ -582,3 +575,8 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .home-hero .eyebrow { margin: 0; }
 .home-hero h2 { margin: 0; font-size: 1.6rem; }
 .home-hero-link { display: grid; place-items: center; min-height: 44px; color: var(--text-2); font-weight: 600; }
+
+.you-stats.ui-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 4px 0 18px; }
+.ui-section.danger { border-color: rgb(var(--danger-rgb) / .4); }
+.ui-section.danger .ui-row-value { color: var(--danger); }
+.notice-day { margin: 18px 0 6px; font: 700 .75rem/1.4 var(--font-heading); letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }

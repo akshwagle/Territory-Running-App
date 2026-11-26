@@ -51,3 +51,10 @@ it('profile badges list only earned badges', async () => {
   expect(await screen.findByText('Ten runs')).toBeInTheDocument();
   expect(screen.queryByText('Hex century')).toBeNull();
 });
+
+it('groups notifications under day headings', async () => {
+  const old = { ...note(2), createdAt: '2026-10-01T10:00:00.000Z' }, fresh = { ...note(1), createdAt: new Date().toISOString() };
+  mount((path) => counted(path) || { notifications: [fresh, old], nextCursor: null, unreadCount: 2 });
+  expect(await screen.findByRole('heading', { name: 'Today' })).toBeVisible();
+  expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(2);
+});

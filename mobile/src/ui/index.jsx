@@ -89,7 +89,7 @@ export function ListRow({ to, label, subtitle, value, icon, leading, trailing, c
   const content = <>{leading || (icon && <Icon name={icon}/>)}<span className="ui-row-label">{label}{subtitle && <span className="ui-row-sub">{subtitle}</span>}{children}</span>{value && <span className="ui-row-value" dir="auto">{value}</span>}{trailing}{chevron && <Icon name="chevron"/>}</>;
   return to ? <Link className="ui-row" to={to} {...props}>{content}</Link> : <button type="button" className="ui-row" {...props}>{content}</button>;
 }
-export function Section({ title, children }) { return <section className="ui-section">{title && <h2>{title}</h2>}{children}</section>; }
+export function Section({ title, className = '', children }) { return <section className={`ui-section ${className}`.trim()}>{title && <h2>{title}</h2>}{children}</section>; }
 function Modal({ title, children, onClose, sheet = false }) {
   const titleId = useId(), panel = useRef(null), closeRef = useRef(onClose);
   closeRef.current = onClose;
