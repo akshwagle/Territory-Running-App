@@ -76,7 +76,7 @@ it('T02 card is static, or a pressable button/link; stat tile pairs label, value
   render(<MemoryRouter><Card>Plain</Card><Card onClick={tap}>Press me</Card><Card to="/x">Go</Card><StatGrid><StatTile label="Distance" value="5.2" unit="km" delta="+0.4"/></StatGrid></MemoryRouter>);
   await user.click(screen.getByRole('button', { name: 'Press me' })); expect(tap).toHaveBeenCalledOnce();
   expect(screen.getByRole('link', { name: 'Go' })).toHaveAttribute('href', '/x'); expect(screen.getByText('Plain').tagName).toBe('ARTICLE');
-  expect(screen.getByText('Distance').tagName).toBe('DT'); expect(screen.getByText('5.2').closest('dd')).toHaveTextContent('5.2km+0.4');
+  expect(screen.getByText('Distance').tagName).toBe('DT'); expect(screen.getByText('5.2').closest('dd')).toHaveTextContent('5.2 km +0.4');
 });
 it('T02 list row renders subtitle, leading, trailing, and can drop the chevron', () => {
   const { container } = render(<MemoryRouter><ListRow to="/a" label="Ada" subtitle="12 hexes" leading={<b>A</b>} trailing={<i>#1</i>} chevron={false}/></MemoryRouter>);
