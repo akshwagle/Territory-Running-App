@@ -15,7 +15,9 @@
     "assets:generate": "node scripts/generate-brand-assets.mjs",
     "assets:check": "node scripts/generate-brand-assets.mjs --check",
     "check:bundle": "node scripts/check-budgets.mjs",
-    "check:contrast": "node scripts/check-contrast.mjs"
+    "check:contrast": "node scripts/check-contrast.mjs",
+    "check:palette": "node scripts/check-palette.mjs",
+    "check": "npm run check:contrast && npm run check:palette"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.1",
