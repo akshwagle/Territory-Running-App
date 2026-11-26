@@ -43,3 +43,5 @@ Status: [ ] todo  [x] done
   Controller, vault, Google adapter untouched. Not visually verified. Splash/Welcome photo composition left as is.
 - T05 (feat/ui-t05-home): Home = greeting + today status (streak), Start-run hero card, territory snapshot (/api/territory/me: held, gained this week, protected; gained hidden above 200 hexes), weekly distance chart (stats overview), feed, bell. Skeleton/empty/error per section.
   Not visually verified. Left: TabBar still 3 tabs per Shell TABS (5 listed), feed cards unchanged, no pull-to-refresh, `.stagger` not applied.
+- T06 (feat/ui-t06-workout): recorder page gets GPS quality chip (good/waiting/weak/paused), giant stats (existing RunStats), HoldButton Finish (1 s ring) replacing the finish dialog; reboot-recovery keeps 'Finish saved run' dialog. Controller/recording logic untouched.
+  Not visually verified. Left: Workout landing page unchanged, controls not sticky to bottom, no low-storage banner beyond existing storageFailed message.
