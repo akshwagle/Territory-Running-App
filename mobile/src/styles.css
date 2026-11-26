@@ -522,16 +522,25 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .history-filters .sport-chips, .sport-chips[role=tablist] { overflow-x: auto; }
 .stat-chart { margin: 12px 0; }
 .stat-chart svg { width: 100%; height: 140px; display: block; }
-.stat-bar { fill: var(--accent); }
+.stat-bar { fill: var(--accent); opacity: .55; }
+.stat-bar:last-of-type { opacity: 1; }
 .stat-axis { stroke: var(--line-strong); stroke-width: 1; }
 .stat-labels { display: flex; font-size: .75rem; color: var(--text-3); margin-top: 4px; }
 .stat-labels span { flex: 1; text-align: center; overflow: hidden; white-space: nowrap; }
-.badge-row { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-.badge-row:not(.earned) strong { color: var(--text-2); }
-.badge-row.earned { border-left: 3px solid var(--accent); padding-left: 12px; }
-.badge-row p { margin: 2px 0 0; }
-.badge-progress { display: flex; align-items: center; gap: 12px; }
-.badge-progress progress { flex: 1; height: 8px; accent-color: var(--accent); }
+.badge-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); margin: 0; padding: 0; list-style: none; }
+.badge-tile { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-card, 16px); background: var(--surface, transparent); min-width: 0; overflow-wrap: anywhere; }
+.badge-tile:not(.earned) { color: var(--text-2); }
+.badge-tile.earned { border-color: var(--accent-ring); background: var(--accent-dim); }
+.badge-icon { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-strong); color: var(--text-3); }
+.badge-tile.earned .badge-icon { color: var(--accent); border-color: var(--accent); }
+.badge-tile.fresh .badge-icon { animation: badge-pop 600ms var(--ease-enter) both; }
+.badge-tile.fresh .badge-icon::after { content: ''; position: absolute; inset: -1px; border-radius: 50%; border: 2px solid var(--accent); animation: badge-ring 1100ms var(--ease-standard) 1 both; pointer-events: none; }
+.badge-tile progress { width: 100%; height: 6px; accent-color: var(--accent); }
+.badge-state { margin-top: auto; font-variant-numeric: tabular-nums; }
+.badge-celebrate { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; padding: 8px 8px 8px 16px; border: 1px solid var(--accent-ring); border-radius: var(--r-pill); background: var(--accent-dim); font-weight: 600; animation: pop-in 250ms var(--ease-enter) both; }
+@keyframes badge-ring { from { opacity: .8; transform: scale(1); } to { opacity: 0; transform: scale(1.8); } }
+@media (max-width: 340px) { .badge-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .badge-tile.fresh .badge-icon, .badge-tile.fresh .badge-icon::after, .badge-celebrate { animation: none; } }
 
 /* Notification centre and tab badge */
 .notice-list { list-style: none; margin: 0; padding: 0; }

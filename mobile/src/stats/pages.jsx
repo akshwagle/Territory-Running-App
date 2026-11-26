@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useState} from 'react';
 import {useAuth} from '../auth/context.jsx';
-import {Chip,EmptyState,ErrorState,ListRow,Section,Skeleton,Button} from '../ui/index.jsx';
+import {Chip,EmptyState,ErrorState,ListRow,Section,Skeleton,Button,StatGrid,StatTile,Icon} from '../ui/index.jsx';
+import {tap} from '../ui/haptics.js';
 import {useResource} from '../pages/settings-pages.jsx';
 import {distanceLabel,timeLabel,paceLabel} from '../runs/format.js';
 import {barGeometry,bucketLabel} from './chart.js';
@@ -18,7 +19,6 @@ export function BarChart({series,bucket,units}){
   </svg>
   <div className="stat-labels" aria-hidden="true">{series.map((s,i)=><span key={s.start}>{i%step===0?bucketLabel(s.start,bucket):''}</span>)}</div></figure>;
 }
-function Tile({label,value}){return <div><dt>{label}</dt><dd>{value}</dd></div>;}
 function Overview({units}){
   const {auth}=useAuth(),[range,setRange]=useState('week'),load=useCallback(()=>auth.api.request(`/api/me/stats/overview?range=${range}`),[auth,range]),data=useResource(load),v=data.value;
   return <>
@@ -26,8 +26,8 @@ function Overview({units}){
     {data.phase==='loading'&&!v&&<Skeleton label="Loading your stats…"/>}
     {data.phase==='error'&&<ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>}
     {v&&(v.lifetime.runs===0?<EmptyState title="Your stats start with a run" action={<Button to="/run">Start a run</Button>}>Distance, time, pace and streaks fill in after your first valid run.</EmptyState>:<>
-      <dl className="ui-run-stats"><Tile label="Distance" value={distanceLabel(v.totals.distanceM,units)}/><Tile label="Time" value={timeLabel(v.totals.durationS)}/><Tile label="Avg pace" value={paceLabel(v.totals.distanceM,v.totals.durationS,units)}/></dl>
-      <p className="small">{v.totals.runs} {v.totals.runs===1?'run':'runs'} in this period · {v.lifetime.runs} all time ({distanceLabel(v.lifetime.distanceM,units)})</p>
+      <StatGrid><StatTile tone="accent" label="Distance" value={distanceLabel(v.totals.distanceM,units)}/><StatTile label="Time" value={timeLabel(v.totals.durationS)}/><StatTile label="Avg pace" value={paceLabel(v.totals.distanceM,v.totals.durationS,units)}/><StatTile label="Runs" value={v.totals.runs}/></StatGrid>
+      <p className="small">{v.lifetime.runs} {v.lifetime.runs===1?'run':'runs'} all time ({distanceLabel(v.lifetime.distanceM,units)})</p>
       <BarChart series={v.series} bucket={v.bucket} units={units}/>
       <Section title="Streak"><ListRow label="Current streak" value={`${v.streak.current} ${v.streak.current===1?'day':'days'}`}/><ListRow label="Best streak" value={`${v.streak.best} ${v.streak.best===1?'day':'days'}`}/></Section></>)}
   </>;
@@ -48,13 +48,28 @@ function Records({units}){
       {r.mostCellsInRun&&<Section title="Territory"><ListRow to={`/run/history/${r.mostCellsInRun.runId}`} label="Most cells in one run" value={String(r.mostCellsInRun.cells)}><small>{dateText(r.mostCellsInRun.startedAt)}</small></ListRow></Section>}
       <p className="small">Fastest pace is the best average over a whole run of at least that distance.</p></>)}</>;
 }
+const SEEN_KEY='tr.badges.seen';
+function readSeen(){try{const v=JSON.parse(globalThis.localStorage?.getItem(SEEN_KEY)||'null');return Array.isArray(v)?v:null;}catch{return null;}}
+function writeSeen(ids){try{globalThis.localStorage?.setItem(SEEN_KEY,JSON.stringify(ids));}catch{/* storage is optional */}}
+// Badges earned since the last visit; the first visit only records the baseline so old badges never replay.
+export function newlyEarned(list,seen){return seen?list.filter(b=>b.earned&&!seen.includes(b.id)):[];}
+function BadgeTile({b,fresh}){
+  const pct=b.threshold>0?Math.min(100,Math.round(b.progress/b.threshold*100)):0;
+  return <li className={`badge-tile${b.earned?' earned':''}${fresh?' fresh':''}`}>
+    <span className="badge-icon" aria-hidden="true"><Icon name={b.earned?'trophy':'target'}/></span>
+    <strong>{b.name}</strong>{b.description&&<span className="small">{b.description}</span>}
+    {b.earned?<span className="small badge-state">Earned</span>:<><progress max={b.threshold} value={b.progress} aria-label={`${b.name} progress`}/><span className="small badge-state">{`${b.progress} / ${b.threshold} ${b.unit}`}<span className="sr-only"> ({pct}%)</span></span></>}</li>;
+}
 function Achievements(){
   const {auth}=useAuth(),load=useCallback(()=>auth.api.request('/api/me/stats/achievements'),[auth]),data=useResource(load),list=data.value?.badges;
+  const [fresh,setFresh]=useState([]);
+  useEffect(()=>{if(!list)return;const found=newlyEarned(list,readSeen());writeSeen(list.filter(b=>b.earned).map(b=>b.id));if(found.length){setFresh(found);tap('confirm');}},[list]);
+  const earned=list?.filter(b=>b.earned)||[],open=list?.filter(b=>!b.earned)||[],isFresh=id=>fresh.some(f=>f.id===id);
   return <>{data.phase==='loading'&&!list&&<Skeleton label="Loading achievements…"/>}{data.phase==='error'&&<ErrorState onRetry={data.reload} label="Try again">{data.error}</ErrorState>}
+    {fresh.length>0&&<div className="badge-celebrate" role="status"><span>{fresh.length===1?`New badge: ${fresh[0].name}`:`${fresh.length} new badges earned`}</span><Button variant="ghost" size="sm" onClick={()=>setFresh([])}>Dismiss</Button></div>}
     {list&&!list.length&&<EmptyState title="No achievements available">Badges will appear here when they are published.</EmptyState>}
-    {list?.length>0&&<Section>{list.map(b=><div className={`badge-row${b.earned?' earned':''}`} key={b.id}>
-      <div><strong>{b.name}</strong>{b.description&&<p className="small">{b.description}</p>}</div>
-      <div className="badge-progress"><progress max={b.threshold} value={b.progress} aria-label={`${b.name} progress`}/><span className="small">{b.earned?'Earned':`${b.progress} / ${b.threshold} ${b.unit}`}</span></div></div>)}</Section>}</>;
+    {earned.length>0&&<Section title={`Earned (${earned.length})`}><ul className="badge-grid">{earned.map(b=><BadgeTile key={b.id} b={b} fresh={isFresh(b.id)}/>)}</ul></Section>}
+    {open.length>0&&<Section title={earned.length?'Still to earn':'Keep going'}><ul className="badge-grid">{open.map(b=><BadgeTile key={b.id} b={b}/>)}</ul></Section>}</>;
 }
 const TABS=[['stats','Stats'],['records','Records'],['achievements','Badges']];
 export function StatsPage(){

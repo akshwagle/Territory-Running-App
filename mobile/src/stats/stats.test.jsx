@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router';
 import { AuthContext } from '../auth/context.jsx';
 import { ApiError } from '../auth/errors.js';
 import { session } from '../auth/test-helpers.js';
-import { StatsPage } from './pages.jsx';
+import { StatsPage, newlyEarned } from './pages.jsx';
 import { barGeometry, historyQuery, shareText } from './chart.js';
 import { canShare, shareSummary } from './share.js';
 import { distanceLabel, timeLabel, paceLabel } from '../runs/format.js';
@@ -71,4 +71,21 @@ it('share uses the existing Capacitor plugin on Android and ignores user cancel'
   share.share.mockRejectedValueOnce(new Error('boom'));
   await expect(shareSummary('hi', { platform: 'android', share })).rejects.toThrow('boom');
   expect(await canShare({ platform: 'web' })).toBe(false);
+});
+
+it('achievements celebrate only newly earned badges, once, and can be dismissed', async () => {
+  const badges = [{ id: 'a', name: 'First steps', description: null, unit: 'runs', threshold: 1, progress: 1, earned: true }, { id: 'b', name: 'Ten runs', description: null, unit: 'runs', threshold: 10, progress: 3, earned: false }];
+  expect(newlyEarned(badges, null)).toEqual([]);
+  expect(newlyEarned(badges, ['a'])).toEqual([]);
+  expect(newlyEarned(badges, [])).toHaveLength(1);
+  localStorage.setItem('tr.badges.seen', '[]');
+  const { user } = mount({ 'GET /api/me/profile': { profile: { preferredUnits: 'km' } }, 'GET /api/me/stats/overview': overview(), 'GET /api/me/stats/achievements': { badges } });
+  await user.click(screen.getByRole('tab', { name: 'Badges' }));
+  expect(await screen.findByText('New badge: First steps')).toBeVisible();
+  expect(screen.getByText('Earned (1)')).toBeVisible();
+  expect(screen.getByText('3 / 10 runs')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+  expect(screen.queryByText('New badge: First steps')).toBeNull();
+  expect(JSON.parse(localStorage.getItem('tr.badges.seen'))).toEqual(['a']);
+  localStorage.clear();
 });
