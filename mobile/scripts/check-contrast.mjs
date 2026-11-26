@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
 const rootBlock = css.match(/:root\s*\{([\s\S]*?)\n\}/)[1];
-const lightBlock = css.match(/:root\[data-theme=\"light\"\]\s*\{([\s\S]*?)\n\s*\}/)[1];
+const lightBlock = css.match(/:root\[data-theme="light"\]\s*\{([\s\S]*?)\n\s*\}/)[1];
 const parse = block => Object.fromEntries([...block.matchAll(/(--[\w-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)].map(m => [m[1], m[2]]));
 const dark = parse(rootBlock);
 const themes = { dark, light: { ...dark, ...parse(lightBlock) } };

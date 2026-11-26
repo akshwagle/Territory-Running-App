@@ -1,14 +1,16 @@
 .app-shell > main:has(.map-page) { padding: 0; overflow: hidden; }
-.map-page { position: relative; height: 100%; min-height: 320px; overflow: hidden; background: var(--bg); }
+.map-page { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
 .map-canvas { position: absolute; inset: 0; background: var(--map-bg); }
 .map-canvas .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.8) contrast(.9) saturate(.6); }
 .map-canvas .leaflet-container, .map-canvas { font-family: var(--font-body); }
 .map-canvas .leaflet-control-attribution { background: var(--map-attribution-bg); color: var(--text-2); font-size: 12px; }
 .map-canvas .leaflet-control-attribution a { color: var(--accent); }
+/* With the tab bar the footer already clears the gesture area; without it the controls clear it themselves. */
+.app-shell:not(:has(> footer)) .map-fabs, .app-shell:not(:has(> footer)) .map-legend { bottom: calc(var(--sp-8) + var(--safe-bottom)); }
 .map-overlay { position: absolute; top: var(--sp-3); left: var(--sp-3); right: var(--sp-3); z-index: 500; display: grid; gap: 6px; pointer-events: none; }
 .map-overlay > * { pointer-events: auto; }
 .map-status { justify-self: start; margin: 0; padding: var(--sp-1) var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface-raised); color: var(--text-2); }
-.map-fabs { position: absolute; right: var(--sp-4); bottom: calc(var(--sp-8) + var(--safe-bottom)); z-index: 500; display: grid; gap: var(--sp-3); }
+.map-fabs { position: absolute; right: var(--sp-4); bottom: var(--sp-8); z-index: 500; display: grid; gap: var(--sp-3); }
 .map-fab { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--text); box-shadow: var(--shadow-float); transition: transform var(--motion-press) var(--ease-standard); }
 .map-fab:active:not(:disabled) { transform: scale(.94); }
 .map-fab.primary { color: var(--accent); }
@@ -19,7 +21,7 @@
 .hex-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--map-mine); }
 .hex-status.cooling::before { background: var(--map-cooldown); } .hex-status.restricted::before { background: var(--map-restricted); }
 .hex-status.cooling { border-color: var(--map-cooldown); } .hex-status.restricted { border-color: var(--map-restricted); } .hex-status.open { border-color: var(--map-mine); }
-.map-legend { position: absolute; left: var(--sp-4); bottom: calc(var(--sp-8) + var(--safe-bottom)); z-index: 500; display: grid; grid-template-columns: repeat(2, auto); gap: var(--sp-2) var(--sp-4); max-width: calc(100% - 100px); margin: 0; padding: var(--sp-3) var(--sp-4); list-style: none; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-raised); color: var(--text); font-size: var(--fs-small); line-height: var(--lh-small); box-shadow: var(--shadow-float); animation: dialog-in var(--motion-medium) var(--ease-enter); }
+.map-legend { position: absolute; left: var(--sp-4); bottom: var(--sp-8); z-index: 500; display: grid; grid-template-columns: repeat(2, auto); gap: var(--sp-2) var(--sp-4); max-width: calc(100% - 100px); margin: 0; padding: var(--sp-3) var(--sp-4); list-style: none; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-raised); color: var(--text); font-size: var(--fs-small); line-height: var(--lh-small); box-shadow: var(--shadow-float); animation: dialog-in var(--motion-medium) var(--ease-enter); }
 .map-legend li { display: flex; align-items: center; gap: var(--sp-2); }
 .swatch { width: 14px; height: 14px; border-radius: 4px; border: 1px solid; }
 .swatch.mine { background: rgba(var(--accent-rgb), .4); border-color: var(--map-mine); }
