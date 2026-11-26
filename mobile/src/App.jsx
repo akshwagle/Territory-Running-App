@@ -10,7 +10,7 @@ import { WorkoutPage } from './pages/workout-pages.jsx';
 import { CommunityPage } from './pages/community-pages.jsx';
 
 import { UnreadProvider } from './notifications/unread.jsx';
-import { UIProvider, Skeleton, InlineNotice } from './ui/index.jsx';
+import { UIProvider, Skeleton, InlineNotice, Banner } from './ui/index.jsx';
 import { Shell } from './ui/Shell.jsx';
 import { PendingNotice } from './ui/PendingNotice.jsx';
 import { FirstRunIntro } from './ui/FirstRunIntro.jsx';
@@ -110,7 +110,7 @@ function AppContent({ downloadUrl, nativeWatch = watchNativeAuth }) {
         state.status === 'storageError' ? <section><h1>Sign-in storage unavailable</h1><Notice error>{state.message}</Notice><p>Saved data is kept on this phone.</p><button className="primary" onClick={() => auth.start()}>Try again</button></section> :
           state.status === 'blocked' ? <section><h1>Account unavailable</h1><Notice error>{state.message}</Notice><SignOutControl /></section> :
             state.status === 'reauthRequired' && !['/login', '/signup', '/forgot', '/verify', '/reset'].includes(location.pathname) ? <section><h1>Sign in again</h1><InlineNotice>{state.message}</InlineNotice><Link className="button primary" to="/login">Go to login</Link></section> : <>
-            {['offline', 'unavailable'].includes(state.status) && <InlineNotice className="connection-notice" error action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</InlineNotice>}
+            {['offline', 'unavailable'].includes(state.status) && <Banner className="connection-notice" tone="error" action="Retry" onAction={() => auth.loadMe().catch(() => {})}>{state.message} Uploads are paused until the connection and sign-in are confirmed.</Banner>}
             {state.status === 'signedOut' && state.message && <Notice>{state.message}</Notice>}
             {location.pathname !== '/' && location.pathname !== '/welcome' && <PendingNotice/>}
             {location.pathname === '/home' && <FirstRunIntro/>}

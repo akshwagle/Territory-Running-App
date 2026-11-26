@@ -193,7 +193,7 @@ export function VerifyPage({ link, clearLink }) {
     {!verified && hasToken && <Button disabled={busy} onClick={() => act(true)}>{busy ? 'Confirming…' : 'Confirm email'}</Button>}
     {!verified && !hasToken && link?.error && <Notice error>{link.error}</Notice>}
     {!verified && state.user && <><Button variant="secondary" disabled={busy} onClick={() => act(false)}>{busy && !hasToken ? 'Requesting email…' : 'Resend verification email'}</Button>
-      <Button variant="quiet" disabled={busy} onClick={async () => { setError(''); try { await auth.loadMe(); } catch (failure) { setError(friendlyMessage(failure)); } }}>I’ve verified my email · check again</Button></>}
+      <Button variant="ghost" disabled={busy} onClick={async () => { setError(''); try { await auth.loadMe(); } catch (failure) { setError(friendlyMessage(failure)); } }}>I’ve verified my email · check again</Button></>}
     {!verified && !state.user && !hasToken && <Link className="button secondary" to="/login">Log in to request a new email</Link>}
     <Notice>{message}</Notice><Notice error>{error}</Notice>
     <p className="small">Opening a link never signs you in.</p><Link className="text-link" to={state.user ? '/home' : '/login'}>Return to {state.user ? 'home' : 'login'}</Link>
