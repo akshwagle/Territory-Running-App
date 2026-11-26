@@ -10,7 +10,7 @@ const METRICS = [
 ];
 const PERIODS = [{ key: 'week', label: 'Week' }, { key: 'month', label: 'Month' }, { key: 'season', label: 'Season' }];
 const SCOPES = [{ key: 'global', label: 'Everyone' }, { key: 'following', label: 'Following' }, { key: 'team', label: 'My team' }];
-const COLORS = ['#1F5A46', '#B8452A', '#14392C', '#2C6E9E', '#7A4FB0', '#A8812A'];
+const COLORS = ['#1F5A46', '#B8452A', '#14392C', '#4F6480', '#6F86A6', '#A8812A'];
 
 const valueText = (metric, value) => metric === 'distance' ? distanceLabel(value) : String(value);
 const errText = error => error?.message || 'That didn’t go through. Check your connection and try again.';
