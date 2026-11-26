@@ -551,3 +551,13 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 @keyframes badge-pop { 0% { opacity: 0; transform: scale(.7); } 70% { transform: scale(1.06); } 100% { opacity: 1; transform: none; } }
 @keyframes tile-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .person-row .ui-button, .follow-btn { min-width: 96px; }
+
+/* Auth screens (T04) */
+.auth-screen { display: grid; gap: var(--sp-4); align-content: start; padding-bottom: var(--sp-6); }
+.auth-screen h1 { margin: 0; }
+.auth-lead { color: var(--text-2); margin: 0; }
+.auth-or { display: flex; align-items: center; gap: var(--sp-3); color: var(--text-3); font-size: var(--fs-small); }
+.auth-or::before, .auth-or::after { content: ''; height: 1px; background: var(--line); flex: 1; }
+.auth-switch { margin: 0; color: var(--text-2); }
+.auth-screen .ui-button { width: 100%; }
+.auth-screen form fieldset { display: grid; gap: var(--sp-4); border: 0; padding: 0; margin: 0; min-width: 0; }

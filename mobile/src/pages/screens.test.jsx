@@ -306,3 +306,12 @@ it('UI-07 a blocked-account screen takes priority over a previous Google error i
  expect(screen.getAllByRole('alert')).toHaveLength(1);expect(screen.getByRole('alert')).toHaveTextContent('Account unavailable.');
  expect(screen.queryByText('Earlier Google failure.')).toBeNull();
 });
+
+it('auth screens put Google first and validate email on blur with the right keyboard hints', async () => {
+  const { user } = view(<LoginPage />);
+  const google = screen.getByRole('button', { name: 'Continue with Google' }), email = screen.getByLabelText('Email');
+  expect(google.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(email).toHaveAttribute('inputmode', 'email'); expect(email).toHaveAttribute('autocapitalize', 'none');
+  await user.type(email, 'not-an-email'); await user.tab();
+  expect(await screen.findByText(/valid email address/)).toBeInTheDocument();
+});
