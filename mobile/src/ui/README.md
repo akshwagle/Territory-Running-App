@@ -51,19 +51,23 @@ hidden from accessibility; every icon-only control has a text name.
 
 | Component | Example | States / contract |
 | --- | --- | --- |
-| Button | `<Button onClick={save}>Save</Button>` | primary (default), secondary, quiet, destructive; disabled, loading; `type="submit"` for form actions; `to` for links |
-| TextField | `<TextField label="Email" name="email" type="email"/>` | label, help, inline error, focus, password eye, live new-password length hint; native uncontrolled values; reset restores masking |
+| Button | `<Button onClick={save}>Save</Button>` | primary (default), secondary, ghost (alias quiet), destructive; `size="sm"` (44 px), `block`; disabled (+ `reason` text), loading keeps width; `type="submit"`; `to` for links |
+| TextField | `<TextField label="Email" name="email" type="email"/>` | label, help, inline error (`error` prop, or `validate(value)` on blur), `clearable` 44 px clear button, focus, password eye, live new-password length hint; native uncontrolled values; reset restores masking |
 | Switch | `<Switch label="Share route shapes" name="shareRouteShapes"/>` | native checkbox with switch role; checked, unchecked, focus, disabled; works with FormData |
+| Segmented | `<Segmented label="Period" options={['Week','Month']} value={v} onChange={set}/>` | single choice, pressed = accent-dim + ring, 44 px, strings or `{value,label}` |
+| Card | `<Card onClick={open}>…</Card>` | raised surface, r-lg, 16 px padding; `to`/`onClick` makes it a pressable link/button |
+| StatGrid / StatTile | `<StatGrid><StatTile label="Distance" value="5.2" unit="km" delta="+0.4" tone="accent"/></StatGrid>` | caption label, tabular number, unit, delta chip; one column under 340 px |
+| Banner | `<Banner tone="offline" action="Retry" onAction={r}>…</Banner>` | sticky calm strip; tones info/offline/syncing/warn/error (error = alert) |
 | Chip | `<Chip selected>Clay</Chip>` | pressed selection, focus, disabled; pill, 44 px high |
-| ListRow | `<ListRow to="/you/privacy" label="Privacy" value="Only me"/>` | link/button, optional value/icon, chevron, immediate pressed colour |
+| ListRow | `<ListRow to="/you/privacy" label="Privacy" subtitle="…" value="Only me"/>` | 56 px+, link/button, `icon`/`leading` node, `subtitle`, `value`/`trailing`, chevron unless `chevron={false}` |
 | Section | `<Section title="Your data">…</Section>` | labelled group on a raised surface |
-| Sheet | `<Sheet title="Choose your hex" onClose={close}>…</Sheet>` | scrim, 220ms entrance, close button, Escape/system back, focus trap/restore; no drag gesture |
+| Sheet | `<Sheet title="Choose your hex" onClose={close}>…</Sheet>` | scrim, 220ms entrance, close button, Escape/system back, focus trap/restore; grabber with drag-to-dismiss (transform only, closes past 96 px), max 85% height |
 | Dialog | `<Dialog title="Discard?" onClose={close}>…</Dialog>` | accessible title and modal role; explicit destructive confirmation; same focus/back rules |
 | Toast | `<Success>Profile saved.</Success>` | one app-level message, replacement rather than stacking, dismiss, 4s lifetime; no success banner |
 | InlineNotice | `<InlineNotice error action="Retry" onAction={retry}>Offline.</InlineNotice>` | one compact message, optional action/dismiss; wraps important text instead of truncating; no thick border |
-| Skeleton | `<Skeleton label="Loading profile…"/>` | flat surface bars, accessible loading label (shimmer arrives with T03) |
+| Skeleton | `<Skeleton shape="row" lines={3} label="Loading…"/>` | shapes lines/row/card; flat surface bars, accessible loading label (shimmer arrives with T03) |
 | EmptyState | `<EmptyState title="Room to run">…</EmptyState>` | purposeful empty hex, honest copy, optional relevant action |
-| ErrorState | `<ErrorState onRetry={reload}>Cannot connect.</ErrorState>` | plain failure plus Retry; existing screens retain “Try again” wording |
+| ErrorState | `<ErrorState title="Stats unavailable" onRetry={reload}>Cannot connect.</ErrorState>` | optional title, plain failure, Retry when `onRetry` given; existing screens retain “Try again” wording |
 | Avatar | `<Avatar id={2} color="#1F5A46"/>` | generated hex, decorative; picker buttons provide the name and pressed state |
 | Screen | `<Screen title="Privacy" onBack={back} bottom={tabs}>…</Screen>` | fixed header, own scroll area, scroll hairline, safe insets, optional bottom content |
 | TabBar | `<TabBar tabs={TABS} active="/you"/>` | three labelled 48px+ destinations; current filled indicator, persistent while scrolling |
