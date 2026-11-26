@@ -242,3 +242,8 @@
 .gps-chip--wait { color: var(--accent); border-color: var(--accent); }
 .run-finish { display: grid; justify-items: center; gap: 8px; padding-block: 16px 8px; }
 .run-finish-hold { min-width: 112px; min-height: 112px; font: 700 1.125rem var(--font-heading); }
+.claim-hero { display: flex; align-items: baseline; justify-content: center; gap: 10px; margin: 8px 0 4px; color: var(--accent); }
+.claim-hero-num { font: 800 clamp(3.5rem, 22vw, 6rem)/1 var(--font-display, var(--font-heading)); font-variant-numeric: tabular-nums; }
+.claim-hero-unit { font: 700 1.25rem/1 var(--font-heading); }
+.claim-result h2 { text-align: center; }
+.claim-next { text-align: center; }

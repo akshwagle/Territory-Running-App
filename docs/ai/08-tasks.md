@@ -11,7 +11,7 @@ Status: [ ] todo  [x] done
 - [x] T04 Auth screens (welcome, signup, login, forgot, reset, verify). Done: blueprint in 05, inline validation, correct autocomplete/inputmode, Google button spec, all error states. Read 04.
 - [x] T05 Home. Hero Start-run card, territory snapshot, weekly chart, feed, notifications bell, skeletons/empty states.
 - [x] T06 Workout and live recorder. Giant stats, thumb-zone controls, hold-to-finish, GPS/low-storage/waiting states. Must not change recording logic or data safety.
-- [ ] T07 Run summary, history, run detail. Count-up hero, stat grid, route map, badges, share, kind flagged/rejected explanations.
+- [x] T07 Run summary, history, run detail. Count-up hero, stat grid, route map, badges, share, kind flagged/rejected explanations.
 - [ ] T08 Map. Full-bleed, floating controls, legend, hex sheet, zoom hint, offline/denied states.
 - [ ] T09 Community. Leaderboard/Teams/Runners, you-row, team card, search, feed polish.
 - [ ] T10 Stats and achievements. Chart, records, achievements grid, one-shot badge celebration.
@@ -45,3 +45,5 @@ Status: [ ] todo  [x] done
   Not visually verified. Left: TabBar still 3 tabs per Shell TABS (5 listed), feed cards unchanged, no pull-to-refresh, `.stagger` not applied.
 - T06 (feat/ui-t06-workout): recorder page gets GPS quality chip (good/waiting/weak/paused), giant stats (existing RunStats), HoldButton Finish (1 s ring) replacing the finish dialog; reboot-recovery keeps 'Finish saved run' dialog. Controller/recording logic untouched.
   Not visually verified. Left: Workout landing page unchanged, controls not sticky to bottom, no low-storage banner beyond existing storageFailed message.
+- T07 (feat/ui-t07-run-summary): summary gets "+N hexes" count-up hero (ClaimResult), route map and share on the summary, kind next-step text for flagged/rejected runs (nextStepText).
+  Stat grid, badges, history and run detail were already on the T02 components. Not visually verified. Left: history list rows unchanged, detail page has no hero.

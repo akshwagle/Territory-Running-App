@@ -41,4 +41,9 @@ export function flagText(result){
  if(result.status==='FLAGGED')return `No territory was claimed. ${text.join(' ')}`.trim();
  return text.join(' ');
 }
+export function nextStepText(result){
+ if(result.status==='FLAGGED')return 'Nothing to do right now. Your run stays in history while it is checked, and territory is not claimed until then.';
+ if(result.status==='REJECTED')return 'Your run is saved. Go a little further next time and it can count.';
+ return '';
+}
 export function statusLabel(status){return {VALID:'Validated',FLAGGED:'Held for review',REJECTED:'Not counted',PENDING_VALIDATION:'Pending validation',ACTIVE:'Active'}[status]||String(status||'').toLowerCase();}

@@ -72,15 +72,15 @@ it('STEP06 summary shows hexes claimed, taken from others and lost for a validat
  expect(await screen.findByRole('heading',{name:'You claimed 12 hexes'})).toBeVisible();
  const tile=name=>screen.getByText(name).closest('.claim-tile');
  expect(tile('Claimed')).toHaveTextContent('12');expect(tile('Taken from others')).toHaveTextContent('5');expect(tile('Lost since')).toHaveTextContent('2');expect(tile('Held now')).toHaveTextContent('10');
- expect(screen.getByText(/3 cells belong to a runner/)).toBeVisible();expect(screen.queryByText(/Territory is calculated after upload/)).toBeNull();
+ expect(document.querySelector('.claim-hero')).toHaveTextContent('hexes');expect(screen.getByText(/3 cells belong to a runner/)).toBeVisible();expect(screen.queryByText(/Territory is calculated after upload/)).toBeNull();
  expect(f.auth.api.request).toHaveBeenCalledWith('/api/runs/one/claim');
 });
 it('STEP06 flagged and short runs explain why nothing was claimed, with no tiles',async()=>{
  setup(<RunSummaryPage/>,{state:'IDLE',lastFinished:{run:{id:'one',distanceM:420,durationS:200,status:'FLAGGED'}}},async()=>claimBody('FLAGGED',{},{flags:[{reason:'MOCK_LOCATION',status:'OPEN'}]}),'/run/summary');
- expect(await screen.findByRole('heading',{name:'Held for review'})).toBeVisible();expect(screen.getByText(/No territory was claimed. Mock location was detected/)).toBeVisible();expect(document.querySelector('.claim-grid')).toBeNull();
+ expect(await screen.findByRole('heading',{name:'Held for review'})).toBeVisible();expect(screen.getByText(/No territory was claimed. Mock location was detected/)).toBeVisible();expect(document.querySelector('.claim-grid')).toBeNull();expect(screen.getByText(/Nothing to do right now/)).toBeVisible();expect(document.querySelector('.claim-hero')).toBeNull();
 });
 it('STEP06 a failed result load is retryable and a short run is explained',async()=>{
  let fail=true;setup(<RunSummaryPage/>,{state:'IDLE',lastFinished:{run:{id:'one',distanceM:30,durationS:60,status:'REJECTED'}}},async()=>{if(fail)throw Error('Offline. Try again.');return claimBody('REJECTED',{},{reasons:['TOO_SHORT']});},'/run/summary');
  const retry=await screen.findByRole('button',{name:'Retry'});fail=false;await userEvent.setup().click(retry);
- expect(await screen.findByRole('heading',{name:'Too short to claim'})).toBeVisible();expect(screen.getByText(/about 100 m/)).toBeVisible();
+ expect(await screen.findByRole('heading',{name:'Too short to claim'})).toBeVisible();expect(screen.getByText(/about 100 m/)).toBeVisible();expect(screen.getByText(/Go a little further next time/)).toBeVisible();
 });
