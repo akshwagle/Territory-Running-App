@@ -88,3 +88,10 @@ it('home feed empty state points to finding runners', async () => {
   expect(await screen.findByText('Nothing here yet')).toBeVisible();
   expect(screen.getByRole('link', { name: 'Find runners to follow' })).toHaveAttribute('href', '/community');
 });
+
+it('pins a you-row with my rank and marks my own row', async () => {
+  mount({ 'GET /api/community/leaderboard': board({ entries: [{ rank: 1, value: 12, isMe: false, ...runner(1) }, { rank: 2, value: 3, isMe: true, ...runner(2) }], me: { rank: 2, value: 3 } }) });
+  expect((await screen.findByText('Your rank: #2 · 3')).closest('.you-row')).toBeVisible();
+  expect(screen.getByText('Runner 2').closest('li')).toHaveAttribute('aria-current', 'true');
+  expect(screen.getByText('Runner 1').closest('li')).not.toHaveAttribute('aria-current');
+});

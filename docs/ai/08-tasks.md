@@ -13,7 +13,7 @@ Status: [ ] todo  [x] done
 - [x] T06 Workout and live recorder. Giant stats, thumb-zone controls, hold-to-finish, GPS/low-storage/waiting states. Must not change recording logic or data safety.
 - [x] T07 Run summary, history, run detail. Count-up hero, stat grid, route map, badges, share, kind flagged/rejected explanations.
 - [x] T08 Map. Full-bleed, floating controls, legend, hex sheet, zoom hint, offline/denied states.
-- [ ] T09 Community. Leaderboard/Teams/Runners, you-row, team card, search, feed polish.
+- [x] T09 Community. Leaderboard/Teams/Runners, you-row, team card, search, feed polish.
 - [ ] T10 Stats and achievements. Chart, records, achievements grid, one-shot badge celebration.
 - [ ] T11 Notifications, You (profile), Settings and privacy screens, export/delete flows polish.
 - [ ] T12 Accessibility + small screen + light theme audit across every route (360 and 412 px, font scale 1.3, reduced motion). Fix issues; list leftovers in docs/UI_REVIEW.md.
@@ -49,3 +49,5 @@ Status: [ ] todo  [x] done
   Not visually verified. Left: no hex fade-in animation, no cooldown countdown tick, tiles still remote OSM.
 - T07 (feat/ui-t07-run-summary): summary gets "+N hexes" count-up hero (ClaimResult), route map and share on the summary, kind next-step text for flagged/rejected runs (nextStepText).
   Stat grid, badges, history and run detail were already on the T02 components. Not visually verified. Left: history list rows unchanged, detail page has no hero.
+- T09 (feat/ui-t09-community): leaderboard rows highlight your own row (aria-current) and a sticky pinned you-row shows rank + value; team card uses Card with team-colour edge and invite code row; feed items made compact.
+  Existing Segmented, period chips, search, follow, teams flows unchanged. 243 tests, lint, build, bundle, debug APK green. Not visually verified.
