@@ -6,7 +6,20 @@ import { DISCARD_CONFIRMATION } from '../auth/pending-work.js';
 import { AuthForm, Notice, newPasswordField } from '../components/forms.jsx';
 import { GoogleButton } from './auth-pages.jsx';
 import { useResource } from './use-resource.js';
-import { Avatar, Button, Dialog, EmptyState, ErrorState, ListRow, Section, Skeleton } from '../ui/index.jsx';
+import { Avatar, Button, Dialog, EmptyState, ErrorState, ListRow, Section, Segmented, Skeleton } from '../ui/index.jsx';
+import { readTheme, saveTheme } from '../platform/theme.js';
+import { syncSystemBars } from '../platform/android.js';
+
+const THEME_OPTIONS = [{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }];
+
+export function ThemeSetting() {
+  const [choice, setChoice] = useState(() => readTheme());
+  const change = next => { setChoice(next); syncSystemBars(saveTheme(next)); };
+  return <Section title="Appearance">
+    <Segmented label="Theme" options={THEME_OPTIONS} value={choice} onChange={change}/>
+    <p className="small">System follows your phone’s light or dark setting.</p>
+  </Section>;
+}
 
 export function SignOutControl() {
   const { auth } = useAuth(), navigate = useNavigate();
@@ -53,6 +66,7 @@ export function SettingsPage() {
       <ListRow to="/notifications" label="Notifications" value="Activity inbox"/>
       <ListRow to="/settings/export" label="Export my data"/>
     </Section></nav>
+    <ThemeSetting/>
     <SignOutControl/>
     <Section title="Danger zone" className="danger">
       <ListRow to="/settings/delete" label="Delete account" value="Permanent"/>

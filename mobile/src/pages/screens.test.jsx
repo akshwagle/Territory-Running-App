@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { it, expect, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
@@ -319,7 +319,22 @@ it('auth screens put Google first and validate email on blur with the right keyb
 it('settings groups account, privacy & data, and keeps delete last in its own danger section', () => {
   view(<SettingsPage />, fakeAuth(signedIn()));
   const titles = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent);
-  expect(titles).toEqual(['Account', 'Privacy & data', 'Danger zone']);
+  expect(titles).toEqual(['Account', 'Privacy & data', 'Appearance', 'Danger zone']);
   expect(screen.getByRole('link', { name: /Delete account/ })).toHaveAttribute('href', '/settings/delete');
   expect(screen.getByRole('link', { name: /Notifications/ })).toHaveAttribute('href', '/notifications');
+});
+
+it('UI-04 settings Theme defaults to System and applies Light and Dark instantly, stored locally', async () => {
+  localStorage.clear(); delete document.documentElement.dataset.theme;
+  const user = userEvent.setup();
+  view(<SettingsPage />, fakeAuth(signedIn()));
+  const theme = screen.getByRole('group', { name: 'Theme' });
+  expect(within(theme).getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
+  await user.click(within(theme).getByRole('button', { name: 'Light' }));
+  expect(document.documentElement.dataset.theme).toBe('light');
+  expect(localStorage.getItem('tr.theme')).toBe('light');
+  expect(within(theme).getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true');
+  await user.click(within(theme).getByRole('button', { name: 'Dark' }));
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  localStorage.clear();
 });

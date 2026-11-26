@@ -1,5 +1,8 @@
 <!doctype html>
 <html lang="en">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" /><title>Territory Run</title></head>
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" /><title>Territory Run</title>
+    <meta name="color-scheme" content="light dark" />
+    <!-- Sets data-theme before first paint (no flash). Same rule as src/platform/theme.js. -->
+    <script>(function(){try{var c=localStorage.getItem('tr.theme');if(c!=='light'&&c!=='dark')c='system';var l=c==='light'||(c==='system'&&matchMedia('(prefers-color-scheme: light)').matches);var d=document.documentElement;d.dataset.theme=l?'light':'dark';d.dataset.themeChoice=c}catch(e){document.documentElement.dataset.theme='dark'}})()</script></head>
   <body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body>
 </html>

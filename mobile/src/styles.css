@@ -115,9 +115,10 @@
   -webkit-text-size-adjust: 100%;
 }
 
-/* Light theme follows the phone setting; tokens only, no component overrides. */
-@media (prefers-color-scheme: light) {
-  :root {
+/* Light theme: platform/theme.js resolves System/Light/Dark from prefers-color-scheme
+   and the saved choice into data-theme before first paint. Tokens only, no component overrides. */
+@media all {
+  :root[data-theme="light"] {
     color-scheme: light;
     --bg: #f3eee4;
     --bg-glass: rgba(243, 238, 228, .9);
@@ -161,7 +162,7 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 html, body { background: var(--bg); }
 body {
   margin: 0; color: var(--text); font-family: var(--font-body); font-size: 100%; line-height: 1.55;
-  color-scheme: dark; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; letter-spacing: -.005em;
+  -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; letter-spacing: -.005em;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
 input, textarea, .copyable { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }

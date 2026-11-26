@@ -83,8 +83,8 @@ Contrast >= 4.5:1 text, 3:1 UI (check both themes); touch targets >= 44 px (48 f
 ## Anti-patterns (reject in review)
 Mock or sample data; dead buttons; neon glow, stacked gradients, glassmorphism everywhere (backdrop-filter only on tab bar/sheets, with solid fallback); more than one primary button; text under 12 px; placeholder-as-label; spinners where skeletons fit; modal for non-destructive tasks; hard-coded colours/px outside tokens; screens that need the manual to understand; layouts that break at 360 px or in light theme.
 
-## Known platform constraint
-The Android shell currently uses `Theme.AppCompat.Light` with force-dark off (EDGE_CASES UI-04), so the WebView always reports `prefers-color-scheme: light` and the dark theme never shows on a phone. Showing dark needs an owner decision (DayNight parent + `values-night` window colours). Both themes stay complete in CSS.
+## Theme
+The app follows the phone's light/dark setting (DayNight Android theme, `prefers-color-scheme`). Settings > Appearance offers System (default), Light and Dark, stored in localStorage (`tr.theme`). `platform/theme.js` and an inline script in `index.html` set `data-theme` on `<html>` before first paint; CSS reads `:root[data-theme="light"]`. Android auto-inversion stays off (EDGE_CASES UI-04). Both themes stay complete in CSS.
 
 ## Definition of done for any UI work
 Both themes, 360 and 412 px widths, font scale 1.3, all states, reduced motion, tests updated, lint + build green, docs updated (this file and mobile/src/ui/README.md).

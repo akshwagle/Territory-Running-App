@@ -7,7 +7,7 @@
   "backgroundColor": "#F3EEE4",
   "plugins": {
     "SystemBars": {
-      "style": "LIGHT",
+      "style": "DEFAULT",
       "insetsHandling": "css",
       "initialViewportFitValueHint": "cover"
     },
