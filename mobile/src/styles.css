@@ -405,7 +405,7 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .feed-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 30px 0 6px; }
 .feed-heading h2 { margin: 0; font-size: 1.15rem; }
 .feed-note { margin: 0 0 18px; font-size: .8rem; color: var(--text-3); }
-.feed-post { margin-bottom: 14px; padding: 18px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--fill-1); }
+.feed-post { margin-bottom: 10px; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--fill-1); }
 .feed-post-head { display: flex; align-items: flex-start; gap: 12px; }
 .feed-post-who { display: grid; flex: 1; min-width: 0; gap: 2px; }
 .feed-post-who strong { font-family: var(--font-heading); font-size: .95rem; }
@@ -505,6 +505,12 @@ p { margin: 0 0 1.2rem; color: var(--text-2); }
 .person-name { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
 .board-rank { min-width: 2.4em; font: 700 .95rem/1 var(--font-heading); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .board-list li:nth-child(-n+3) .board-rank { color: var(--accent); }
+.person-row.is-me { background: var(--accent-dim); border-radius: var(--r-md); padding-inline: 10px; border-bottom-color: transparent; }
+.you-row { position: sticky; bottom: 8px; z-index: 1; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 14px; border: 1px solid var(--accent); border-radius: var(--r-lg); background: var(--surface-raised, var(--fill-2)); color: var(--text); font: 600 .95rem/1.2 var(--font-heading); font-variant-numeric: tabular-nums; }
+.you-row svg { color: var(--accent); flex: none; }
+.team-card { border-left: 6px solid var(--team, var(--accent)); display: grid; gap: 8px; }
+.team-card h2, .team-card p { margin: 0; overflow-wrap: anywhere; }
+.team-code { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .board-list b { font: 700 1rem/1 var(--font-heading); font-variant-numeric: tabular-nums; }
 .follow-btn, .person-row .ui-button { min-height: 44px; padding-inline: 14px; }
 .swatch { display: inline-block; width: 22px; height: 22px; border-radius: 50%; }

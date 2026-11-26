@@ -15,8 +15,8 @@ const COLORS = ['#1F5A46', '#B8452A', '#14392C', '#4F6480', '#6F86A6', '#A8812A'
 const valueText = (metric, value) => metric === 'distance' ? distanceLabel(value) : String(value);
 const errText = error => error?.message || 'That didn’t go through. Check your connection and try again.';
 
-export function Person({ person, children, sub }) {
-  return <li className="person-row">
+export function Person({ person, children, sub, mine = false }) {
+  return <li className={`person-row${mine ? ' is-me' : ''}`} aria-current={mine ? 'true' : undefined}>
     <Avatar id={person.avatarId || 0} color={person.avatarColor} size={40}/>
     <div className="person-name"><strong dir="auto">{person.displayName}</strong>{sub && <span className="small">{sub}</span>}</div>
     {children}
@@ -52,10 +52,10 @@ function Leaderboard() {
     {v && data.phase !== 'error' && <>
       {v.season && v.period === 'season' && <p className="small">{v.season.name} · {v.season.daysLeft} days left</p>}
       {!v.optedIn && <p className="feed-note">You are not on leaderboards. Turn on “Appear on leaderboards” in Privacy to be ranked.</p>}
-      {v.me && <p className="feed-note">Your rank: #{v.me.rank} · {valueText(v.metric, v.me.value)}</p>}
       {v.entries.length === 0 ? <EmptyState title="The board is open">{v.period === 'season' && !v.season ? 'No season is running right now.' : 'Finish a valid run to take the first spot.'}</EmptyState>
-        : <ol className="board-list">{v.entries.map(e => <Person key={`${e.rank}-${e.id || e.displayName}-${e.value}`} person={e} sub={e.isMe ? 'You' : null}>
+        : <ol className="board-list">{v.entries.map(e => <Person key={`${e.rank}-${e.id || e.displayName}-${e.value}`} person={e} mine={!!e.isMe} sub={e.isMe ? 'You' : null}>
           <span className="board-rank" aria-label={`Rank ${e.rank}`}>#{e.rank}</span><b>{valueText(v.metric, e.value)}</b></Person>)}</ol>}
+      {v.me && <div className="you-row" role="status"><Icon name="trophy" aria-hidden="true"/><span>{`Your rank: #${v.me.rank} · ${valueText(v.metric, v.me.value)}`}</span></div>}
     </>}
   </div>;
 }
@@ -91,9 +91,9 @@ function TeamView({ team, onChange }) {
   };
   const copy = async () => { try { await navigator.clipboard.writeText(team.inviteCode); show?.('Invite code copied.'); } catch { show?.(`Invite code: ${team.inviteCode}`); } };
   return <div className="community-section">
-    <Card className="promo-card"><h2 style={{ borderLeft: `6px solid ${team.colorHex}`, paddingLeft: 10 }} dir="auto">{team.name}</h2>
+    <Card className="team-card" style={{ '--team': team.colorHex }}><h2 dir="auto">{team.name}</h2>
       <p>{team.memberCount} of {team.maxMembers} runners · you are {team.role === 'CAPTAIN' ? 'captain' : 'a member'}</p>
-      <p>Invite code: <b className="invite-code">{team.inviteCode}</b></p>
+      <p className="team-code"><span className="small">Invite code</span><b className="invite-code">{team.inviteCode}</b></p>
       <Button variant="secondary" onClick={copy}><Icon name="share" width="16" height="16"/>Copy invite code</Button></Card>
     <Section title="Members">
       {members.phase === 'loading' && !members.value && <Skeleton label="Loading members…"/>}
