@@ -50,3 +50,12 @@ Method: code and CSS review only (no device or screen access). Not visually veri
 - Real 360/412 px and font-scale 1.3 rendering, TalkBack reading order, light-theme map tile contrast.
 - Chart axis labels (.stat-labels) clip rather than wrap at large font scale.
 - Some pages still use a few literal px sizes outside tokens.
+
+## T19 pass (feat/ui-t19-palette-guard)
+Method: code review with the frontend-design, web-design-guidelines, accessibility-review, design-critique and ux-copy skills. Not checked on a device.
+- Fixed: `index.html` viewport had `maximum-scale=1.0, user-scalable=no`, which blocks pinch zoom (WCAG 1.4.4, web guideline). Removed.
+- Guard: `npm run check:palette` (also in `npm run check`) fails on lime, electric cyan, hot magenta and purple-to-blue gradients anywhere in mobile/src, index.html, android res and built CSS, and on colour literals outside token files and documented exceptions. Verified failing on a lime and gradient sample.
+- Checked OK: visible focus styles on all controls, 44 px+ touch targets (buttons, chips, tabs, icon buttons), `role="status"` on toast/skeleton, decorative images `alt=""`, no `outline:none` except `h1:focus`, no `transition: all`, no sub-12 px labels.
+- Open: `h1:focus { outline: none }` is acceptable only because h1 receives programmatic focus on route change.
+- Open: Welcome/splash fixed dark colours kept by brand decision (see earlier pass).
+- Open: copy and layout were reviewed by code only; the Home "Territory Run" feed label repetition remains.
