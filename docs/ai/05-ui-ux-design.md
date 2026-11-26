@@ -42,6 +42,9 @@ Concept: "Clay & Pine", an outdoor, earthy, human palette from the owner's own w
 
 Looks to avoid because they read as AI-generated: neon lime/cyan/purple on black, blue-to-purple gradients, glow shadows, glassmorphism cards, rainbow charts, emoji icons, generic stock-style rounded-card grids, centred hero + three feature cards layouts. Use real hierarchy, restrained colour, condensed athletic numerals and warm neutrals instead.
 
+### Banned colours (hard rule, owner decision 2026-11-26)
+No neon or "volt" colours anywhere in `mobile/`: no lime/chartreuse (hue about 65-120 degrees with saturation above 60% and lightness above 45%, e.g. #c5fd53, #b5ff14, #a6e84c, #ccff00), no electric cyan, no hot magenta, no purple-to-blue gradients. These read as AI-generated. The website in `web/` still uses #b5ff14 and is left as is (a teammate owns it); the app must not copy it. All colours come from the palette tokens above. `npm run check:palette --prefix mobile` (task T19) fails the build if a banned hue appears in mobile/src or android resources.
+
 ## Components (build/extend in mobile/src/ui; each has all states + tests)
 - Button: primary (accent fill), secondary (fill-2 + line), ghost, destructive. Height 52 primary / 44 minimum, full-width in forms, loading state keeps width, disabled has reason text when not obvious.
 - Input: 52 px, label above (not placeholder-only), helper/error line, clear/show buttons 44 px, correct inputmode/autocomplete, error shown on blur and submit, keeps value on failure.

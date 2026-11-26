@@ -18,6 +18,7 @@ Status: [ ] todo  [x] done
 - [x] T11 Notifications, You (profile), Settings and privacy screens, export/delete flows polish.
 - [x] T12 Accessibility + small screen + light theme audit across every route (360 and 412 px, font scale 1.3, reduced motion). Fix issues; list leftovers in docs/UI_REVIEW.md.
 - [x] T13 Performance pass against 06 budgets (bundle sizes, lazy chunks, list sizes, re-render hot spots). Record before/after sizes.
+- [ ] T19 Palette guard and skill-driven polish. Add `mobile/scripts/check-palette.mjs` + `npm run check:palette` (scan mobile/src, index.html, android res and the built CSS for hex/rgb/hsl colours; fail on the banned hues in 05; allow only token files and the documented exceptions: Google button brand colours, stored avatar identity colours, map fallback). Wire it into the existing check chain. Then use the frontend-design skill, the Design plugin skills (design-critique, accessibility-review, ux-copy) and web-design-guidelines (only if the skill is installed and the session is interactive) to review every screen and fix issues in mobile/ only; record findings in docs/UI_REVIEW.md. Done: guard passes, tests/lint/build/apk:debug green, no web/ or server/ changes.
 
 ## Backend and data (read 02, 03, 04, 07)
 - [ ] T14 Schema proposal document only: write docs/SCHEMA_PROPOSAL.md for goals, gear, challenges, clubs, kudos/comments, notification_preferences, device_tokens and notification enum values (details in 02). NO migrations, NO code. Owner reviews and approves each item.
