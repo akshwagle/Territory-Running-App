@@ -118,3 +118,5 @@ The fuller catalogue (shimmer, count-up, hold-to-finish) is task T03.
 From `mobile/`: `npm test`, `npm run lint`, `npm run build`, `npm run check:bundle`,
 `npm run check:contrast`. Native assets: `npm run assets:generate` / `assets:check`.
 Device checks and before/after performance are recorded in `mobile/README.md`.
+
+Motion helpers (`motion.jsx`): `CountUp`/`useCountUp` (hero values only), `HoldButton` (hold-to-finish ring, `onComplete`), `.stagger` (set `--i` per child) and `.pop-in` classes.

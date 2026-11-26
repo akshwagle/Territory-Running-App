@@ -3,9 +3,11 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 import { Icon } from './icons.jsx';
 import { tap } from './haptics.js';
+import { CountUp } from './motion.jsx';
 import './ui.css';
 
 export { Icon, BrandMark } from './icons.jsx';
+export { CountUp, HoldButton, useCountUp, prefersReducedMotion } from './motion.jsx';
 const FeedbackContext = createContext(null);
 const overlays = [];
 export function closeTopOverlay() { const close = overlays.at(-1); if (!close) return false; close(); return true; }
@@ -71,9 +73,9 @@ export function Card({ to, onClick, as: Tag = 'article', className = '', childre
 }
 // StatTile belongs inside StatGrid (a <dl>): caption label, tabular number, unit, optional delta chip.
 export function StatGrid({ children, className = '', ...props }) { return <dl className={`ui-stat-grid ${className}`} {...props}>{children}</dl>; }
-export function StatTile({ label, value, unit, delta, tone, className = '' }) {
+export function StatTile({ label, value, unit, delta, tone, count = false, className = '' }) {
   return <div className={`ui-stat ${tone ? `ui-stat--${tone}` : ''} ${className}`}><dt>{label}</dt>
-    <dd><span className="ui-stat-value">{value}</span>{unit && <span className="ui-stat-unit">{unit}</span>}{delta && <span className="ui-delta">{delta}</span>}</dd></div>;
+    <dd><span className="ui-stat-value">{count && Number.isInteger(value) ? <CountUp value={value}/> : value}</span>{unit && <span className="ui-stat-unit">{unit}</span>}{delta && <span className="ui-delta">{delta}</span>}</dd></div>;
 }
 // Banner: calm sticky strip for offline, syncing and limited-GPS states. tone: info | offline | syncing | warn | error.
 export function Banner({ children, tone = 'info', action, onAction, onDismiss, className = '' }) {
